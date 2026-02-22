@@ -1,12 +1,16 @@
 # botcore — Shared Bot Infrastructure
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-f59e0b.svg)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)](LICENSE)
+[![Status: Beta](https://img.shields.io/badge/Status-Beta-16a34a?style=flat-square)](#)
+[![Release](https://img.shields.io/github/v/release/lushly-dev/botcore?display_name=tag&sort=semver&style=flat-square)](https://github.com/lushly-dev/botcore/releases)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](#)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-8B5CF6.svg)](#)
-[![Sponsor](https://img.shields.io/badge/Sponsor-pink?logo=githubsponsors)](https://github.com/sponsors/Falkicon)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-8b5cf6?style=flat-square)](#)
+[![Companion: AFD](https://img.shields.io/badge/Companion-AFD-6d28d9?style=flat-square&logo=github)](https://github.com/lushly-dev/afd)
+[![Sponsor](https://img.shields.io/badge/Sponsor-db2777?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Falkicon)
 
-> 🟡 **Alpha** · Stable and in daily use across multiple repositories. API may evolve. Feedback welcome!
+> 🟢 **Beta** · Stable and in active use across multiple repositories. APIs are mostly stable; expect targeted iterative improvements. Feedback welcome!
+
+> **Reference pair:** botcore delivers shared command/skill infrastructure; AFD provides the command-first architecture contract those commands are designed to follow. See https://github.com/lushly-dev/afd.
 
 **What happens when every repo needs great agent tooling?**
 
@@ -337,6 +341,12 @@ ruff check src/ --fix
 - [ ] Cross-repo skill sync dashboard
 - [ ] Performance command profiling
 
+## Community
+
+- Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR
+- Review [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community expectations
+- Report vulnerabilities via [SECURITY.md](./SECURITY.md)
+
 For AI agents contributing to this repo, see [AGENTS.md](AGENTS.md).
 
 ## Author
@@ -345,4 +355,4 @@ For AI agents contributing to this repo, see [AGENTS.md](AGENTS.md).
 
 Principal Design & UX Engineering Leader at Microsoft. Currently manages the central design team for Azure Data (including Microsoft Fabric) and leads AI adoption across the studio. Design Director for Microsoft Fabric through its v1 launch. Co-creator of [FAST](https://github.com/microsoft/fast) (7,400+ GitHub stars), an open-source web component system used in Edge, Windows, VS Code, and .NET.
 
-botcore grew from managing AI agents across a dozens of repositories — and the realization that shared infrastructure shouldn't live in clipboard history.
+botcore grew from managing AI agents across dozens of repositories — and the realization that shared infrastructure shouldn't live in clipboard history.

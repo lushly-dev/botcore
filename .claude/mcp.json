@@ -1,8 +1,8 @@
 {
 	"mcpServers": {
 		"botcore": {
-			"command": "python",
-			"args": ["-m", "botcore"]
+			"command": "uv",
+			"args": ["run", "--extra", "mcp", "python", "-m", "botcore"]
 		}
 	}
 }
