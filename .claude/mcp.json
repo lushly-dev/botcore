@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"botcore": {
+			"command": "python",
+			"args": ["-m", "botcore"]
+		}
+	}
+}
