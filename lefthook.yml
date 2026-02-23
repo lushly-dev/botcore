@@ -1,0 +1,78 @@
+# Lefthook — Git Hooks for botcore
+# https://github.com/evilmartians/lefthook
+#
+# Setup:  lefthook install
+# Skip:   git commit --no-verify
+# Docs:   https://lefthook.dev/configuration/
+#
+# WARNING: parallel: true causes terminal buffer deadlocks on Windows when
+# multiple commands produce large stdout (ruff diffs, pytest output).
+# Always use parallel: false for hooks that run in VS Code terminals.
+
+output:
+  - summary
+  - failure
+
+pre-commit:
+  # Sequential to prevent stdout interleaving deadlock on Windows.
+  # ruff --fix can produce multi-line diffs; both lint and format
+  # flood parallel terminal buffers and lock the VS Code terminal.
+  parallel: false
+  commands:
+    lint:
+      glob: "*.py"
+      run: ruff check --fix {staged_files}
+      stage_fixed: true
+
+    format:
+      glob: "*.py"
+      run: ruff format {staged_files}
+      stage_fixed: true
+
+    portability:
+      glob: "*.{py,md,yml,yaml,toml}"
+      run: node scripts/check-portability.mjs {staged_files}
+
+    file-size:
+      glob: "*.py"
+      run: node scripts/check-file-size.mjs {staged_files}
+
+pre-push:
+  # Sequential to prevent stdout interleaving deadlock on Windows
+  # (ruff output + pytest output flood parallel output buffers)
+  parallel: false
+  commands:
+    lint-all:
+      run: ruff check .
+
+    format-check:
+      run: ruff format --check .
+
+    test:
+      run: pytest tests/ -v --tb=short
+
+    portability:
+      run: node scripts/check-portability.mjs
+
+    file-size:
+      run: node scripts/check-file-size.mjs
+
+# On-demand quality gate — run with: lefthook run check
+check:
+  # Sequential for same Windows terminal deadlock prevention.
+  parallel: false
+  commands:
+    lint-all:
+      run: ruff check .
+
+    format-check:
+      run: ruff format --check .
+
+    test:
+      run: pytest tests/ -v --tb=short
+
+    portability:
+      run: node scripts/check-portability.mjs
+
+    file-size:
+      run: node scripts/check-file-size.mjs
