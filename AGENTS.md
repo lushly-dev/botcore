@@ -3,25 +3,16 @@
 Shared bot infrastructure — config, plugin contract, skill registry, and extracted commands for the Lushly ecosystem.
 
 > **!Important:** The year is 2026, not 2025.
+> **First time?** See [SETUP.md](SETUP.md) for installation, tooling, and environment setup.
 
-## Development Commands
+## Commands
 
-```bash
-# Install (editable, with dev deps)
-uv pip install --python python --break-system-packages -e ".[dev,mcp]"
-
-# Run all tests
-pytest tests/ -v
-
-# Run single test file
-pytest tests/test_skill_seed.py -v
-
-# Lint
-ruff check src/
-
-# Lint with auto-fix
-ruff check src/ --fix
-```
+| Command | Purpose |
+|---------|---------|
+| `pytest tests/ -v` | Run all tests |
+| `pytest tests/test_skill_seed.py -v` | Run single test file |
+| `ruff check src/` | Lint check |
+| `ruff check src/ --fix` | Auto-fix lint issues |
 
 ## Architecture
 
@@ -57,32 +48,15 @@ src/botcore/
 
 ## Plugin Contract
 
-Plugins register commands, docs, and skills via entry points:
+Plugins register commands, docs, and skills via entry points. See [build-botcore-plugins](skills/build-botcore-plugins/) skill for full patterns.
 
 ```python
-# In plugin's pyproject.toml
-[project.entry-points."botcore.plugins"]
-myplugin = "myplugin.plugin:MyPlugin"
-
-# In plugin code
 class MyPlugin:
     def register(self, registry):
         registry.add_commands([my_command])
         registry.add_docs("myplugin", DOCS)
         registry.set_mcp_name("myplugin")
         registry.add_skills_dir(Path(__file__).parent / "skills")
-```
-
-## Server Factory
-
-```python
-from botcore.server import build_namespace, build_docs, create_mcp_server
-
-# Dynamic namespace: core + plugin commands
-namespace, registry = build_namespace()
-
-# One-liner MCP server
-server = create_mcp_server("botcore", version="0.2.0")
 ```
 
 ## Skill Ownership
@@ -94,7 +68,7 @@ Skills use `source:` frontmatter for three-tier ownership:
 
 ## Configuration
 
-Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`:
+Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`. See [configure-botcore](skills/configure-botcore/) skill for full reference.
 
 ```toml
 [skills]
@@ -102,30 +76,3 @@ include = ["security", "testing"]  # Only seed these
 skip = ["i18n"]                    # Exclude these
 source_dir = ".claude/skills"      # Target directory
 ```
-
-## Conventions
-
-- Python 3.11+ minimum
-- Tests in `tests/` directory (`test_*.py`)
-- Ruff for linting (line-length 100, py311 target)
-- Hatchling build backend
-- Skills bundled as markdown in `src/botcore/skills/`
-
-## Git Hooks (Lefthook)
-
-Lefthook manages git hooks. Requires `lefthook` binary on PATH.
-
-| Hook | Commands | Trigger |
-|------|----------|--------|
-| pre-commit | ruff check --fix (staged), ruff format (staged), portability, file-size | `git commit` |
-| pre-push | Full ruff lint, format-check, pytest, portability, file-size | `git push` |
-| check | Same as pre-push | `lefthook run check` |
-
-**Check scripts** (`scripts/`):
-
-| Script | What it checks |
-|--------|---------------|
-| `check-file-size.mjs` | Warn >300, error >500 lines. Escape: `# botcore-override: max-lines=N` (cap 1000) |
-| `check-portability.mjs` | Machine-specific paths (drive letters, user homes). Escape: `# portability-ok: reason` |
-
-Skip hooks: `git commit --no-verify` / `git push --no-verify`
