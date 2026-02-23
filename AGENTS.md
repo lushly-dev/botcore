@@ -110,3 +110,22 @@ source_dir = ".claude/skills"      # Target directory
 - Ruff for linting (line-length 100, py311 target)
 - Hatchling build backend
 - Skills bundled as markdown in `src/botcore/skills/`
+
+## Git Hooks (Lefthook)
+
+Lefthook manages git hooks. Requires `lefthook` binary on PATH.
+
+| Hook | Commands | Trigger |
+|------|----------|--------|
+| pre-commit | ruff check --fix (staged), ruff format (staged), portability, file-size | `git commit` |
+| pre-push | Full ruff lint, format-check, pytest, portability, file-size | `git push` |
+| check | Same as pre-push | `lefthook run check` |
+
+**Check scripts** (`scripts/`):
+
+| Script | What it checks |
+|--------|---------------|
+| `check-file-size.mjs` | Warn >300, error >500 lines. Escape: `# botcore-override: max-lines=N` (cap 1000) |
+| `check-portability.mjs` | Machine-specific paths (drive letters, user homes). Escape: `# portability-ok: reason` |
+
+Skip hooks: `git commit --no-verify` / `git push --no-verify`

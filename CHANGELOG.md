@@ -9,11 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Lefthook git hooks** -- Pre-commit, pre-push, and on-demand quality gate hooks
+  - `check-file-size.mjs` -- Warn >300 lines, error >500, hard cap 1000 with `# botcore-override: max-lines=N` escape hatch
+  - `check-portability.mjs` -- Detect machine-specific paths in Python source
+  - Pre-commit: ruff check --fix (staged), ruff format (staged), portability, file-size
+  - Pre-push: Full ruff lint, format-check, pytest, portability, file-size
+  - On-demand `check`: Same as pre-push
+- **Comprehensive test coverage** -- 22+ tests covering non-CDP modules (#1)
 - **do-documentation-update** -- standalone skill for documentation update passes (CHANGELOG, AGENTS.md, README.md, specs, roadmap, link verification). Includes changelog-versioning reference covering SemVer, git tags, comparison links, and monorepo strategies.
 - **do-clean-repo** -- periodic repo cleanup skill for stale branches, orphaned worktrees, dead test files, agent artifacts, build output, orphaned configs, and lockfile hygiene. Scan and full modes with confirmation before destructive actions.
 
 ### Changed
 
+- **botcore.toml** -- Expanded configuration with language, tooling, threshold, and hygiene settings
+- **CONTRIBUTING.md** -- Comprehensive rewrite with lefthook setup, development workflow, and contribution guidelines
 - **do-commit** -- Step 3 (Documentation Gate) now delegates to the `do-documentation-update` skill instead of inlining checks. Adds spec completion, roadmap updates, and link verification to the documentation pass.
 
 ## [0.2.1] - 2026-02-22

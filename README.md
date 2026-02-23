@@ -325,6 +325,8 @@ ruff check src/
 ruff check src/ --fix
 ```
 
+> Git hooks are managed by [Lefthook](https://github.com/evilmartians/lefthook). Run `lefthook install` to enable pre-commit and pre-push checks.
+
 ## Roadmap
 
 - [x] Shared config system (Pydantic models, multi-language)
