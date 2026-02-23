@@ -58,14 +58,19 @@ Scan the repo root and working directories for artifacts that shouldn't be commi
 
 ### Step 3: Documentation Gate
 
-Run staleness detection first, then evaluate each:
+Delegate to the `do-documentation-update` skill. It runs a full documentation pass:
 
-1. Run `docs_check_changelog` — if stale, update CHANGELOG.md to reflect the changes
-2. Run `docs_check_agents` — if structural changes detected, update AGENTS.md
-3. Check README.md — any new commands, features, or setup steps that need documenting?
-4. If skill files were modified, run `skill_lint` to validate
+1. Gather context (recent commits, changed files)
+2. Update CHANGELOG.md — add entries under `[Unreleased]` using Keep a Changelog format
+3. Update AGENTS.md — if structural changes detected
+4. Update README.md — if new commands, features, or setup steps
+5. Close out specs — mark backing specs/proposals complete, update feature indexes
+6. Update ROADMAP.md — move shipped items, link to changelog versions
+7. Lint skill files — if any were modified
+8. Verify links — fix broken or stale internal links across touched docs
+9. Sync CLAUDE.md — if AGENTS.md changed
 
-These are judgment calls — use the staleness detection results to guide whether updates are needed, but evaluate the actual content.
+**Do not skip this step.** Documentation updates are part of the deliverable, not an afterthought.
 
 ### Step 4: Self-Review
 
