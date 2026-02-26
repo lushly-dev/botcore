@@ -11,7 +11,6 @@ from botcore.config import BotCoreConfig, load_config
 from botcore.utils.runner import run_command, run_python_module
 from botcore.utils.workspace import find_workspace, resolve_language
 
-
 # ── Single-language helpers ──────────────────────────────────────────────
 
 
@@ -181,7 +180,7 @@ def _aggregate_results(
         return error(
             f"{command_name.upper()}_FAILED",
             f"{command_name} failed for: {', '.join(failed_langs)}",
-            suggestion=f"Run with --language <lang> to debug individual failures",
+            suggestion="Run with --language <lang> to debug individual failures",
         )
 
     return success(

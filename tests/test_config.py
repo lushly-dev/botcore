@@ -8,11 +8,11 @@ import pytest
 from pydantic import ValidationError
 
 from botcore.config import (
+    _TOOL_DEFAULTS,
     BotCoreConfig,
     LanguageConfig,
     PackageOverrideConfig,
     SkillsConfig,
-    _TOOL_DEFAULTS,
     get_config_for_path,
     load_config,
 )

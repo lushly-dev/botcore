@@ -50,7 +50,7 @@ def validate_allowed_groups(
     user_group_ids: set[str],
     allowed_groups: list[str],
 ) -> bool:
-    """Return True when no group restriction is configured or user is in at least one allowed group."""
+    """Return True when no group restriction or user is in an allowed group."""
     if not allowed_groups:
         return True
     return bool(user_group_ids.intersection(set(allowed_groups)))

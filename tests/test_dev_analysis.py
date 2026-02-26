@@ -11,14 +11,18 @@ from botcore.commands.dev.analysis import (
     dev_unused_deps,
 )
 
+_MOD = "botcore.commands.dev.analysis"
+_FIND_WS = f"{_MOD}.find_workspace"
+_RUN_TOOL = f"{_MOD}.run_external_tool"
+
 
 async def test_dead_code_ts_tool_not_found(tmp_path) -> None:
     """dev_dead_code skips with warning when knip not found for TypeScript."""
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = None
         result = await dev_dead_code(language="typescript")
@@ -32,8 +36,8 @@ async def test_dead_code_ts_runs_knip(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {"success": True, "output": "No issues", "error": None}
         result = await dev_dead_code(language="typescript")
@@ -48,8 +52,8 @@ async def test_dead_code_rust_runs_cargo_udeps(tmp_path) -> None:
     (tmp_path / "Cargo.toml").write_text('[package]\nname = "test"')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {"success": True, "output": "", "error": None}
         result = await dev_dead_code(language="rust")
@@ -63,8 +67,8 @@ async def test_circular_imports_ts_runs_madge(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {"success": True, "output": "No circular", "error": None}
         result = await dev_circular_imports(language="typescript")
@@ -78,8 +82,8 @@ async def test_circular_imports_ts_tool_not_found(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = None
         result = await dev_circular_imports(language="typescript")
@@ -93,8 +97,8 @@ async def test_unused_deps_ts_runs_depcheck(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {
             "success": True,
@@ -113,8 +117,8 @@ async def test_dep_graph_ts_runs_madge(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {
             "success": True,
@@ -133,8 +137,8 @@ async def test_dep_graph_rust_tool_not_found(tmp_path) -> None:
     (tmp_path / "Cargo.toml").write_text('[package]\nname = "test"')
 
     with (
-        patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.analysis.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = None
         result = await dev_dep_graph(language="rust")

@@ -124,19 +124,20 @@ def get_checks(languages: list[str], root: Path) -> list[tuple[str, list[str]]]:
 
     # Universal checks (use botcore commands if available)
     checks.append(("check-size", [sys.executable, "-c",
-        "from botcore.commands.dev import dev_check_size; "
-        "import sys; result = dev_check_size(); "
-        "sys.exit(0 if result.get('passed', True) else 1)"
+        "import asyncio; from botcore.commands.dev import dev_check_size; "
+        "r = asyncio.run(dev_check_size()); "
+        "import sys; sys.exit(0 if r.success else 1)"
     ]))
     checks.append(("check-paths", [sys.executable, "-c",
-        "from botcore.commands.dev import dev_check_paths; "
-        "import sys; result = dev_check_paths(); "
-        "sys.exit(0 if result.get('passed', True) else 1)"
+        "import asyncio; from botcore.commands.dev import dev_check_paths; "
+        "r = asyncio.run(dev_check_paths()); "
+        "import sys; sys.exit(0 if r.success else 1)"
     ]))
     checks.append(("circular-imports", [sys.executable, "-c",
+        "import asyncio; "
         "from botcore.commands.dev import dev_circular_imports; "
-        "import sys; result = dev_circular_imports(); "
-        "sys.exit(0 if result.get('passed', True) else 1)"
+        "r = asyncio.run(dev_circular_imports()); "
+        "import sys; sys.exit(0 if r.success else 1)"
     ]))
 
     return checks
@@ -153,7 +154,8 @@ def main():
             "Try running from the project root.",
             file=sys.stderr,
         )
-        json.dump({"passed": False, "checks": [], "summary": "No project detected."}, sys.stdout, indent=2)
+        report = {"passed": False, "checks": [], "summary": "No project detected."}
+        json.dump(report, sys.stdout, indent=2)
         sys.exit(1)
 
     print(f"Detected languages: {', '.join(languages)}", file=sys.stderr)

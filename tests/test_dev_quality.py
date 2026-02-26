@@ -6,6 +6,10 @@ from unittest.mock import AsyncMock, patch
 
 from botcore.commands.dev.quality import _parse_version, dev_check_deps, dev_check_size
 
+_MOD = "botcore.commands.dev.quality"
+_FIND_WS = f"{_MOD}.find_workspace"
+_RUN_TOOL = f"{_MOD}.run_external_tool"
+
 
 def test_parse_version_full() -> None:
     """Parse complete semver."""
@@ -116,8 +120,8 @@ async def test_check_deps_npm_dispatch(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.quality.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = {"success": True, "output": "{}", "error": None}
         result = await dev_check_deps(language="typescript")
@@ -131,8 +135,8 @@ async def test_check_deps_npm_not_found(tmp_path) -> None:
     (tmp_path / "package.json").write_text('{"name": "test"}')
 
     with (
-        patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path),
-        patch("botcore.commands.dev.quality.run_external_tool", new_callable=AsyncMock) as mock_tool,
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
     ):
         mock_tool.return_value = None
         result = await dev_check_deps(language="typescript")

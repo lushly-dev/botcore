@@ -29,7 +29,9 @@ async def dev_dead_code(
     if _should_run_all(language, path, config):
         results: dict[str, CommandResult[dict]] = {}
         for lang in config.languages:
-            results[lang] = await dev_dead_code(path=path, min_confidence=min_confidence, language=lang)
+            results[lang] = await dev_dead_code(
+                path=path, min_confidence=min_confidence, language=lang,
+            )
         return _aggregate_results(results, "dead-code")
 
     lang = resolve_language(
@@ -155,7 +157,10 @@ async def dev_circular_imports(
         has_cycles = result.get("success") is False or "circular" in output.lower()
         return success(
             data={"path": path or ".", "raw_output": output, "tool": "madge"},
-            reasoning="Circular dependency check via madge" + (" — cycles found" if has_cycles else ""),
+            reasoning=(
+                "Circular dependency check via madge"
+                + (" — cycles found" if has_cycles else "")
+            ),
         )
 
     scan_path = Path(path) if path else (ws / "src" if ws else Path("src"))
@@ -167,40 +172,7 @@ async def dev_circular_imports(
             suggestion="Verify the path exists or omit to use default src/",
         )
 
-    imports: dict[str, set[str]] = defaultdict(set)
-    all_modules: set[str] = set()
-
-    for py_file in scan_path.rglob("*.py"):
-        if "__pycache__" in str(py_file):
-            continue
-
-        try:
-            content = py_file.read_text(encoding="utf-8")
-            tree = ast.parse(content)
-        except Exception:
-            continue
-
-        try:
-            rel_path = py_file.relative_to(scan_path)
-            module_name = str(rel_path.with_suffix("")).replace("/", ".").replace("\\", ".")
-            if module_name.endswith(".__init__"):
-                module_name = module_name[:-9]
-        except ValueError:
-            continue
-
-        all_modules.add(module_name)
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    target = alias.name
-                    if target != module_name:
-                        imports[module_name].add(target)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.level == 0:
-                    target = node.module
-                    if target != module_name:
-                        imports[module_name].add(target)
+    all_modules, imports = _collect_python_imports(scan_path)
 
     internal_imports: dict[str, set[str]] = defaultdict(set)
     for src, targets in imports.items():
@@ -231,6 +203,70 @@ async def dev_circular_imports(
         data=result_data,
         reasoning=f"No circular imports found in {len(imports)} modules",
     )
+
+
+def _collect_python_imports(
+    scan_path: Path,
+) -> tuple[set[str], dict[str, set[str]]]:
+    """Parse Python files under *scan_path* and return (modules, imports).
+
+    Skips imports inside ``if TYPE_CHECKING:`` blocks and function/method
+    bodies since those are not runtime circular-import risks.
+    """
+    all_modules: set[str] = set()
+    imports: dict[str, set[str]] = defaultdict(set)
+
+    for py_file in scan_path.rglob("*.py"):
+        if "__pycache__" in str(py_file):
+            continue
+        try:
+            content = py_file.read_text(encoding="utf-8")
+            tree = ast.parse(content)
+        except Exception:
+            continue
+        try:
+            rel_path = py_file.relative_to(scan_path)
+            module_name = (
+                str(rel_path.with_suffix(""))
+                .replace("/", ".").replace("\\", ".")
+            )
+            if module_name.endswith(".__init__"):
+                module_name = module_name[:-9]
+        except ValueError:
+            continue
+
+        all_modules.add(module_name)
+        for node in _top_level_imports(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name != module_name:
+                        imports[module_name].add(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.level == 0 and node.module != module_name:
+                    imports[module_name].add(node.module)
+
+    return all_modules, imports
+
+
+def _top_level_imports(tree: ast.Module) -> list[ast.stmt]:
+    """Return module-level import nodes, excluding TYPE_CHECKING blocks."""
+    result: list[ast.stmt] = []
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            result.append(node)
+        elif isinstance(node, ast.If) and _is_type_checking_guard(node):
+            continue  # skip TYPE_CHECKING block entirely
+    return result
+
+
+def _is_type_checking_guard(node: ast.If) -> bool:
+    """Return True when the if-test is ``TYPE_CHECKING`` or similar."""
+    test = node.test
+    if isinstance(test, ast.Name) and test.id == "TYPE_CHECKING":
+        return True
+    if isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING":
+        return True
+    return False
 
 
 def _find_cycles(graph: dict[str, set[str]], known_modules: set[str]) -> list[list[str]]:
@@ -306,7 +342,10 @@ async def dev_unused_deps(language: str | None = None) -> CommandResult[dict]:
             unused = []
         return success(
             data={"potentially_unused": unused, "tool": "depcheck"},
-            reasoning=f"{len(unused)} potentially unused npm deps" if unused else "No unused npm deps",
+            reasoning=(
+                f"{len(unused)} potentially unused npm deps"
+                if unused else "No unused npm deps"
+            ),
         )
 
     if lang == "rust":
@@ -473,7 +512,11 @@ async def dev_dep_graph(
                 reasoning="cargo-modules not available — skipped Rust dependency graph",
             )
         return success(
-            data={"path": path or ".", "raw_output": result.get("output", ""), "tool": "cargo-modules"},
+            data={
+                "path": path or ".",
+                "raw_output": result.get("output", ""),
+                "tool": "cargo-modules",
+            },
             reasoning="Rust module structure via cargo-modules",
         )
 
@@ -487,43 +530,34 @@ async def dev_dep_graph(
             suggestion="Verify the path exists or omit to use default src/",
         )
 
-    graph: dict[str, list[str]] = defaultdict(list)
-    modules: set[str] = set()
+    modules, raw_imports = _collect_python_imports(scan_path)
+    root_pkgs = {m.split(".")[0] for m in modules if m}
+    graph: dict[str, list[str]] = {
+        mod: sorted({
+            t for t in targets
+            if t.split(".")[0] in root_pkgs
+        })
+        for mod, targets in raw_imports.items()
+    }
 
-    for py_file in scan_path.rglob("*.py"):
-        if "__pycache__" in str(py_file):
-            continue
+    result_data: dict = _build_dep_graph_result(
+        scan_path, modules, graph, output,
+    )
 
-        try:
-            content = py_file.read_text(encoding="utf-8")
-            tree = ast.parse(content)
-        except Exception:
-            continue
+    edges = result_data["edges"]
+    return success(
+        data=result_data,
+        reasoning=f"Generated dependency graph: {len(modules)} modules, {edges} edges",
+    )
 
-        try:
-            rel_path = py_file.relative_to(scan_path)
-            module_name = str(rel_path.with_suffix("")).replace("/", ".").replace("\\", ".")
-            if module_name.endswith(".__init__"):
-                module_name = module_name[:-9]
-        except ValueError:
-            continue
 
-        modules.add(module_name)
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    target = alias.name
-                    if any(target.startswith(m.split(".")[0]) for m in modules if m):
-                        graph[module_name].append(target)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.level == 0:
-                    target = node.module
-                    if any(target.startswith(m.split(".")[0]) for m in modules if m):
-                        graph[module_name].append(target)
-
-    graph = {k: sorted(set(v)) for k, v in graph.items()}
-
+def _build_dep_graph_result(
+    scan_path: Path,
+    modules: set[str],
+    graph: dict[str, list[str]],
+    output: str,
+) -> dict:
+    """Build the result data dict for dep-graph, optionally with DOT output."""
     result_data: dict = {
         "path": str(scan_path),
         "modules": sorted(modules),
@@ -540,8 +574,4 @@ async def dev_dep_graph(
         dot_lines.append("}")
         result_data["dot"] = "\n".join(dot_lines)
 
-    edges = result_data["edges"]
-    return success(
-        data=result_data,
-        reasoning=f"Generated dependency graph: {len(modules)} modules, {edges} edges",
-    )
+    return result_data
