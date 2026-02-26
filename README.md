@@ -340,6 +340,9 @@ ruff check src/ --fix
 - [x] Skill ownership tiers (botcore, plugin, local)
 - [x] Action skills (commit, PR, release, review, hotfix)
 - [x] Teams Interface plugin — Phase 1 (intent parsing, Adaptive Cards, tenant auth, stub dispatch)
+- [x] LLM runtime plugin (`botcore-llm` — Copilot SDK sessions)
+- [x] Agent orchestration Phase 1 (`botcore-agents` — single-agent lifecycle)
+- [ ] Agent orchestration Phase 2 (multi-agent routing)
 - [ ] Skill marketplace / community registry
 - [ ] Cross-repo skill sync dashboard
 - [ ] Performance command profiling
