@@ -339,6 +339,9 @@ ruff check src/ --fix
 - [x] Multi-language dispatch (Python, TypeScript, Rust)
 - [x] Skill ownership tiers (botcore, plugin, local)
 - [x] Action skills (commit, PR, release, review, hotfix)
+- [x] Typed connectors plugin — Phase 1: GitHub (8 commands, 248 tests)
+- [ ] Typed connectors — Phase 2: Azure Blob + Service Bus
+- [ ] Typed connectors — Phase 3: Microsoft Graph (Email, Calendar, Teams)
 - [x] Teams Interface plugin — Phase 1 (intent parsing, Adaptive Cards, tenant auth, stub dispatch)
 - [x] LLM runtime plugin (`botcore-llm` — Copilot SDK sessions)
 - [x] Agent orchestration Phase 1 (`botcore-agents` — single-agent lifecycle)
