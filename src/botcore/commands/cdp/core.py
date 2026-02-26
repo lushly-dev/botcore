@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import socket
@@ -15,6 +14,7 @@ from typing import Any, TypeVar
 from afd import CommandResult, error, success
 from pydantic import BaseModel, Field
 
+from botcore.utils.runner import retry_async
 from botcore.utils.workspace import find_workspace
 
 T = TypeVar("T")
@@ -138,19 +138,13 @@ async def _probe_cdp(
     import httpx
 
     url = f"{endpoint.rstrip('/')}/json/version"
-    last_exc: Exception | None = None
-    for attempt in range(attempts):
-        try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                return
-        except Exception as exc:
-            last_exc = exc
-            if attempt < attempts - 1:
-                await asyncio.sleep(delay_s)
-    if last_exc:
-        raise last_exc
+
+    async def _check() -> None:
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+
+    await retry_async(_check, attempts=attempts, delay_s=delay_s)
 
 
 def _spawn_chrome(args: list[str]) -> subprocess.Popen[bytes]:
@@ -178,18 +172,11 @@ async def _connect_over_cdp_with_retry(
     attempts: int = 10,
     delay_s: float = 0.3,
 ) -> Any:
-    last_exc: Exception | None = None
-    for attempt in range(attempts):
-        try:
-            browser = await playwright.chromium.connect_over_cdp(endpoint)
-            return browser
-        except Exception as exc:
-            last_exc = exc
-            if attempt < attempts - 1:
-                await asyncio.sleep(delay_s)
-    if last_exc:
-        raise last_exc
-    raise RuntimeError("Failed to connect to CDP endpoint.")
+    return await retry_async(
+        lambda: playwright.chromium.connect_over_cdp(endpoint),
+        attempts=attempts,
+        delay_s=delay_s,
+    )
 
 
 async def _with_session_page(

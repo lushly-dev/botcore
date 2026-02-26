@@ -39,6 +39,7 @@ class PluginRegistry:
         self._mcp_name: str | None = None
         self._config_defaults: dict[str, Any] = {}
         self._docs: dict[str, str] = {}
+        self._middleware: list[Callable[..., Any]] = []
 
     def add_commands(self, commands: list[Callable[..., Any]]) -> None:
         """Register command functions."""
@@ -59,6 +60,10 @@ class PluginRegistry:
     def add_docs(self, topic: str, content: str) -> None:
         """Register documentation for a topic (shown via {name}-docs tool)."""
         self._docs[topic] = content
+
+    def add_middleware(self, middleware: Callable[..., Any]) -> None:
+        """Register a middleware callable for command pre/post-processing."""
+        self._middleware.append(middleware)
 
     def config_defaults(self) -> dict[str, Any]:
         """Return plugin config defaults."""
@@ -83,6 +88,10 @@ class PluginRegistry:
     @property
     def docs(self) -> dict[str, str]:
         return dict(self._docs)
+
+    @property
+    def middleware(self) -> list[Callable[..., Any]]:
+        return list(self._middleware)
 
 
 def discover_plugins() -> dict[str, BotCorePlugin]:

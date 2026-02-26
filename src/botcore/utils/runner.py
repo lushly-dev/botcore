@@ -6,8 +6,11 @@ import asyncio
 import shutil
 import sys
 import warnings
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
+
+_T = TypeVar("_T")
 
 MAX_OUTPUT_LENGTH = 8000
 
@@ -120,3 +123,34 @@ async def run_python_module(
     if args:
         command.extend(args)
     return await run_command(command, cwd=cwd)
+
+
+async def retry_async(
+    fn: Callable[[], Awaitable[_T]],
+    attempts: int = 10,
+    delay_s: float = 0.3,
+) -> _T:
+    """Retry an async callable until it succeeds or attempts are exhausted.
+
+    Args:
+        fn: Zero-argument async callable to retry.
+        attempts: Maximum number of attempts.
+        delay_s: Delay between attempts in seconds.
+
+    Returns:
+        The return value of *fn* on success.
+
+    Raises:
+        The last exception raised by *fn* if all attempts fail.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return await fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < attempts - 1:
+                await asyncio.sleep(delay_s)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("retry_async: all attempts failed")
