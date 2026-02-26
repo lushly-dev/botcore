@@ -55,7 +55,7 @@ graph TB
     BC --> C["📁 Repo C"]
 
     P["🔌 Plugins"] --> BC
-    S["📚 52 Skills"] --> BC
+    S["📚 54 Skills"] --> BC
     CMD["⚡ 38+ Commands"] --> BC
 
     style BC fill:#16213e,stroke:#22c55e,stroke-width:2px,color:#eee
@@ -127,7 +127,7 @@ Adding a command to botcore or a plugin automatically makes it available — no 
 graph LR
     Core["⚡ Core Commands<br/><em>38 built-in</em>"]
     Plugins["🔌 Plugins<br/><em>entry-point discovery</em>"]
-    Skills["📚 Skills<br/><em>52 bundled</em>"]
+    Skills["📚 Skills<br/><em>54 bundled</em>"]
 
     Core --> NS["🔀 Namespace Merge"]
     Plugins --> NS
@@ -167,9 +167,9 @@ Language detection is automatic. botcore inspects workspace markers (`Cargo.toml
 | **Research** | `research_query` | Gemini + Google search integration |
 | **Undo** | `undo_status`, `undo_clear` | Command history and rollback |
 
-### Bundled Skills (52)
+### Bundled Skills (54)
 
-Skills are markdown knowledge packs that give agents domain expertise. botcore bundles 52 universal skills, organized by category:
+Skills are markdown knowledge packs that give agents domain expertise. botcore bundles 54 universal skills, organized by category:
 
 | Category | Skills |
 |----------|--------|
@@ -299,7 +299,7 @@ result = await client.call("skill_seed", {"update": True})
 ### Seed Skills
 
 ```bash
-# Copy all 52 bundled skills into .claude/skills/
+# Copy all 54 bundled skills into .claude/skills/
 botcore skill-seed
 
 # Check for version drift
@@ -334,7 +334,7 @@ ruff check src/ --fix
 - [x] Command extraction (38+ commands across 8 domains)
 - [x] CDP browser automation (28 commands)
 - [x] Skill registry (seed, lint, track, adopt, index)
-- [x] 52 bundled universal skills
+- [x] 54 bundled universal skills
 - [x] MCP server factory (meta-tool pattern)
 - [x] Multi-language dispatch (Python, TypeScript, Rust)
 - [x] Skill ownership tiers (botcore, plugin, local)

@@ -33,16 +33,16 @@ src/botcore/
 │   ├── research.py    # Gemini + Google search
 │   ├── spec.py        # Spec lifecycle
 │   └── undo.py        # Undo history
-├── skills/            # 52 bundled universal skills
+├── skills/            # 54 bundled universal skills
 │   ├── do-commit/     # Action: commit with quality gates
 │   ├── do-pr/         # Action: create pull request
 │   ├── do-release/    # Action: version and publish
 │   ├── do-review/     # Action: review code or PR
 │   ├── do-hotfix/     # Action: emergency fix workflow
 │   ├── manage-skills/ # Skill management reference
-│   └── ...            # 46 more skills
+│   └── ...            # 48 more skills
 └── utils/             # Shared utilities
-    ├── runner.py       # smart_truncate, subprocess helpers
+    ├── runner.py       # smart_truncate, subprocess helpers, retry_async
     └── workspace.py    # Workspace discovery
 ```
 
@@ -57,6 +57,7 @@ class MyPlugin:
         registry.add_docs("myplugin", DOCS)
         registry.set_mcp_name("myplugin")
         registry.add_skills_dir(Path(__file__).parent / "skills")
+        registry.add_middleware(my_middleware)  # optional
 ```
 
 ## Skill Ownership
