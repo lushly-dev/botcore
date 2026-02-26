@@ -44,8 +44,9 @@ def build_namespace(
     registry = PluginRegistry()
     for name, plugin in plugins.items():
         plugin_config = config.plugins.get(name)
-        if plugin_config is not None and hasattr(plugin, "configure"):
-            plugin.configure(plugin_config)
+        configure = getattr(plugin, "configure", None)
+        if plugin_config is not None and callable(configure):
+            configure(plugin_config)
         plugin.register(registry)
     for cmd in registry.commands:
         namespace[cmd.__name__] = cmd
