@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **botcore-llm plugin (Phase 1)** -- Separate `botcore-llm/` package providing LLM runtime via Copilot SDK
+  - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `CopilotClientManager` singleton for client lifecycle (start/stop)
+  - Command-to-tool bridge (`botcore_command_to_copilot_tool`) auto-converts botcore commands to Copilot SDK tools
+  - Permission gate denying shell/filesystem by default, configurable via `LlmPermissionsConfig`
+  - In-memory `SessionRegistry` for active session tracking
+  - 5 commands: `llm_session_create`, `llm_session_destroy`, `llm_session_list`, `llm_model_list`, `llm_chat`
+  - `LlmConfig` Pydantic model with permissions, cost, and session settings
+  - 40 unit tests with mocked Copilot client (no real CLI needed)
 - **Lefthook git hooks** -- Pre-commit, pre-push, and on-demand quality gate hooks
   - `check-file-size.mjs` -- Warn >300 lines, error >500, hard cap 1000 with `# botcore-override: max-lines=N` escape hatch
   - `check-portability.mjs` -- Detect machine-specific paths in Python source
