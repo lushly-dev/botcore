@@ -14,7 +14,13 @@ from botbuilder.core import (
 from botbuilder.core.teams import TeamsActivityHandler
 from botbuilder.schema import Activity, Attachment
 
-from .auth import create_unauthorized_error, extract_identity, validate_tenant
+from .auth import (
+    create_unauthorized_error,
+    extract_group_ids,
+    extract_identity,
+    validate_allowed_groups,
+    validate_tenant,
+)
 from .cards import card_to_attachment, render_command_result
 from .commands import teams_handle_card_action, teams_handle_message
 from .config import TeamsConfig
@@ -55,6 +61,22 @@ class TeamsBot(TeamsActivityHandler):
             admin_groups=self._config.roles.admin_groups,
             user_groups=self._config.roles.user_groups,
         )
+
+        # Optional group gate (Phase 1: reads group ids from channelData.groups)
+        user_group_ids = extract_group_ids(_activity_to_dict(activity))
+        if not validate_allowed_groups(user_group_ids, self._config.allowed_groups):
+            result = create_unauthorized_error(
+                message="You are not in an allowed group for this bot.",
+                suggestion="Ask your administrator to add your group to allowed_groups.",
+            )
+            card = render_command_result(result)
+            att = card_to_attachment(card)
+            reply = Activity(
+                type="message",
+                attachments=[Attachment(**att)],
+            )
+            await turn_context.send_activity(reply)
+            return
 
         # Dispatch
         text = activity.text or ""

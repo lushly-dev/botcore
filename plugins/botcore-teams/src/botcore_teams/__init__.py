@@ -33,10 +33,12 @@ Messages are matched against regex patterns (first match wins):
 - `cancel/stop/abort` → task_cancel
 - `list tasks/queue/backlog` → task_list
 
-## Configuration (botcore.toml)
+## Configuration
+
+botcore.toml:
 
 ```toml
-[teams]
+[plugins.teams]
 app_id = ""
 app_password = ""
 tenant_id = ""
@@ -45,9 +47,19 @@ webhook_path = "/api/messages"
 host = "0.0.0.0"
 port = 3978
 
-[teams.roles]
+[plugins.teams.roles]
 admin_groups = []
 user_groups = []
+```
+
+pyproject.toml:
+
+```toml
+[tool.botcore.plugins.teams]
+app_id = ""
+app_password = ""
+tenant_id = ""
+allowed_groups = []
 ```
 """
 

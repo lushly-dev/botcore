@@ -29,6 +29,33 @@ def validate_tenant(activity_tenant_id: str | None, allowed_tenant_id: str) -> b
     return activity_tenant_id == allowed_tenant_id
 
 
+def extract_group_ids(activity: dict[str, Any]) -> set[str]:
+    """Extract group identifiers from activity.channelData.groups.
+
+    Phase 1 expects optional shape:
+    {
+      "channelData": {
+        "groups": ["group-a", "group-b"]
+      }
+    }
+    """
+    channel_data = activity.get("channelData", {})
+    raw_groups = channel_data.get("groups", [])
+    if not isinstance(raw_groups, list):
+        return set()
+    return {str(group) for group in raw_groups if group}
+
+
+def validate_allowed_groups(
+    user_group_ids: set[str],
+    allowed_groups: list[str],
+) -> bool:
+    """Return True when no group restriction is configured or user is in at least one allowed group."""
+    if not allowed_groups:
+        return True
+    return bool(user_group_ids.intersection(set(allowed_groups)))
+
+
 def extract_identity(
     activity: dict[str, Any],
     admin_groups: list[str] | None = None,
@@ -50,11 +77,14 @@ def extract_identity(
     )
 
 
-def create_unauthorized_error() -> CommandResult[Any]:
+def create_unauthorized_error(
+    message: str = "You are not authorized to use this bot.",
+    suggestion: str = "Contact your administrator to request access.",
+) -> CommandResult[Any]:
     """Return a structured error for unauthorized access."""
     return error(
         "UNAUTHORIZED",
-        "You are not authorized to use this bot.",
-        suggestion="Contact your administrator to request access.",
+        message,
+        suggestion=suggestion,
         retryable=False,
     )

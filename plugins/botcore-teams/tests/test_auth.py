@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from botcore_teams.auth import (
     create_unauthorized_error,
+    extract_group_ids,
     extract_identity,
+    validate_allowed_groups,
     validate_tenant,
 )
 
@@ -68,3 +70,24 @@ class TestCreateUnauthorizedError:
         assert result.error.code == "UNAUTHORIZED"
         assert result.error.retryable is False
         assert result.error.suggestion is not None
+
+
+class TestAllowedGroups:
+    def test_validate_allowed_groups_open_when_empty(self) -> None:
+        assert validate_allowed_groups({"g1"}, []) is True
+
+    def test_validate_allowed_groups_requires_intersection(self) -> None:
+        assert validate_allowed_groups({"g1", "g2"}, ["g2", "g3"]) is True
+        assert validate_allowed_groups({"g1"}, ["g2", "g3"]) is False
+
+    def test_extract_group_ids(self) -> None:
+        activity = {
+            "channelData": {
+                "groups": ["group-a", "group-b"],
+            },
+        }
+        assert extract_group_ids(activity) == {"group-a", "group-b"}
+
+    def test_extract_group_ids_handles_missing_shape(self) -> None:
+        assert extract_group_ids({}) == set()
+        assert extract_group_ids({"channelData": {"groups": "not-a-list"}}) == set()

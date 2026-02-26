@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from afd.core.result import success
+
 from botcore_teams.commands import teams_handle_card_action, teams_handle_message
 
 
@@ -96,3 +100,24 @@ class TestHandleCardAction:
         result = await teams_handle_card_action("bogus", {}, user_id="u1")
         assert result.success is False
         assert result.error.code == "UNKNOWN_ACTION"
+
+
+class TestRealDispatchPath:
+    async def test_uses_direct_client_when_available(self) -> None:
+        mock_client = MagicMock()
+        mock_client.call = AsyncMock(return_value=success(
+            {"task_id": "task-777", "status": "queued"},
+            reasoning="Dispatched via DirectClient",
+        ))
+
+        with patch("botcore.registry.get_client", return_value=mock_client):
+            result = await teams_handle_message(
+                "assign investigate issue to @researcher",
+                user_id="u1",
+                user_name="Alice",
+                conversation_id="c1",
+            )
+
+        assert result.success is True
+        assert result.data["task_id"] == "task-777"
+        mock_client.call.assert_awaited_once()

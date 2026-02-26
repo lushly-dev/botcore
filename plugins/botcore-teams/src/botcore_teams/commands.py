@@ -71,10 +71,16 @@ async def _dispatch_command(
     """
     # Try real dispatch via botcore client
     try:
-        from botcore.client import get_client  # type: ignore[import-not-found]
+        from botcore.registry import get_client
 
         client = get_client()
-        return await client.call(command, args)
+        result = await client.call(command, args)
+        if result.success:
+            return result
+
+        err = result.error
+        if err and err.code not in {"UNKNOWN_TOOL", "UNKNOWN_COMMAND"}:
+            return result
     except (ImportError, AttributeError):
         pass
     except Exception:
