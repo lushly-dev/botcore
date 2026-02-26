@@ -11,7 +11,7 @@ import logging
 from afd import CommandResult
 
 from .config import AgentsPluginConfig, get_agents_config
-from .orchestrator import get_orchestrator
+from .orchestrator import get_orchestrator, reset_orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,11 @@ def _get_config() -> AgentsPluginConfig:
     return _config
 
 
-def set_config(config: AgentsPluginConfig) -> None:
+def set_config(config: AgentsPluginConfig | None) -> None:
     """Allow the plugin to inject config at registration time."""
     global _config
     _config = config
+    reset_orchestrator()
 
 
 def _get_orch():

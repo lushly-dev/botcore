@@ -27,6 +27,11 @@ LLM_DOCS = """\
 class LlmPlugin:
     """BotCorePlugin implementation for LLM runtime."""
 
+    def configure(self, config: LlmConfig) -> None:
+        from .commands import set_config
+
+        set_config(config)
+
     def register(self, registry: PluginRegistry) -> None:
         from .commands import LLM_COMMANDS
 

@@ -17,6 +17,11 @@ from ._docs import AGENTS_DOCS
 class AgentsPlugin:
     """BotCorePlugin implementation for agent orchestration."""
 
+    def configure(self, config: AgentsPluginConfig) -> None:
+        from .commands import set_config
+
+        set_config(config)
+
     def register(self, registry: PluginRegistry) -> None:
         from .commands import AGENT_COMMANDS
 
