@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 MAX_IDENTIFIER_LENGTH = 256
 MAX_BODY_SIZE = 65_536
 MAX_ITEMS_DEFAULT = 100
 
-_OWNER_REPO_RE = re.compile(r"^[^/]+/[^/]+$")
+_OWNER_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]+$")
 
 
 class InputValidationResult(BaseModel, extra="forbid"):
     """Aggregated result of input validation checks."""
 
     valid: bool
-    violations: list[str] = []
+    violations: list[str] = Field(default_factory=list)
 
 
 def check_max_length(

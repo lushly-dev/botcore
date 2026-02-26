@@ -55,6 +55,29 @@ class GitHubConnector(ConnectorBase):
     def default_repo(self) -> str | None:
         return self._github_config.default_repo
 
+    def _is_rate_limited(self, *, is_search: bool) -> bool:
+        """Return True when cached rate-limit state indicates request must wait.
+
+        If the reset timestamp has passed, stale counters are cleared so the next
+        request can proceed and refresh fresh header state from GitHub.
+        """
+        remaining = self._search_rate_remaining if is_search else self._api_rate_remaining
+        reset = self._search_rate_reset if is_search else self._api_rate_reset
+
+        if remaining is None or remaining > 0:
+            return False
+
+        if reset is not None and reset <= time.time():
+            if is_search:
+                self._search_rate_remaining = None
+                self._search_rate_reset = None
+            else:
+                self._api_rate_remaining = None
+                self._api_rate_reset = None
+            return False
+
+        return True
+
     # -- _send override: capture X-RateLimit-* headers -------------------------
 
     async def _send(
@@ -134,12 +157,10 @@ class GitHubConnector(ConnectorBase):
         self._current_path = path  # track for _backoff context
         # Pre-flight rate check.
         is_search = "/search/" in path
-        if is_search and self._search_rate_remaining is not None:
-            if self._search_rate_remaining <= 0:
-                return github_search_rate_limited()
-        elif not is_search and self._api_rate_remaining is not None:
-            if self._api_rate_remaining <= 0:
-                return github_rate_limited(self._api_rate_reset)
+        if is_search and self._is_rate_limited(is_search=True):
+            return github_search_rate_limited()
+        if not is_search and self._is_rate_limited(is_search=False):
+            return github_rate_limited(self._api_rate_reset)
 
         result = await self.api_call(
             method, path, json=json, params=params, headers=headers

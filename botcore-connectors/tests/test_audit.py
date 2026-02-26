@@ -85,6 +85,14 @@ class TestSanitizeArgs:
         parsed = json.loads(result)
         assert parsed["config"]["repo"] == "a/b"
 
+    def test_nested_list_redacts_sensitive_keys(self) -> None:
+        result = sanitize_args(
+            {"items": [{"token": "abc123"}, {"Authorization": "Bearer xyz"}]}
+        )
+        assert "abc123" not in result
+        assert "Bearer xyz" not in result
+        assert "***REDACTED***" in result
+
 
 # ---------------------------------------------------------------------------
 # AuditLogEntry — model constraints

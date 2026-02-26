@@ -23,6 +23,8 @@ def _sanitize_value(key: str, value: Any) -> Any:
         return _REDACTED
     if isinstance(value, dict):
         return {k: _sanitize_value(k, v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_sanitize_value("", item) for item in value]
     if isinstance(value, str) and len(value) > _MAX_VALUE_LENGTH:
         return value[:_MAX_VALUE_LENGTH] + "..."
     return value

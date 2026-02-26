@@ -207,6 +207,32 @@ class TestPreFlightRateCheck:
         assert result.error.code == "GITHUB_SEARCH_RATE_LIMITED"
 
     @respx.mock
+    async def test_api_remaining_zero_with_past_reset_allows_request(
+        self, github_connector: GitHubConnector
+    ) -> None:
+        github_connector._api_rate_remaining = 0
+        github_connector._api_rate_reset = time.time() - 1
+        respx.get(f"{GH}/repos/a/b").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        result = await github_connector.gh_api_call("GET", "/repos/a/b")
+        assert result.success is True
+
+    @respx.mock
+    async def test_search_remaining_zero_with_past_reset_allows_request(
+        self, github_connector: GitHubConnector
+    ) -> None:
+        github_connector._search_rate_remaining = 0
+        github_connector._search_rate_reset = time.time() - 1
+        respx.get(f"{GH}/search/code").mock(
+            return_value=httpx.Response(200, json={"items": [], "total_count": 0})
+        )
+        result = await github_connector.gh_api_call(
+            "GET", "/search/code", params={"q": "test"}
+        )
+        assert result.success is True
+
+    @respx.mock
     async def test_remaining_positive_passes(
         self, github_connector: GitHubConnector
     ) -> None:

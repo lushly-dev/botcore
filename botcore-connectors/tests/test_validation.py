@@ -169,6 +169,14 @@ class TestCheckOwnerRepo:
     def test_special_chars_in_segments(self) -> None:
         assert check_owner_repo("my-org/my_repo.v2", field_name="repo") == []
 
+    def test_owner_with_space_invalid(self) -> None:
+        violations = check_owner_repo("my org/repo", field_name="repo")
+        assert len(violations) == 1
+
+    def test_repo_with_space_invalid(self) -> None:
+        violations = check_owner_repo("my-org/repo name", field_name="repo")
+        assert len(violations) == 1
+
 
 # ---------------------------------------------------------------------------
 # validate_inputs
