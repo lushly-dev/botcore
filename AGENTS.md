@@ -57,6 +57,26 @@ packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
 │   ├── models.py                # Task, AgentHealth, AgentState
 │   └── config.py                # AgentConfig, AgentsPluginConfig
 └── tests/
+
+packages/botcore-memory/        # Memory plugin (Phase 1)
+├── src/botcore_memory/
+│   ├── __init__.py              # MemoryPlugin
+│   ├── commands.py              # memory_set/get/search/delete/list
+│   ├── local_store.py           # Local JSON store backend
+│   ├── auth.py                  # Scope access helpers
+│   └── models.py                # MemoryConfig + MemoryEntry
+└── tests/
+
+plugins/botcore-teams/          # Microsoft Teams bot interface (Phase 1)
+├── src/botcore_teams/
+│   ├── __init__.py              # TeamsPlugin
+│   ├── config.py                # TeamsConfig + TeamsRolesConfig
+│   ├── intent.py                # Regex intent parser
+│   ├── cards.py                 # CommandResult → Adaptive Card v1.4
+│   ├── auth.py                  # Tenant/group gate + identity extraction
+│   ├── commands.py              # teams_handle_message/card_action
+│   └── bot.py                   # TeamsBot + create_app() webhook
+└── tests/
 ```
 
 ## Plugin Contract
