@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **botcore-llm plugin (Phase 1)** -- Separate `botcore-llm/` package providing LLM runtime via Copilot SDK
+- **botcore-agents plugin (Phase 1)** -- Separate `packages/botcore-agents/` package providing single-agent lifecycle management
+  - `AgentsPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `AgentOrchestrator` singleton managing agent pool, task store, and LLM session lifecycle
+  - `AgentConfig` / `AgentsPluginConfig` Pydantic models with `extra="forbid"` validation
+  - `Task`, `AgentHealth`, `AgentState` domain models with field constraints and status literals
+  - 7 commands: `agent_create`, `agent_start`, `agent_stop`, `agent_status`, `agent_heartbeat`, `task_assign`, `task_status`
+  - Direct `botcore-llm` integration — agents backed by LLM sessions with scoped tools
+  - Synchronous task execution via `llm_chat` (background execution planned for Phase 3)
+  - 82 unit + integration tests with mocked LLM commands
+- **botcore-llm plugin (Phase 1)** -- Separate `packages/botcore-llm/` package providing LLM runtime via Copilot SDK
   - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
   - `CopilotClientManager` singleton for client lifecycle (start/stop)
   - Command-to-tool bridge (`botcore_command_to_copilot_tool`) auto-converts botcore commands to Copilot SDK tools
@@ -33,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages
 - **botcore.toml** -- Expanded configuration with language, tooling, threshold, and hygiene settings
 - **CONTRIBUTING.md** -- Comprehensive rewrite with lefthook setup, development workflow, and contribution guidelines
 - **do-commit** -- Step 3 (Documentation Gate) now delegates to the `do-documentation-update` skill instead of inlining checks. Adds spec completion, roadmap updates, and link verification to the documentation pass.
