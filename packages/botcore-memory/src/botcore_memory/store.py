@@ -7,11 +7,19 @@ from abc import ABC, abstractmethod
 from .models import MemoryEntry
 
 
+class MemoryScopeFullError(Exception):
+    """Raised when a scope has reached its configured maximum entry count."""
+
+
 class MemoryStore(ABC):
     """Interface for memory storage backends."""
 
     @abstractmethod
-    async def set(self, entry: MemoryEntry) -> MemoryEntry:
+    async def set(
+        self,
+        entry: MemoryEntry,
+        max_entries_per_scope: int | None = None,
+    ) -> MemoryEntry:
         """Store or update a memory entry (upsert by key). Returns the stored entry."""
 
     @abstractmethod

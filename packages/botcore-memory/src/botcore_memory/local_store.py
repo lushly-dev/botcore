@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from .models import MemoryEntry
-from .store import MemoryStore
+from .store import MemoryScopeFullError, MemoryStore
 
 
 class LocalMemoryStore(MemoryStore):
@@ -43,11 +43,25 @@ class LocalMemoryStore(MemoryStore):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    async def set(self, entry: MemoryEntry) -> MemoryEntry:
+    async def set(
+        self,
+        entry: MemoryEntry,
+        max_entries_per_scope: int | None = None,
+    ) -> MemoryEntry:
         """Store or update a memory entry (upsert by key). Returns the stored entry."""
         async with self._get_lock(entry.scope, entry.scope_id):
             path = self._file_path(entry.scope, entry.scope_id)
             data = self._read_file(path)
+
+            if (
+                entry.key not in data
+                and max_entries_per_scope is not None
+                and len(data) >= max_entries_per_scope
+            ):
+                raise MemoryScopeFullError(
+                    f"Scope {entry.scope}/{entry.scope_id} reached "
+                    f"max_entries_per_scope={max_entries_per_scope}"
+                )
 
             if entry.key in data:
                 # Upsert: preserve original id and created_at

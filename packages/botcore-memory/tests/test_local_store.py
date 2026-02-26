@@ -9,6 +9,7 @@ import pytest
 
 from botcore_memory.local_store import LocalMemoryStore
 from botcore_memory.models import MemoryEntry
+from botcore_memory.store import MemoryScopeFullError
 
 
 @pytest.fixture()
@@ -57,6 +58,18 @@ class TestSet:
         r2 = await store.get("agent", "bot-2", "k")
         assert r1.value == "v1"
         assert r2.value == "v2"
+
+    async def test_respects_max_entries_per_scope(self, store: LocalMemoryStore):
+        await store.set(_entry(key="k1"), max_entries_per_scope=1)
+
+        with pytest.raises(MemoryScopeFullError):
+            await store.set(_entry(key="k2"), max_entries_per_scope=1)
+
+    async def test_upsert_ignored_for_scope_limit(self, store: LocalMemoryStore):
+        await store.set(_entry(key="k1", value="v1"), max_entries_per_scope=1)
+
+        updated = await store.set(_entry(key="k1", value="v2"), max_entries_per_scope=1)
+        assert updated.value == "v2"
 
 
 class TestGet:

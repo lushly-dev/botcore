@@ -8,9 +8,17 @@ if TYPE_CHECKING:
     from botcore.plugin import PluginRegistry
     from pydantic import BaseModel
 
+    from .models import MemoryConfig
+
 
 class MemoryPlugin:
     """Persistent memory for agents across tasks and sessions."""
+
+    def configure(self, config: MemoryConfig) -> None:
+        """Inject validated plugin config into command runtime."""
+        from .commands import configure
+
+        configure(config)
 
     def register(self, registry: PluginRegistry) -> None:
         """Register memory commands and documentation."""

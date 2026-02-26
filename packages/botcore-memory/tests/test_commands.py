@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from botcore_memory.commands import (
+    configure,
+    get_store,
     memory_delete,
     memory_get,
     memory_list,
     memory_search,
     memory_set,
 )
+from botcore_memory.local_store import LocalMemoryStore
+from botcore_memory.models import MemoryConfig
 
 
 class TestMemorySet:
@@ -221,3 +225,50 @@ class TestScopeIdValidation:
 
         result = await memory_set(key="k3", value="v", scope="team", scope_id="Team123")
         assert result.success is True
+
+
+class TestConfigApplication:
+    async def test_applies_local_path_from_config(self, tmp_path):
+        custom_path = tmp_path / "custom-memory-root"
+        configure(MemoryConfig(local_path=str(custom_path)))
+
+        result = await memory_set(key="cfg", value="ok")
+        assert result.success is True
+
+        assert (custom_path / "agent" / "test-agent.json").exists()
+
+    async def test_enforces_max_entries_per_scope(self):
+        configure(MemoryConfig(max_entries_per_scope=1))
+
+        first = await memory_set(key="k1", value="v1")
+        assert first.success is True
+
+        second = await memory_set(key="k2", value="v2")
+        assert second.success is False
+        assert second.error.code == "MEMORY_SCOPE_FULL"
+
+    async def test_upsert_does_not_count_against_scope_limit(self):
+        configure(MemoryConfig(max_entries_per_scope=1))
+
+        first = await memory_set(key="k1", value="v1")
+        assert first.success is True
+
+        update = await memory_set(key="k1", value="v2")
+        assert update.success is True
+
+        check = await memory_get(key="k1")
+        assert check.success is True
+        assert check.data["value"] == "v2"
+
+    def test_configure_recreates_store_singleton(self, tmp_path):
+        first_path = tmp_path / "a"
+        second_path = tmp_path / "b"
+
+        configure(MemoryConfig(local_path=str(first_path)))
+        store_a = get_store()
+        assert isinstance(store_a, LocalMemoryStore)
+
+        configure(MemoryConfig(local_path=str(second_path)))
+        store_b = get_store()
+        assert isinstance(store_b, LocalMemoryStore)
+        assert store_a is not store_b

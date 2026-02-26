@@ -9,7 +9,7 @@ from afd import CommandResult, error, success
 from .access import check_scope_access, current_agent, resolve_scope_id
 from .local_store import LocalMemoryStore
 from .models import MemoryConfig, MemoryEntry, validate_key, validate_scope, validate_scope_id
-from .store import MemoryStore
+from .store import MemoryScopeFullError, MemoryStore
 
 # Module-level singleton store, lazily initialized.
 _store: MemoryStore | None = None
@@ -100,7 +100,17 @@ async def memory_set(
     )
 
     store = get_store()
-    stored = await store.set(entry)
+    try:
+        stored = await store.set(entry, max_entries_per_scope=_config.max_entries_per_scope)
+    except MemoryScopeFullError:
+        return error(
+            "MEMORY_SCOPE_FULL",
+            (
+                "Memory scope reached entry limit "
+                f"({_config.max_entries_per_scope}) for {scope}/{resolved_scope_id}"
+            ),
+            suggestion="Delete old entries or raise max_entries_per_scope in config",
+        )
 
     return success(data=stored.to_dict())
 
