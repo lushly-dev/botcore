@@ -339,6 +339,7 @@ ruff check src/ --fix
 - [x] Multi-language dispatch (Python, TypeScript, Rust)
 - [x] Skill ownership tiers (botcore, plugin, local)
 - [x] Action skills (commit, PR, release, review, hotfix)
+- [x] Teams Interface plugin — Phase 1 (intent parsing, Adaptive Cards, tenant auth, stub dispatch)
 - [ ] Skill marketplace / community registry
 - [ ] Cross-repo skill sync dashboard
 - [ ] Performance command profiling

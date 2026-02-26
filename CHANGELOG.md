@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **retry_async** -- shared async retry utility in `botcore.utils.runner` with configurable attempts, delay, and input validation. CDP retry loops refactored to use it.
 - **PluginRegistry.add_middleware()** -- registration stub for plugin middleware callables (foundation for future command pre/post-processing chain)
 - **5 active plugin specs** -- LLM Runtime, Agent Orchestration, Connectors, Memory System, and Teams Interface plugin specs with AFD integration sections
+- **botcore-teams plugin (Phase 1)** -- Microsoft Teams bot interface as first external plugin in `plugins/botcore-teams/`
+  - Regex intent parser (6 patterns: task_assign, task_status, team_status, task_cancel, task_list, unknown)
+  - Adaptive Card v1.4 renderer for `CommandResult` (success/error, plan steps, sources, confidence, suggestions)
+  - Tenant-gated auth (`validate_tenant`, `extract_identity` → `TeamsIdentity`)
+  - Command handlers (`teams_handle_message`, `teams_handle_card_action`) with stub dispatch fallback
+  - Bot Framework webhook (`TeamsBot` + `create_app()` via aiohttp + botbuilder)
+  - `TeamsPlugin` entry-point implementing `BotCorePlugin` protocol
+  - 62 tests, 94% coverage
 
 ### Changed
 

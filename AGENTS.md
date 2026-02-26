@@ -44,6 +44,19 @@ src/botcore/
 └── utils/             # Shared utilities
     ├── runner.py       # smart_truncate, subprocess helpers, retry_async
     └── workspace.py    # Workspace discovery
+
+plugins/
+└── botcore-teams/         # Microsoft Teams bot interface (Phase 1)
+    ├── pyproject.toml     # Standalone pip-installable package
+    ├── src/botcore_teams/
+    │   ├── __init__.py    # TeamsPlugin (BotCorePlugin entry-point)
+    │   ├── config.py      # TeamsConfig + TeamsRolesConfig
+    │   ├── intent.py      # Regex intent parser → ParsedIntent
+    │   ├── cards.py       # CommandResult → Adaptive Card v1.4
+    │   ├── auth.py        # Tenant validation, identity extraction
+    │   ├── commands.py    # teams_handle_message, teams_handle_card_action
+    │   └── bot.py         # TeamsBot + create_app() (aiohttp webhook)
+    └── tests/             # 62 tests, 94% coverage
 ```
 
 ## Plugin Contract
