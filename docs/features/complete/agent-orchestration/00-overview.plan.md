@@ -1,6 +1,6 @@
 # Plan: Agent Orchestration
 
-> **Status:** Active — Phase 1 complete, Phase 2 next
+> **Status:** Complete
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-26 — Phase 1 (single agent) shipped in `packages/botcore-agents/`
 > **Scope:** Multi-agent lifecycle, task routing, heartbeat, and coordination as separate botcore plugin package (`botcore-agents`)

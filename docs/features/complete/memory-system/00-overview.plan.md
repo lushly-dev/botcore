@@ -1,6 +1,6 @@
 # Plan: Agent Memory System
 
-> **Status:** Active — Design phase
+> **Status:** Complete
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-25 — AFD Python parity integration
 > **Scope:** Per-agent private memory, shared team memory, and task-scoped memory. Separate botcore plugin package (`botcore-memory`), backed by Azure Cosmos DB.

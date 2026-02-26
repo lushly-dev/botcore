@@ -1,6 +1,6 @@
 # Plan: Typed Connectors
 
-> **Status:** Active — Design phase
+> **Status:** Complete
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-25 — AFD Python parity integration
 > **Scope:** External system integrations as typed botcore commands — no raw API calls, no filesystem, no shell. Separate botcore plugin package (`botcore-connectors`).
