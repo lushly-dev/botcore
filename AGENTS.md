@@ -46,6 +46,33 @@ src/botcore/
     └── workspace.py    # Workspace discovery
 ```
 
+## Plugin Packages
+
+### botcore-connectors
+
+Typed HTTP connectors for external services. Separate `pip install` package.
+
+```
+botcore-connectors/src/botcore_connectors/
+├── __init__.py           # Package exports
+├── auth.py               # Credential resolution (env var → CLI fallback, token cache)
+├── base.py               # ConnectorBase — retry, rate-limiting, telemetry, error mapping
+├── config.py             # ConnectorsConfig + per-connector sub-models
+├── errors.py             # HTTP status mapping + GitHub-specific error helpers
+├── github.py             # GitHubConnector — dual rate-limit tracking, error remap
+├── github_commands.py    # 8 GitHub commands + factory
+├── plugin.py             # ConnectorsPlugin — BotCorePlugin protocol
+└── validation.py         # Input validation helpers, PaginationParams
+```
+
+| Status | Detail |
+|--------|--------|
+| Phase 1 (specs 01-05) | Complete — 248 tests |
+| Phase 2 (Azure) | Pending |
+| Phase 3 (Graph) | Pending |
+
+Commands: `cd botcore-connectors && uv run pytest tests/ -v` and `uv run ruff check src/ tests/`
+
 ## Plugin Contract
 
 Plugins register commands, docs, and skills via entry points. See [build-botcore-plugins](skills/build-botcore-plugins/) skill for full patterns.

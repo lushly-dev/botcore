@@ -10,9 +10,10 @@ This spec defines the connector base layer: the `_api_call` protocol that every 
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Complete |
 | Author | AI-assisted |
 | Date | 2026-02-26 |
+| Completed | 2026-02-26 |
 | Proposal | [00-overview.plan.md](./00-overview.plan.md) |
 
 ## Architecture

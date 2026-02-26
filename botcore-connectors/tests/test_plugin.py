@@ -53,21 +53,21 @@ class TestRegister:
         plugin.register(registry)
         assert registry.commands == []
 
-    def test_enabled_github_zero_commands_phase1(self) -> None:
-        """Phase 1: enabled connectors register zero commands."""
+    def test_enabled_github_registers_commands(self) -> None:
+        """GitHub connector registers 8 commands."""
         plugin = ConnectorsPlugin(config=ConnectorsConfig(enabled=["github"]))
         registry = PluginRegistry()
         plugin.register(registry)
-        assert registry.commands == []
+        assert len(registry.commands) == 8
         assert registry.mcp_name == "connectors"
         assert "connectors" in registry.docs
 
-    def test_enabled_multiple_zero_commands_phase1(self) -> None:
+    def test_enabled_multiple_only_github_has_commands(self) -> None:
         cfg = ConnectorsConfig(enabled=["github", "azure_blob"])
         plugin = ConnectorsPlugin(config=cfg)
         registry = PluginRegistry()
         plugin.register(registry)
-        assert registry.commands == []
+        assert len(registry.commands) == 8  # only GitHub implemented
 
 
 # ---------------------------------------------------------------------------

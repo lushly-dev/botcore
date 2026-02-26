@@ -67,6 +67,40 @@ def check_owner_repo(value: str, *, field_name: str) -> list[str]:
     return []
 
 
+class PaginationParams:
+    """Immutable pagination parameters."""
+
+    __slots__ = ("_page", "_page_size")
+
+    def __init__(self, page: int = 1, page_size: int = 30) -> None:
+        object.__setattr__(self, "_page", max(1, page))
+        object.__setattr__(self, "_page_size", max(1, min(page_size, 100)))
+
+    def __setattr__(self, _name: str, _value: object) -> None:
+        raise AttributeError("PaginationParams is frozen")
+
+    @property
+    def page(self) -> int:
+        return self._page
+
+    @property
+    def page_size(self) -> int:
+        return self._page_size
+
+    def to_github_params(self) -> dict[str, str]:
+        return {"page": str(self._page), "per_page": str(self._page_size)}
+
+
+_VALID_REVIEW_EVENTS = frozenset({"APPROVE", "REQUEST_CHANGES", "COMMENT"})
+
+
+def check_review_event(value: str, *, field_name: str = "event") -> list[str]:
+    """Return violations if *value* is not a valid PR review event."""
+    if value not in _VALID_REVIEW_EVENTS:
+        return [f"{field_name}: must be one of {sorted(_VALID_REVIEW_EVENTS)}"]
+    return []
+
+
 def validate_inputs(**checks: list[str]) -> InputValidationResult:
     """Aggregate violations from multiple check calls.
 

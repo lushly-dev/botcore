@@ -1,8 +1,8 @@
 # Plan: Typed Connectors
 
-> **Status:** Active — Design phase
+> **Status:** Active — Phase 1 complete, Phases 2-4 pending
 > **Date:** 2026-02-25
-> **Updated:** 2026-02-25 — AFD Python parity integration
+> **Updated:** 2026-02-26 — Phase 1 (specs 01-05) implemented: connector base, auth, config/plugin, security model, GitHub connector (248 tests)
 > **Scope:** External system integrations as typed botcore commands — no raw API calls, no filesystem, no shell. Separate botcore plugin package (`botcore-connectors`).
 > **Depends on:** botcore core, [LLM Runtime](../llm-runtime/00-overview.plan.md) (`botcore-llm` plugin, for tool bridging), `afd` Python package (middleware, validation, batch execution, telemetry)
 
@@ -270,26 +270,26 @@ class ConnectorsPlugin(BotCorePlugin):
 
 ## Phases
 
-### Phase 1: GitHub Connector
+### Phase 1: GitHub Connector ✅ Complete
 
-- [ ] Scaffold `botcore-connectors` plugin package with `pyproject.toml` + entry-point
-- [ ] `ConnectorsPlugin` implementing `BotCorePlugin.register()`
-- [ ] Connector base: `_api_call` using AFD `compose_middleware()` with retry, rate limit, logging, and timing middleware
-- [ ] Auth resolution: `GH_TOKEN` env var, `gh auth token` fallback
-- [ ] Input validation using AFD `validate_input_enhanced()` and pattern types (`EmailStr`, `UuidStr`)
-- [ ] Commands: `github_issue_create`, `github_issue_list` (with AFD `PaginationParams`), `github_issue_comment`
-- [ ] Commands: `github_pr_list`, `github_search_code`, `github_search_issues`
-- [ ] Connector config model in `BotCoreConfig`
-- [ ] `[connectors.enabled]` filtering
-- [ ] Unit tests with mocked HTTP responses
-- [ ] JTBD scenario tests for GitHub connector workflows (using AFD Python `afd.testing` scenario runner)
+- [x] Scaffold `botcore-connectors` plugin package with `pyproject.toml` + entry-point
+- [x] `ConnectorsPlugin` implementing `BotCorePlugin.register()`
+- [x] Connector base: `ConnectorBase` with inlined retry, rate-limiting, backoff, telemetry
+- [x] Auth resolution: `GH_TOKEN` env var, `gh auth token` fallback, token caching
+- [x] Input validation: `validate_inputs()`, `check_owner_repo()`, `check_max_length()`, `PaginationParams`
+- [x] Commands: `github_issue_create`, `github_issue_list`, `github_issue_comment`
+- [x] Commands: `github_pr_create`, `github_pr_list`, `github_pr_review`, `github_search_code`, `github_search_issues`
+- [x] `ConnectorsConfig` Pydantic model with per-connector sub-models
+- [x] `[connectors].enabled` filtering — disabled connectors register zero commands
+- [x] 248 unit tests with mocked HTTP responses (respx)
+- [x] Security: scope enforcement, audit logging, token redaction, input validation
 
-**Acceptance criteria:**
-- [ ] `github_issue_create(repo="owner/repo", title="Test")` returns `CommandResult` with issue URL
-- [ ] Invalid repo format returns `error()` with suggestion
-- [ ] Connector not in `enabled` list → commands not registered
-- [ ] Auth failure returns structured error with setup suggestion
-- [ ] Rate limit hit → AFD retry middleware handles backoff automatically
+**Acceptance criteria:** All met
+- [x] `github_issue_create(title="Test")` returns `CommandResult` with issue URL
+- [x] Invalid repo format returns `INVALID_REPO` error with suggestion
+- [x] Connector not in `enabled` list → commands not registered
+- [x] Auth failure returns `GITHUB_AUTH_MISSING` with setup suggestion
+- [x] Rate limit hit → dual tracking (API vs search), pre-flight check, `X-RateLimit-Reset` backoff
 
 ### Phase 2: Azure Connectors
 

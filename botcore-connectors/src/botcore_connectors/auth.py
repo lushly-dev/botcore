@@ -109,9 +109,18 @@ class DefaultCredentialResolver:
         return await self._resolve_github_cli()
 
     async def _resolve_github_cli(self) -> str:
-        from botcore.utils.runner import run_command
+        try:
+            from botcore.utils.runner import run_command
+        except ImportError:
+            logger.debug("botcore.utils.runner not available; skipping CLI fallback")
+            return ""
 
-        result: dict[str, Any] = await run_command(["gh", "auth", "token"], timeout=10)
+        try:
+            result: dict[str, Any] = await run_command(["gh", "auth", "token"], timeout=10)
+        except Exception:  # noqa: BLE001
+            logger.debug("gh auth token subprocess failed unexpectedly")
+            return ""
+
         if result.get("success"):
             token = result.get("output", "").strip()
             if token:

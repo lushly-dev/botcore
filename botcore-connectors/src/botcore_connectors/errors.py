@@ -169,7 +169,7 @@ def path_traversal_blocked(field: str) -> CommandResult[dict[str, Any]]:
     return error(
         "PATH_TRAVERSAL_BLOCKED",
         f"{field}: path traversal blocked",
-        suggestion="Remove '../' or '..\\\\'  sequences from the path",
+        suggestion="Remove '../' or '..\\\\' sequences from the path",
         retryable=False,
     )
 
@@ -195,6 +195,82 @@ def audit_write_failed(detail: str) -> CommandResult[dict[str, Any]]:
         suggestion="Check logging configuration and storage availability",
         retryable=True,
     )
+
+
+def invalid_repo(value: str) -> CommandResult[dict[str, Any]]:
+    """Bad ``owner/repo`` format."""
+    return error(
+        "INVALID_REPO",
+        f"Invalid repository format: {value!r}",
+        suggestion="Use 'owner/repo' format (e.g. 'octocat/hello-world')",
+        retryable=False,
+    )
+
+
+def github_not_found(resource: str) -> CommandResult[dict[str, Any]]:
+    """GitHub 404 with contextual suggestion."""
+    return error(
+        "GITHUB_NOT_FOUND",
+        f"GitHub resource not found: {resource}",
+        suggestion="Check repository name, issue/PR number, and permissions",
+        retryable=False,
+    )
+
+
+def github_rate_limited(reset_at: float | None = None) -> CommandResult[dict[str, Any]]:
+    """GitHub API rate limit exceeded."""
+    msg = "GitHub API rate limit exceeded"
+    suggestion = "Wait for rate limit reset"
+    if reset_at is not None:
+        suggestion = f"Rate limit resets at timestamp {reset_at}"
+    return error(
+        "GITHUB_RATE_LIMITED",
+        msg,
+        suggestion=suggestion,
+        retryable=True,
+    )
+
+
+def github_search_rate_limited() -> CommandResult[dict[str, Any]]:
+    """GitHub search endpoint rate limit (30/min)."""
+    return error(
+        "GITHUB_SEARCH_RATE_LIMITED",
+        "GitHub search rate limit exceeded (30 requests/min)",
+        suggestion="Reduce search frequency; wait before retrying",
+        retryable=True,
+    )
+
+
+def github_validation_error(message: str) -> CommandResult[dict[str, Any]]:
+    """GitHub 422 validation error."""
+    return error(
+        "GITHUB_VALIDATION_ERROR",
+        f"GitHub validation error: {message}",
+        suggestion="Review field values against GitHub API constraints",
+        retryable=False,
+    )
+
+
+def config_missing_required(
+    field: str, context: str = ""
+) -> CommandResult[dict[str, Any]]:
+    """Required config field missing."""
+    msg = f"Missing required config: {field}"
+    if context:
+        msg = f"{msg} ({context})"
+    return error(
+        "CONFIG_MISSING_REQUIRED",
+        msg,
+        suggestion=f"Set {field} in connector config or pass explicitly",
+        retryable=False,
+    )
+
+
+GITHUB_ERROR_REMAP: dict[str, str] = {
+    "NOT_FOUND": "GITHUB_NOT_FOUND",
+    "RATE_LIMITED": "GITHUB_RATE_LIMITED",
+    "VALIDATION_ERROR": "GITHUB_VALIDATION_ERROR",
+}
 
 
 def check_scope(

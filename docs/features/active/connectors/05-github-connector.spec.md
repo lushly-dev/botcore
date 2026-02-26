@@ -10,9 +10,10 @@ This spec defines the GitHub connector — the first Tier 1 concrete connector a
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Complete |
 | Author | AI-assisted |
 | Date | 2026-02-26 |
+| Completed | 2026-02-26 |
 | Proposal | [00-overview.plan.md](./00-overview.plan.md) |
 
 ## Architecture

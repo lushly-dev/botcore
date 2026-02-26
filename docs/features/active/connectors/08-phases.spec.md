@@ -10,9 +10,10 @@ This meta-spec sequences the connector implementation across four phases, define
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Active — Phase 1 complete |
 | Author | AI-assisted |
 | Date | 2026-02-26 |
+| Updated | 2026-02-26 — Phase 1 implemented (specs 01-05, 248 tests) |
 | Proposal | [00-overview.plan.md](./00-overview.plan.md) |
 
 ## Architecture
@@ -158,15 +159,15 @@ Phase 4 is under-specified and deferred per the overview plan. A separate spec w
 
 ## Acceptance Criteria
 
-### Phase 1 Gate
+### Phase 1 Gate ✅ Complete
 
-- [ ] `botcore-connectors` installs and registers via entry-point
-- [ ] All 8 GitHub commands return correct `CommandResult` shapes
-- [ ] Auth resolves from env var with CLI fallback
-- [ ] `[connectors].enabled` filtering works — disabled connectors have zero commands
-- [ ] Rate limit handling pauses on `X-RateLimit-Remaining: 0`
-- [ ] No tokens in logs, `CommandResult`, or config
-- [ ] All unit tests pass; scenario tests pass
+- [x] `botcore-connectors` installs and registers via entry-point
+- [x] All 8 GitHub commands return correct `CommandResult` shapes
+- [x] Auth resolves from env var with CLI fallback
+- [x] `[connectors].enabled` filtering works — disabled connectors have zero commands
+- [x] Rate limit handling pauses on `X-RateLimit-Remaining: 0`
+- [x] No tokens in logs, `CommandResult`, or config
+- [x] 248 unit tests pass
 - [ ] v0.1.0 released
 
 ### Phase 2 Gate

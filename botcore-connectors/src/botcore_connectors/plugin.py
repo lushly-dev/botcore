@@ -50,7 +50,7 @@ class ConnectorsPlugin:
 
     def __init__(self, config: ConnectorsConfig | None = None) -> None:
         self._config = config
-        self._registered_prefixes: list[str] = []
+        self._connectors: dict[str, Any] = {}
 
     def configure(self, config: ConnectorsConfig) -> None:
         """Inject config after construction (two-phase init)."""
@@ -81,16 +81,34 @@ class ConnectorsPlugin:
                 commands = self._get_commands_for(name)
                 if commands:
                     registry.add_commands(commands)
-                self._registered_prefixes.append(name)
 
     def config_schema(self) -> type[BaseModel]:
         """Return Pydantic model for config validation."""
         return ConnectorsConfig
 
-    def _get_commands_for(self, name: str) -> list[Callable[..., Any]]:
-        """Return commands for a named connector.
+    async def close(self) -> None:
+        """Close all connector HTTP clients."""
+        for connector in self._connectors.values():
+            if hasattr(connector, "close"):
+                await connector.close()
+        self._connectors.clear()
 
-        Phase 1: returns [] for all connectors.  Spec 05 will populate
-        actual command functions per connector type.
-        """
+    def _get_commands_for(self, name: str) -> list[Callable[..., Any]]:
+        """Return commands for a named connector."""
+        if name == "github":
+            return self._get_github_commands()
         return []
+
+    def _get_github_commands(self) -> list[Callable[..., Any]]:
+        """Lazy-load GitHub commands."""
+        from botcore_connectors.github_commands import create_github_commands
+
+        if self._config is None:
+            return []
+
+        from botcore_connectors.auth import DefaultCredentialResolver
+
+        resolver = DefaultCredentialResolver(self._config.auth)
+        cmd_set = create_github_commands(self._config.github, resolver=resolver)
+        self._connectors["github"] = cmd_set.connector
+        return cmd_set.commands

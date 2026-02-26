@@ -339,6 +339,9 @@ ruff check src/ --fix
 - [x] Multi-language dispatch (Python, TypeScript, Rust)
 - [x] Skill ownership tiers (botcore, plugin, local)
 - [x] Action skills (commit, PR, release, review, hotfix)
+- [x] Typed connectors plugin — Phase 1: GitHub (8 commands, 248 tests)
+- [ ] Typed connectors — Phase 2: Azure Blob + Service Bus
+- [ ] Typed connectors — Phase 3: Microsoft Graph (Email, Calendar, Teams)
 - [ ] Skill marketplace / community registry
 - [ ] Cross-repo skill sync dashboard
 - [ ] Performance command profiling

@@ -10,11 +10,13 @@ from botcore_connectors.validation import (
     MAX_IDENTIFIER_LENGTH,
     MAX_ITEMS_DEFAULT,
     InputValidationResult,
+    PaginationParams,
     check_max_body_size,
     check_max_items,
     check_max_length,
     check_no_path_traversal,
     check_owner_repo,
+    check_review_event,
     validate_inputs,
 )
 
@@ -212,3 +214,79 @@ class TestInputValidationResult:
     def test_extra_forbid(self) -> None:
         with pytest.raises(ValidationError):
             InputValidationResult(valid=True, extra_field="nope")
+
+
+# ---------------------------------------------------------------------------
+# PaginationParams
+# ---------------------------------------------------------------------------
+
+
+class TestPaginationParams:
+    def test_defaults(self) -> None:
+        p = PaginationParams()
+        assert p.page == 1
+        assert p.page_size == 30
+
+    def test_custom_values(self) -> None:
+        p = PaginationParams(page=3, page_size=50)
+        assert p.page == 3
+        assert p.page_size == 50
+
+    def test_page_clamped_to_min_1(self) -> None:
+        assert PaginationParams(page=0).page == 1
+        assert PaginationParams(page=-5).page == 1
+
+    def test_page_size_clamped_to_min_1(self) -> None:
+        assert PaginationParams(page_size=0).page_size == 1
+        assert PaginationParams(page_size=-1).page_size == 1
+
+    def test_page_size_clamped_to_max_100(self) -> None:
+        assert PaginationParams(page_size=200).page_size == 100
+        assert PaginationParams(page_size=101).page_size == 100
+
+    def test_page_size_at_100(self) -> None:
+        assert PaginationParams(page_size=100).page_size == 100
+
+    def test_to_github_params(self) -> None:
+        p = PaginationParams(page=2, page_size=10)
+        params = p.to_github_params()
+        assert params == {"page": "2", "per_page": "10"}
+
+    def test_frozen_raises_on_setattr(self) -> None:
+        p = PaginationParams()
+        with pytest.raises(AttributeError, match="frozen"):
+            p.page = 5  # type: ignore[misc]
+
+    def test_frozen_raises_on_page_size_setattr(self) -> None:
+        p = PaginationParams()
+        with pytest.raises(AttributeError, match="frozen"):
+            p.page_size = 10  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# check_review_event
+# ---------------------------------------------------------------------------
+
+
+class TestCheckReviewEvent:
+    def test_approve(self) -> None:
+        assert check_review_event("APPROVE") == []
+
+    def test_request_changes(self) -> None:
+        assert check_review_event("REQUEST_CHANGES") == []
+
+    def test_comment(self) -> None:
+        assert check_review_event("COMMENT") == []
+
+    def test_invalid_event(self) -> None:
+        violations = check_review_event("INVALID")
+        assert len(violations) == 1
+        assert "event" in violations[0]
+
+    def test_lowercase_rejected(self) -> None:
+        violations = check_review_event("approve")
+        assert len(violations) == 1
+
+    def test_custom_field_name(self) -> None:
+        violations = check_review_event("bad", field_name="review_event")
+        assert "review_event" in violations[0]

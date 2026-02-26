@@ -58,6 +58,33 @@ class TestSanitizeArgs:
         result = sanitize_args({})
         assert result == "{}"
 
+    def test_secret_key_redacted(self) -> None:
+        result = sanitize_args({"secret": "my-secret-value"})
+        assert "my-secret-value" not in result
+        assert "***REDACTED***" in result
+
+    def test_case_insensitive_keys(self) -> None:
+        result = sanitize_args({"TOKEN": "ghp_abc", "Password": "hunter2"})
+        assert "ghp_abc" not in result
+        assert "hunter2" not in result
+
+    def test_nested_dict_redacts_sensitive_keys(self) -> None:
+        """Recursive sanitization — nested tokens must be redacted."""
+        result = sanitize_args({"headers": {"Authorization": "Bearer xxx"}})
+        assert "Bearer xxx" not in result
+        assert "***REDACTED***" in result
+
+    def test_deeply_nested_redaction(self) -> None:
+        args = {"config": {"inner": {"token": "secret123"}}}
+        result = sanitize_args(args)
+        assert "secret123" not in result
+        assert "***REDACTED***" in result
+
+    def test_nested_non_sensitive_preserved(self) -> None:
+        result = sanitize_args({"config": {"repo": "a/b"}})
+        parsed = json.loads(result)
+        assert parsed["config"]["repo"] == "a/b"
+
 
 # ---------------------------------------------------------------------------
 # AuditLogEntry — model constraints

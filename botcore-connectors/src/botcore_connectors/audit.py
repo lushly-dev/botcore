@@ -17,16 +17,24 @@ _MAX_VALUE_LENGTH = 100
 _MAX_SUMMARY_LENGTH = 512
 
 
+def _sanitize_value(key: str, value: Any) -> Any:
+    """Recursively sanitize a single value, redacting sensitive keys."""
+    if key.lower() in _SENSITIVE_KEYS:
+        return _REDACTED
+    if isinstance(value, dict):
+        return {k: _sanitize_value(k, v) for k, v in value.items()}
+    if isinstance(value, str) and len(value) > _MAX_VALUE_LENGTH:
+        return value[:_MAX_VALUE_LENGTH] + "..."
+    return value
+
+
 def sanitize_args(args: dict[str, Any], *, max_length: int = _MAX_SUMMARY_LENGTH) -> str:
-    """Produce a JSON-safe summary of *args* with secrets redacted."""
-    sanitized: dict[str, Any] = {}
-    for key, value in args.items():
-        if key.lower() in _SENSITIVE_KEYS:
-            sanitized[key] = _REDACTED
-        elif isinstance(value, str) and len(value) > _MAX_VALUE_LENGTH:
-            sanitized[key] = value[:_MAX_VALUE_LENGTH] + "..."
-        else:
-            sanitized[key] = value
+    """Produce a JSON-safe summary of *args* with secrets redacted.
+
+    Sanitization is recursive — sensitive keys inside nested dicts are also
+    redacted.
+    """
+    sanitized = {k: _sanitize_value(k, v) for k, v in args.items()}
     summary = json.dumps(sanitized, default=str, ensure_ascii=False)
     if len(summary) > max_length:
         summary = summary[:max_length] + "..."
