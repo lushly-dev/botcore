@@ -125,3 +125,86 @@ def auth_refresh_failed(provider: str) -> CommandResult[dict[str, Any]]:
         suggestion=f"Re-authenticate for {provider}; check credentials are valid",
         retryable=False,
     )
+
+
+def config_invalid_connector(
+    names: list[str] | set[str],
+    valid: frozenset[str] | set[str],
+) -> CommandResult[dict[str, Any]]:
+    """Unknown connector name(s) in config."""
+    return error(
+        "CONFIG_INVALID_CONNECTOR",
+        f"Unknown connector(s): {sorted(names)}",
+        suggestion=f"Valid connectors: {sorted(valid)}",
+        retryable=False,
+    )
+
+
+def input_validation_failed(
+    violations: list[str],
+) -> CommandResult[dict[str, Any]]:
+    """One or more input validation checks failed."""
+    return error(
+        "INPUT_VALIDATION_FAILED",
+        f"Input validation failed: {'; '.join(violations)}",
+        suggestion="Fix the listed field violations and retry",
+        retryable=False,
+    )
+
+
+def input_too_large(
+    field: str, size: int, limit: int
+) -> CommandResult[dict[str, Any]]:
+    """A string or collection field exceeded its maximum size."""
+    return error(
+        "INPUT_TOO_LARGE",
+        f"{field}: size {size} exceeds limit {limit}",
+        suggestion=f"Reduce {field} to at most {limit}",
+        retryable=False,
+    )
+
+
+def path_traversal_blocked(field: str) -> CommandResult[dict[str, Any]]:
+    """Path traversal sequence detected in an input field."""
+    return error(
+        "PATH_TRAVERSAL_BLOCKED",
+        f"{field}: path traversal blocked",
+        suggestion="Remove '../' or '..\\\\'  sequences from the path",
+        retryable=False,
+    )
+
+
+def scope_violation(
+    connector: str,
+    allowed: list[str] | set[str] | frozenset[str],
+) -> CommandResult[dict[str, Any]]:
+    """Agent attempted to use a connector outside its allowed scope."""
+    return error(
+        "SCOPE_VIOLATION",
+        f"Connector '{connector}' is not in the allowed scope",
+        suggestion=f"Allowed connectors: {sorted(allowed)}",
+        retryable=False,
+    )
+
+
+def audit_write_failed(detail: str) -> CommandResult[dict[str, Any]]:
+    """Audit log write failed (may be retried)."""
+    return error(
+        "AUDIT_WRITE_FAILED",
+        f"Audit log write failed: {detail}",
+        suggestion="Check logging configuration and storage availability",
+        retryable=True,
+    )
+
+
+def check_scope(
+    connector: str,
+    allowed: list[str] | set[str] | frozenset[str],
+) -> CommandResult[dict[str, Any]] | None:
+    """Return ``None`` if *connector* is within *allowed* scope, else an error.
+
+    An empty *allowed* collection denies everything.
+    """
+    if connector in allowed:
+        return None
+    return scope_violation(connector, allowed)

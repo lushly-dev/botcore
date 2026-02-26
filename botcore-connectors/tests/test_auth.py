@@ -358,3 +358,25 @@ class TestTokenSecurityInvariants:
 
         request = route.calls.last.request
         assert request.headers["Authorization"] == "Bearer wire-token-xyz"
+
+    def test_token_not_in_sanitize_args_output(self) -> None:
+        from botcore_connectors.audit import sanitize_args
+
+        result = sanitize_args({"token": "super-secret", "repo": "a/b"})
+        assert "super-secret" not in result
+        assert "***REDACTED***" in result
+
+    def test_token_not_in_audit_log_entry(self) -> None:
+        from botcore_connectors.audit import AuditLogger
+
+        entry = AuditLogger().log(
+            agent_id="agent-1",
+            connector="github",
+            command="list_issues",
+            args={"token": "ghp_super_secret_value"},
+            result_status="success",
+            latency_ms=10.0,
+            trace_id="t1",
+        )
+        assert "ghp_super_secret_value" not in entry.args_summary
+        assert "ghp_super_secret_value" not in entry.model_dump_json()
