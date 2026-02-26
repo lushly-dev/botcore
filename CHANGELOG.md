@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **botcore-memory plugin (Phase 1)** -- New `packages/botcore-memory` package providing persistent agent memory with local JSON file store, 5 CRUD commands (`memory_set`, `memory_get`, `memory_search`, `memory_delete`, `memory_list`), three scopes (agent/team/task), scope-based access control, and `MemoryStore` ABC for future backends (Cosmos DB)
+- **botcore-agents plugin (Phase 1)** -- Separate `packages/botcore-agents/` package providing single-agent lifecycle management
+  - `AgentsPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `AgentOrchestrator` singleton managing agent pool, task store, and LLM session lifecycle
+  - `AgentConfig` / `AgentsPluginConfig` Pydantic models with `extra="forbid"` validation
+  - `Task`, `AgentHealth`, `AgentState` domain models with field constraints and status literals
+  - 7 commands: `agent_create`, `agent_start`, `agent_stop`, `agent_status`, `agent_heartbeat`, `task_assign`, `task_status`
+  - Direct `botcore-llm` integration — agents backed by LLM sessions with scoped tools
+  - Synchronous task execution via `llm_chat` (background execution planned for Phase 3)
+  - 82 unit + integration tests with mocked LLM commands
+- **botcore-llm plugin (Phase 1)** -- Separate `packages/botcore-llm/` package providing LLM runtime via Copilot SDK
+  - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `CopilotClientManager` singleton for client lifecycle (start/stop)
+  - Command-to-tool bridge (`botcore_command_to_copilot_tool`) auto-converts botcore commands to Copilot SDK tools
+  - Permission gate denying shell/filesystem by default, configurable via `LlmPermissionsConfig`
+  - In-memory `SessionRegistry` for active session tracking
+  - 5 commands: `llm_session_create`, `llm_session_destroy`, `llm_session_list`, `llm_model_list`, `llm_chat`
+  - `LlmConfig` Pydantic model with permissions, cost, and session settings
+  - 40 unit tests with mocked Copilot client (no real CLI needed)
 - **Lefthook git hooks** -- Pre-commit, pre-push, and on-demand quality gate hooks
   - `check-file-size.mjs` -- Warn >300 lines, error >500, hard cap 1000 with `# botcore-override: max-lines=N` escape hatch
   - `check-portability.mjs` -- Detect machine-specific paths in Python source
@@ -25,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages
 - **botcore.toml** -- Expanded configuration with language, tooling, threshold, and hygiene settings
 - **CONTRIBUTING.md** -- Comprehensive rewrite with lefthook setup, development workflow, and contribution guidelines
 - **do-commit** -- Step 3 (Documentation Gate) now delegates to the `do-documentation-update` skill instead of inlining checks. Adds spec completion, roadmap updates, and link verification to the documentation pass.

@@ -339,6 +339,9 @@ ruff check src/ --fix
 - [x] Multi-language dispatch (Python, TypeScript, Rust)
 - [x] Skill ownership tiers (botcore, plugin, local)
 - [x] Action skills (commit, PR, release, review, hotfix)
+- [x] LLM runtime plugin (`botcore-llm` — Copilot SDK sessions)
+- [x] Agent orchestration Phase 1 (`botcore-agents` — single-agent lifecycle)
+- [ ] Agent orchestration Phase 2 (multi-agent routing)
 - [ ] Skill marketplace / community registry
 - [ ] Cross-repo skill sync dashboard
 - [ ] Performance command profiling
