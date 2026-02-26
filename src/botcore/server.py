@@ -16,6 +16,7 @@ from collections.abc import Callable
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Any
 
+from botcore.config import load_config
 from botcore.docs import CORE_DOCS
 from botcore.plugin import PluginRegistry, discover_plugins
 from botcore.utils.runner import smart_truncate
@@ -39,8 +40,13 @@ def build_namespace(
 
     # 2. Plugin commands via discovery
     plugins = discover_plugins()
+    config = load_config(discovered_plugins=plugins)
     registry = PluginRegistry()
-    for plugin in plugins.values():
+    for name, plugin in plugins.items():
+        plugin_config = config.plugins.get(name)
+        configure = getattr(plugin, "configure", None)
+        if plugin_config is not None and callable(configure):
+            configure(plugin_config)
         plugin.register(registry)
     for cmd in registry.commands:
         namespace[cmd.__name__] = cmd

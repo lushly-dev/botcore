@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from pydantic import BaseModel
 
 from botcore.docs import CORE_DOCS
 from botcore.plugin import PluginRegistry
@@ -19,6 +20,11 @@ async def _fake_plugin_cmd() -> dict[str, Any]:
 
 
 class _FakePlugin:
+    configured_with: object | None = None
+
+    def configure(self, config: object) -> None:
+        self.configured_with = config
+
     def register(self, registry: PluginRegistry) -> None:
         registry.add_commands([_fake_plugin_cmd])
         registry.add_docs("fake", "# Fake Plugin\nDocs here.")
@@ -34,6 +40,14 @@ def _mock_discover_with_fake() -> dict:
 
 def _mock_discover_empty() -> dict:
     return {}
+
+
+class _FakePluginConfig(BaseModel):
+    token: str = ""
+
+
+class _FakeBotCoreConfig(BaseModel):
+    plugins: dict[str, object] = {}
 
 
 # ── build_namespace ─────────────────────────────────────────────────────────
@@ -73,6 +87,24 @@ class TestBuildNamespace:
         _ns, reg = build_namespace()
         assert reg.mcp_name == "fake"
         assert len(reg.commands) == 1
+
+    @patch("botcore.server.discover_plugins", _mock_discover_with_fake)
+    @patch("botcore.server.load_config")
+    def test_configures_plugin_before_register(self, mock_load_config):
+        plugin = _FakePlugin()
+
+        def _discover():
+            return {"fake": plugin}
+
+        mock_load_config.return_value = _FakeBotCoreConfig(
+            plugins={"fake": _FakePluginConfig(token="abc")}
+        )
+
+        with patch("botcore.server.discover_plugins", _discover):
+            build_namespace()
+
+        assert isinstance(plugin.configured_with, _FakePluginConfig)
+        assert plugin.configured_with.token == "abc"
 
 
 # ── build_docs ──────────────────────────────────────────────────────────────

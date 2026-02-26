@@ -1,8 +1,8 @@
 # Plan: Agent Orchestration
 
-> **Status:** Active — Design phase
+> **Status:** Complete
 > **Date:** 2026-02-25
-> **Updated:** 2026-02-25 — AFD Python parity integration
+> **Updated:** 2026-02-26 — Phase 1 (single agent) shipped in `packages/botcore-agents/`
 > **Scope:** Multi-agent lifecycle, task routing, heartbeat, and coordination as separate botcore plugin package (`botcore-agents`)
 > **Depends on:** [LLM Runtime](../llm-runtime/00-overview.plan.md) (`botcore-llm` plugin), botcore core, `afd` Python package (reconnection, batch execution, telemetry, middleware)
 
@@ -294,18 +294,25 @@ async def task_assign(description, agent=None, priority=5, parent=None):
 Shipped as a standalone pip-installable plugin — **not** inside `src/botcore/`.
 
 ```
-botcore-agents/
+packages/botcore-agents/
 ├── pyproject.toml                # entry-point: [project.entry-points."botcore.plugins"]
 ├── src/
 │   └── botcore_agents/
-│       ├── __init__.py           # BotCorePlugin implementation
-│       ├── config.py             # AgentConfig, Task, AgentHealth dataclasses
-│       ├── orchestrator.py       # Heartbeat loop, agent pool management
-│       ├── router.py             # Task → agent matching
-│       ├── queue.py              # Task queue (in-memory, Azure-backed later)
-│       └── commands.py           # agent_*, task_*, team_* commands
+│       ├── __init__.py           # AgentsPlugin (BotCorePlugin implementation)
+│       ├── config.py             # AgentConfig, AgentsPluginConfig (Pydantic)
+│       ├── models.py             # Task, AgentHealth, AgentState (Pydantic)
+│       ├── orchestrator.py       # AgentOrchestrator — pool + task management
+│       ├── _docs.py              # MCP documentation
+│       ├── commands.py           # agent_*, task_* commands
+│       ├── router.py             # (Phase 2) Task → agent matching
+│       └── queue.py              # (Phase 2) Task queue with priority ordering
 └── tests/
-    └── ...
+    ├── conftest.py               # Fixtures: config, mock LLM, orchestrator
+    ├── test_config.py
+    ├── test_models.py
+    ├── test_orchestrator.py
+    ├── test_commands.py
+    └── test_plugin.py
 ```
 
 ### Plugin Registration
@@ -338,21 +345,21 @@ class AgentsPlugin(BotCorePlugin):
 
 ### Phase 1: Single Agent
 
-- [ ] Scaffold `botcore-agents` plugin package with `pyproject.toml` + entry-point
-- [ ] `AgentsPlugin` implementing `BotCorePlugin.register()`
-- [ ] `AgentConfig` Pydantic model in `BotCoreConfig`
-- [ ] `agent_create` / `agent_start` / `agent_stop` commands
-- [ ] Copilot session creation with scoped tool bridge (from LLM Runtime)
-- [ ] `task_assign` (explicit agent only, no routing)
-- [ ] `agent_status` / `agent_heartbeat`
+- [x] Scaffold `botcore-agents` plugin package with `pyproject.toml` + entry-point
+- [x] `AgentsPlugin` implementing `BotCorePlugin.register()`
+- [x] `AgentConfig` Pydantic model with `extra="forbid"` validation
+- [x] `agent_create` / `agent_start` / `agent_stop` commands
+- [x] Copilot session creation with scoped tool bridge (from LLM Runtime)
+- [x] `task_assign` (explicit agent only, no routing)
+- [x] `agent_status` / `agent_heartbeat`
 - [ ] Telemetry integration: emit `TelemetryEvent` from agent lifecycle commands via AFD `TelemetrySink`
-- [ ] Unit tests with mock Copilot sessions
+- [x] Unit tests with mock Copilot sessions (82 tests)
 - [ ] JTBD scenario tests for agent lifecycle (using AFD Python `afd.testing` scenario runner)
 
 **Acceptance criteria:**
-- [ ] Single agent starts, receives task, executes via Copilot session, returns result
-- [ ] Agent tools are scoped — only declared skills/connectors available
-- [ ] Agent stop destroys session cleanly
+- [x] Single agent starts, receives task, executes via Copilot session, returns result
+- [x] Agent tools are scoped — only declared skills/connectors available
+- [x] Agent stop destroys session cleanly
 - [ ] Agent lifecycle events emitted as telemetry
 
 ### Phase 2: Multi-Agent + Router

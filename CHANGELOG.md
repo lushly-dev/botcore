@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Config & plugin wiring** (spec 03) -- `ConnectorsConfig` Pydantic model with per-connector sub-models, `[connectors].enabled` filtering, `ConnectorsPlugin` with two-phase init and `BotCorePlugin` protocol conformance.
   - **Security model** (spec 04) -- Input validation helpers (`check_max_length`, `check_owner_repo`, `check_no_path_traversal`, `validate_inputs`), scope enforcement (`check_scope`), and structured audit logging with `sanitize_args`.
   - **GitHub connector** (spec 05) -- `GitHubConnector` subclass with dual rate-limit tracking (API vs search), `X-RateLimit-Reset` backoff, error remapping (NOT_FOUND → GITHUB_NOT_FOUND, etc.), and 8 commands: `github_issue_create`, `github_issue_list`, `github_issue_comment`, `github_pr_create`, `github_pr_list`, `github_pr_review`, `github_search_code`, `github_search_issues`. 248 tests passing.
+- **botcore-memory plugin (Phase 1)** -- New `packages/botcore-memory` package providing persistent agent memory with local JSON file store, 5 CRUD commands (`memory_set`, `memory_get`, `memory_search`, `memory_delete`, `memory_list`), three scopes (agent/team/task), scope-based access control, and `MemoryStore` ABC for future backends (Cosmos DB)
+- **botcore-agents plugin (Phase 1)** -- Separate `packages/botcore-agents/` package providing single-agent lifecycle management
+  - `AgentsPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `AgentOrchestrator` singleton managing agent pool, task store, and LLM session lifecycle
+  - `AgentConfig` / `AgentsPluginConfig` Pydantic models with `extra="forbid"` validation
+  - `Task`, `AgentHealth`, `AgentState` domain models with field constraints and status literals
+  - 7 commands: `agent_create`, `agent_start`, `agent_stop`, `agent_status`, `agent_heartbeat`, `task_assign`, `task_status`
+  - Direct `botcore-llm` integration — agents backed by LLM sessions with scoped tools
+  - Synchronous task execution via `llm_chat` (background execution planned for Phase 3)
+  - 82 unit + integration tests with mocked LLM commands
+- **botcore-llm plugin (Phase 1)** -- Separate `packages/botcore-llm/` package providing LLM runtime via Copilot SDK
+  - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
+  - `CopilotClientManager` singleton for client lifecycle (start/stop)
+  - Command-to-tool bridge (`botcore_command_to_copilot_tool`) auto-converts botcore commands to Copilot SDK tools
+  - Permission gate denying shell/filesystem by default, configurable via `LlmPermissionsConfig`
+  - In-memory `SessionRegistry` for active session tracking
+  - 5 commands: `llm_session_create`, `llm_session_destroy`, `llm_session_list`, `llm_model_list`, `llm_chat`
+  - `LlmConfig` Pydantic model with permissions, cost, and session settings
+  - 40 unit tests with mocked Copilot client (no real CLI needed)
 - **Lefthook git hooks** -- Pre-commit, pre-push, and on-demand quality gate hooks
   - `check-file-size.mjs` -- Warn >300 lines, error >500, hard cap 1000 with `# botcore-override: max-lines=N` escape hatch
   - `check-portability.mjs` -- Detect machine-specific paths in Python source
@@ -27,9 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **retry_async** -- shared async retry utility in `botcore.utils.runner` with configurable attempts, delay, and input validation. CDP retry loops refactored to use it.
 - **PluginRegistry.add_middleware()** -- registration stub for plugin middleware callables (foundation for future command pre/post-processing chain)
 - **5 active plugin specs** -- LLM Runtime, Agent Orchestration, Connectors, Memory System, and Teams Interface plugin specs with AFD integration sections
+- **botcore-teams plugin (Phase 1)** -- Microsoft Teams bot interface as first external plugin in `plugins/botcore-teams/`
+  - Regex intent parser (6 patterns: task_assign, task_status, team_status, task_cancel, task_list, unknown)
+  - Adaptive Card v1.4 renderer for `CommandResult` (success/error, plan steps, sources, confidence, suggestions)
+  - Tenant-gated auth (`validate_tenant`, `extract_identity` → `TeamsIdentity`)
+  - Command handlers (`teams_handle_message`, `teams_handle_card_action`) with stub dispatch fallback
+  - Bot Framework webhook (`TeamsBot` + `create_app()` via aiohttp + botbuilder)
+  - `TeamsPlugin` entry-point implementing `BotCorePlugin` protocol
+  - 62 tests, 94% coverage
 
 ### Changed
 
+- **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages
 - **botcore.toml** -- Expanded configuration with language, tooling, threshold, and hygiene settings
 - **CONTRIBUTING.md** -- Comprehensive rewrite with lefthook setup, development workflow, and contribution guidelines
 - **do-commit** -- Step 3 (Documentation Gate) now delegates to the `do-documentation-update` skill instead of inlining checks. Adds spec completion, roadmap updates, and link verification to the documentation pass.

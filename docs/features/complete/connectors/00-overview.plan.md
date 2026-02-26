@@ -1,6 +1,6 @@
 # Plan: Typed Connectors
 
-> **Status:** Active — Phase 1 complete, Phases 2-4 pending
+> **Status:** Complete — Phase 1 shipped; Phases 2-4 deferred
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-26 — Phase 1 (specs 01-05) implemented: connector base, auth, config/plugin, security model, GitHub connector (248 tests)
 > **Scope:** External system integrations as typed botcore commands — no raw API calls, no filesystem, no shell. Separate botcore plugin package (`botcore-connectors`).

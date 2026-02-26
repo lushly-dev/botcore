@@ -1,6 +1,6 @@
 # Plan: Teams Chat Interface
 
-> **Status:** Active — Design phase
+> **Status:** Complete
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-25 — AFD Python parity integration
 > **Scope:** Microsoft Teams bot as primary remote interface. Separate botcore plugin package (`botcore-teams`).

@@ -1,6 +1,6 @@
 # Plan: LLM Runtime — Copilot SDK Integration
 
-> **Status:** Active — Design phase
+> **Status:** Complete
 > **Date:** 2026-02-25
 > **Updated:** 2026-02-25 — AFD Python parity integration
 > **Scope:** Copilot SDK wrapper as separate botcore plugin package (`botcore-llm`), bridging botcore commands to LLM tool calling
