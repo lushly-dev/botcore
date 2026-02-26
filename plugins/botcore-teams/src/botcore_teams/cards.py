@@ -64,11 +64,21 @@ def _render_sources(sources: list[Source]) -> dict[str, Any]:
     }
 
 
-def render_command_result(result: CommandResult) -> dict[str, Any]:  # type: ignore[type-arg]
-    """Convert a CommandResult into an Adaptive Card JSON dict (schema v1.4)."""
+def render_command_result(
+    result: CommandResult,  # type: ignore[type-arg]
+    *,
+    original_text: str | None = None,
+) -> dict[str, Any]:
+    """Convert a CommandResult into an Adaptive Card JSON dict (schema v1.4).
+
+    Args:
+        result: The command result to render.
+        original_text: If provided, embedded in Retry button data so the
+            retry handler can re-dispatch the original message.
+    """
     if result.success:
         return _render_success(result)
-    return _render_error(result)
+    return _render_error(result, original_text=original_text)
 
 
 def _render_success(result: CommandResult) -> dict[str, Any]:  # type: ignore[type-arg]
@@ -126,7 +136,11 @@ def _render_success(result: CommandResult) -> dict[str, Any]:  # type: ignore[ty
     return card
 
 
-def _render_error(result: CommandResult) -> dict[str, Any]:  # type: ignore[type-arg]
+def _render_error(
+    result: CommandResult,  # type: ignore[type-arg]
+    *,
+    original_text: str | None = None,
+) -> dict[str, Any]:
     err = result.error
     body: list[dict[str, Any]] = [
         {
@@ -148,10 +162,13 @@ def _render_error(result: CommandResult) -> dict[str, Any]:  # type: ignore[type
 
     actions: list[dict[str, Any]] = []
     if err and err.retryable:
+        retry_data: dict[str, Any] = {"action": "retry"}
+        if original_text:
+            retry_data["original_text"] = original_text
         actions.append({
             "type": "Action.Submit",
             "title": "Retry",
-            "data": {"action": "retry"},
+            "data": retry_data,
         })
 
     card: dict[str, Any] = {

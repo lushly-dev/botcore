@@ -131,11 +131,20 @@ class TestRenderError:
 
     def test_retryable_error(self) -> None:
         result = error("TIMEOUT", "Request timed out", retryable=True)
-        card = render_command_result(result)
+        card = render_command_result(result, original_text="team status")
 
         assert "actions" in card
         assert card["actions"][0]["title"] == "Retry"
         assert card["actions"][0]["data"]["action"] == "retry"
+        assert card["actions"][0]["data"]["original_text"] == "team status"
+
+    def test_retryable_error_without_original_text(self) -> None:
+        result = error("TIMEOUT", "Request timed out", retryable=True)
+        card = render_command_result(result)
+
+        assert "actions" in card
+        assert card["actions"][0]["data"]["action"] == "retry"
+        assert "original_text" not in card["actions"][0]["data"]
 
     def test_non_retryable_error_no_retry_button(self) -> None:
         result = error("UNAUTHORIZED", "Not allowed", retryable=False)

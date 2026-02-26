@@ -63,7 +63,7 @@ class TeamsBot(TeamsActivityHandler):
             text, identity.user_id, identity.user_name, conversation_id
         )
 
-        card = render_command_result(result)
+        card = render_command_result(result, original_text=text)
         att = card_to_attachment(card)
         reply = Activity(
             type="message",
@@ -78,7 +78,7 @@ class TeamsBot(TeamsActivityHandler):
         data = value if isinstance(value, dict) else {}
 
         from_field = activity.from_property
-        user_id = from_field.aad_object_id or from_field.id if from_field else ""
+        user_id = (from_field.aad_object_id or from_field.id) if from_field else ""
 
         result = await teams_handle_card_action(action, data, user_id)
         card = render_command_result(result)

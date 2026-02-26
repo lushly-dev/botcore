@@ -33,7 +33,7 @@ class TestExtractIdentity:
         assert identity.user_id == "user-aad-id-123"
         assert identity.user_name == "Test User"
         assert identity.tenant_id == "test-tenant-id"
-        assert identity.roles == ["user"]
+        assert identity.roles == ("user",)
 
     def test_minimal_activity(self) -> None:
         identity = extract_identity({})
@@ -57,7 +57,7 @@ class TestExtractIdentity:
             admin_groups=["Admins"],
             user_groups=["Users"],
         )
-        assert identity.roles == ["user"]
+        assert identity.roles == ("user",)
 
 
 class TestCreateUnauthorizedError:

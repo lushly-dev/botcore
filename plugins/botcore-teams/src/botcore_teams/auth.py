@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from afd.core.result import CommandResult, error
@@ -15,7 +15,7 @@ class TeamsIdentity:
     user_id: str
     user_name: str
     tenant_id: str
-    roles: list[str] = field(default_factory=lambda: ["user"])
+    roles: tuple[str, ...] = ("user",)
 
 
 def validate_tenant(activity_tenant_id: str | None, allowed_tenant_id: str) -> bool:
