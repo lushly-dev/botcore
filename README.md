@@ -345,6 +345,7 @@ ruff check src/ --fix
 - [x] Teams Interface plugin — Phase 1 (intent parsing, Adaptive Cards, tenant auth, stub dispatch)
 - [x] LLM runtime plugin (`botcore-llm` — Copilot SDK sessions)
 - [x] Agent orchestration Phase 1 (`botcore-agents` — single-agent lifecycle)
+- [x] Memory system (`botcore-memory` — local JSON store, 5 CRUD commands, scope-based access)
 - [ ] Agent orchestration Phase 2 (multi-agent routing)
 - [ ] Skill marketplace / community registry
 - [ ] Cross-repo skill sync dashboard

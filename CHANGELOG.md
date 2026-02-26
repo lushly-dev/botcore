@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `TeamsPlugin` entry-point implementing `BotCorePlugin` protocol
   - 62 tests, 94% coverage
 
+### Fixed
+
+- **connectors** -- Fix stale pre-flight GitHub rate-limit gating by allowing requests after reset window expiry; harden audit sanitization to recurse into list/tuple/set containers so nested sensitive keys are redacted
+- **teams** -- Repair dispatch path to use DirectClient with UNKNOWN_TOOL fallback; add `allowed_groups` authorization gate; thread `original_text` through Retry button action data; change `TeamsIdentity.roles` to immutable `tuple[str, ...]`
+- **memory** -- Wire plugin config injection via `configure` hook in `build_namespace`; enforce `max_entries_per_scope` atomically in local store with `MEMORY_SCOPE_FULL` error
+- **plugins** -- Inject validated plugin config in `build_namespace` and call plugin `configure` hooks before registration; add configure hooks for botcore-agents and botcore-llm; reset agents orchestrator on config change
+- **retry_async** -- Add `attempts >= 1` validation (was unreachable error path); remove misleading `RuntimeError` fallback
+
 ### Changed
 
 - **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages
