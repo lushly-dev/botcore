@@ -90,3 +90,20 @@ def test_plugin_registry_mcp_name() -> None:
     registry = PluginRegistry()
     registry.set_mcp_name("test-mcp")
     assert registry.mcp_name == "test-mcp"
+
+
+def test_plugin_registry_middleware() -> None:
+    """add_middleware registers callables; middleware property returns copy."""
+    registry = PluginRegistry()
+    assert registry.middleware == []
+
+    def mw_a() -> None: ...  # noqa: E704
+    def mw_b() -> None: ...  # noqa: E704
+
+    registry.add_middleware(mw_a)
+    registry.add_middleware(mw_b)
+    assert registry.middleware == [mw_a, mw_b]
+
+    # Property returns a defensive copy
+    registry.middleware.append(lambda: None)
+    assert len(registry.middleware) == 2

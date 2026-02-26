@@ -143,6 +143,8 @@ async def retry_async(
     Raises:
         The last exception raised by *fn* if all attempts fail.
     """
+    if attempts < 1:
+        raise ValueError(f"attempts must be >= 1, got {attempts}")
     last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -151,6 +153,4 @@ async def retry_async(
             last_exc = exc
             if attempt < attempts - 1:
                 await asyncio.sleep(delay_s)
-    if last_exc:
-        raise last_exc
-    raise RuntimeError("retry_async: all attempts failed")
+    raise last_exc  # type: ignore[misc]

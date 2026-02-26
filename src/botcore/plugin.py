@@ -62,7 +62,12 @@ class PluginRegistry:
         self._docs[topic] = content
 
     def add_middleware(self, middleware: Callable[..., Any]) -> None:
-        """Register a middleware callable for command pre/post-processing."""
+        """Register a middleware callable for command pre/post-processing.
+
+        Middleware will be invoked around command execution once the
+        server factory integrates the middleware chain.  Signature
+        is not yet stabilised — this is a registration-only stub.
+        """
         self._middleware.append(middleware)
 
     def config_defaults(self) -> dict[str, Any]:

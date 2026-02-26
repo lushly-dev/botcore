@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import sys
 
-from botcore.utils.runner import MAX_OUTPUT_LENGTH, run_command, run_python_module, smart_truncate
+import pytest
+
+from botcore.utils.runner import (
+    MAX_OUTPUT_LENGTH,
+    retry_async,
+    run_command,
+    run_python_module,
+    smart_truncate,
+)
 
 
 def test_smart_truncate_short() -> None:
@@ -56,3 +64,43 @@ async def test_run_python_module() -> None:
     result = await run_python_module("platform")
     assert result["success"] is True
     assert result["output"]  # platform module prints platform info
+
+
+# --- retry_async tests ---
+
+
+async def test_retry_async_success_first_attempt() -> None:
+    """Succeeds immediately when fn does not raise."""
+    result = await retry_async(make_flaky(0, "ok"), attempts=3, delay_s=0)
+    assert result == "ok"
+
+
+async def test_retry_async_success_after_retries() -> None:
+    """Succeeds after transient failures."""
+    result = await retry_async(make_flaky(2, "ok"), attempts=3, delay_s=0)
+    assert result == "ok"
+
+
+async def test_retry_async_all_attempts_exhausted() -> None:
+    """Raises last exception when all attempts fail."""
+    with pytest.raises(RuntimeError, match="boom"):
+        await retry_async(make_flaky(5, "ok"), attempts=3, delay_s=0)
+
+
+async def test_retry_async_invalid_attempts() -> None:
+    """Rejects attempts < 1."""
+    with pytest.raises(ValueError, match="attempts must be >= 1"):
+        await retry_async(make_flaky(0, "ok"), attempts=0, delay_s=0)
+
+
+def make_flaky(fail_count: int, value: object) -> object:
+    """Return an async callable that fails *fail_count* times then returns *value*."""
+    calls = {"n": 0}
+
+    async def _fn() -> object:
+        calls["n"] += 1
+        if calls["n"] <= fail_count:
+            raise RuntimeError("boom")
+        return value
+
+    return _fn
