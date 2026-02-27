@@ -104,8 +104,13 @@ class AgentOrchestrator:
             logger.warning("Autosave failed after %s: %s", reason, exc)
 
     def _resolve_tools(self, config: AgentConfig) -> list[str]:
-        """Build the combined tools list from skills + connector commands."""
-        tools = list(config.skills)
+        """Build the tools list from connector commands.
+
+        Skills are contextual knowledge (not executable commands) and are
+        NOT included here — they inform the agent via system prompt and
+        skill files, not via LLM tool bridging.
+        """
+        tools: list[str] = []
 
         if config.connectors or config.connector_commands:
             global _namespace
@@ -120,7 +125,7 @@ class AgentOrchestrator:
                 _namespace,
             ))
 
-        return tools or []
+        return tools
 
     async def create_agent(self, name: str) -> CommandResult[dict]:
         """Create an agent from config. Does not start it."""

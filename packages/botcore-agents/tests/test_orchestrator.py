@@ -85,7 +85,7 @@ class TestStartAgent:
         await orchestrator.start_agent("researcher")
         mock_llm["session_create"].assert_awaited_once_with(
             model="gpt-4.1",
-            tools=["dev_test", "dev_lint"],
+            tools=[],
             system_prompt="You are a research agent.",
             permissions=AgentPermissionsConfig(),
             agent_name="researcher",
@@ -573,12 +573,12 @@ class TestCapabilityDeclarations:
     """Verify that start_agent() restricts tools based on connector config."""
 
     async def test_skills_only_no_connectors(self, orchestrator: AgentOrchestrator, mock_llm):
-        """Default researcher (connectors=[]) → only skills, no namespace lookup."""
+        """Default researcher (connectors=[]) → no tools bridged (skills are knowledge, not tools)."""
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         mock_llm["session_create"].assert_awaited_once_with(
             model="gpt-4.1",
-            tools=["dev_test", "dev_lint"],
+            tools=[],
             system_prompt="You are a research agent.",
             permissions=AgentPermissionsConfig(),
             agent_name="researcher",
@@ -587,7 +587,7 @@ class TestCapabilityDeclarations:
     async def test_connectors_prefix_filtering(
         self, connector_orchestrator: AgentOrchestrator, mock_llm
     ):
-        """connectors=["github"] → skills + github_* commands from namespace."""
+        """connectors=["github"] → github_* commands from namespace (skills not bridged)."""
         orch_mod._namespace = _FAKE_NS
 
         await connector_orchestrator.create_agent("researcher")
@@ -595,12 +595,13 @@ class TestCapabilityDeclarations:
 
         call_kwargs = mock_llm["session_create"].call_args.kwargs
         tools = call_kwargs["tools"]
-        # skills first, then connector commands
-        assert "dev_test" in tools
-        assert "dev_lint" in tools
+        # Only connector commands, not skills
         assert "github_issue_list" in tools
         assert "github_issue_create" in tools
         assert "github_pr_list" in tools
+        # skills are NOT bridged as tools
+        assert "dev_test" not in tools
+        assert "dev_lint" not in tools
         # email commands should NOT be included
         assert "email_send" not in tools
 
@@ -615,20 +616,19 @@ class TestCapabilityDeclarations:
 
         call_kwargs = mock_llm["session_create"].call_args.kwargs
         tools = call_kwargs["tools"]
-        assert "dev_test" in tools
         assert "github_issue_list" in tools
-        assert len(tools) == 2  # only skill + the one command
+        assert len(tools) == 1  # only the one connector command
 
     async def test_empty_connectors_deny_by_default(
         self, connector_orchestrator: AgentOrchestrator, mock_llm
     ):
-        """Default config (connectors=[], connector_commands=[]) → no connector commands."""
+        """Default config (connectors=[], connector_commands=[]) → no tools."""
         await connector_orchestrator.create_agent("locked")
         await connector_orchestrator.start_agent("locked")
 
         call_kwargs = mock_llm["session_create"].call_args.kwargs
         tools = call_kwargs["tools"]
-        assert tools == ["dev_test"]
+        assert tools == []
 
     async def test_wildcard_connectors(
         self, connector_orchestrator: AgentOrchestrator, mock_llm
@@ -655,11 +655,13 @@ class TestCapabilityDeclarations:
 
         call_kwargs = mock_llm["session_create"].call_args.kwargs
         tools = call_kwargs["tools"]
-        assert "dev_build" in tools
+        # Wildcard resolves all connector prefixes, but NOT skills
         assert "github_issue_list" in tools
         assert "github_issue_create" in tools
         assert "github_pr_list" in tools
         assert "email_send" in tools
+        # skills are knowledge, not bridged tools
+        assert "dev_build" not in tools
 
     async def test_pooled_instance_inherits_connectors(
         self, connector_orchestrator: AgentOrchestrator, mock_llm
