@@ -108,7 +108,7 @@ Commands: `cd botcore-connectors && uv run pytest tests/ -v` and `uv run ruff ch
 
 ## Plugin Contract
 
-Plugins register commands, docs, and skills via entry points. See [build-botcore-plugins](skills/build-botcore-plugins/) skill for full patterns.
+Plugins register commands, docs, and skills via entry points. See [build-botcore-plugins](.claude/skills/build-botcore-plugins/) skill for full patterns.
 
 ```python
 class MyPlugin:
@@ -129,7 +129,7 @@ Skills use `source:` frontmatter for three-tier ownership:
 
 ## Configuration
 
-Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`. See [configure-botcore](skills/configure-botcore/) skill for full reference.
+Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`. See [configure-botcore](.claude/skills/configure-botcore/) skill for full reference.
 
 ```toml
 [skills]
@@ -137,3 +137,17 @@ include = ["security", "testing"]  # Only seed these
 skip = ["i18n"]                    # Exclude these
 source_dir = ".claude/skills"      # Target directory
 ```
+
+## Architecture & Principles
+
+Two skills capture system-level knowledge:
+
+- **[botcore-architecture](.claude/skills/botcore-architecture/)** — System topology, package map, request flows, security boundaries, extension points
+- **[botcore-principles](.claude/skills/botcore-principles/)** — 12 design tenets (CommandResult Everywhere, Opt-In Composability, Constrained Agency, Meta-Tool Pattern, etc.)
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the feature trajectory:
+- **Foundation (active)** — Agent capability declarations, orchestrator state serialization, per-agent permissions
+- **Phase 2 (proposed)** — Async task execution, cost-aware routing, SQLite memory, Azure connectors
+- **Specs** live in `docs/features/active/` (in progress) and `docs/features/proposed/` (queued)

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **botcore-architecture skill** — System topology, package map, request flows, security boundaries, and extension points for agent learning
+- **botcore-principles skill** — 12 design tenets (CommandResult Everywhere, Opt-In Composability, Constrained Agency, Meta-Tool Pattern, etc.) with decision heuristics and anti-patterns
+- **ROADMAP.md** — Feature trajectory: foundation (active), Phase 2 (proposed), future, and non-goals
+- **3 foundation specs** (`docs/features/active/`) — Agent capability declarations, orchestrator state serialization, per-agent permissions
+- **4 proposed specs** (`docs/features/proposed/`) — Async task execution, cost-aware routing, SQLite memory backend, Azure connectors
 - **botcore-connectors** -- New plugin package for typed HTTP connectors (`pip install botcore-connectors`)
   - **Connector base layer** (spec 01) -- `ConnectorBase` with inlined retry, rate-limiting, backoff, telemetry (trace ID + timing), and HTTP-to-error-code mapping. `ConnectorContext` Pydantic model for shared config.
   - **Auth & credential resolution** (spec 02) -- `DefaultCredentialResolver` with env var → `gh` CLI fallback chain, token caching with TTL, 401 auto-retry with invalidation, and token redaction from logs/serialization.
@@ -68,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **AGENTS.md** — Added Architecture & Principles section and Roadmap section referencing new skills and feature trajectory
+- **LANDSCAPE.md** — Trimmed to pure competitive positioning; architecture and vision sections replaced with pointers to skills, specs, and ROADMAP.md
 - **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages
 - **botcore.toml** -- Expanded configuration with language, tooling, threshold, and hygiene settings
 - **CONTRIBUTING.md** -- Comprehensive rewrite with lefthook setup, development workflow, and contribution guidelines
