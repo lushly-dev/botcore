@@ -1,0 +1,416 @@
+---
+name: configure-agents
+description: >
+  Guides configuration of botcore agent teams in botcore.toml. Covers AgentConfig
+  fields (name, role, model, skills, connectors, connector_commands, memory_scope,
+  permissions, system_prompt, is_lead), AgentsPluginConfig (default_model, max_agents),
+  permission profiles, system prompt authoring, MCP tool access, connector command
+  resolution, and multi-agent team composition patterns. Use when creating agent teams,
+  writing agent configs, authoring system prompts, setting permissions, or debugging
+  agent configuration issues.
+version: "1.0.0"
+source: botcore
+category: agents
+triggers:
+  - agent config
+  - configure agents
+  - botcore agents
+  - agent team
+  - system prompt
+  - agent permissions
+  - connector commands
+  - memory scope
+  - agent role
+  - is_lead
+  - AgentConfig
+  - AgentsPluginConfig
+portable: true
+---
+
+# Configure Agents
+
+Guide for configuring botcore agent teams — from single agents to multi-agent
+teams with distinct roles, permissions, and tool access.
+
+## Config Location
+
+Agent configuration lives in `botcore.toml` (or `pyproject.toml [tool.botcore]`)
+under the `[plugins.agents]` section:
+
+```toml
+[plugins.agents]
+default_model = "claude-sonnet-4-20250514"
+max_agents = 5
+
+[plugins.agents.agents.my-agent]
+name = "my-agent"
+role = "What this agent does"
+# ... fields below
+```
+
+## Routing Logic
+
+| Request type | Section |
+|---|---|
+| Field reference, types, defaults | [AgentConfig Fields](#agentconfig-fields) |
+| System prompt patterns | [System Prompt Authoring](#system-prompt-authoring) |
+| Permissions and security | [Permission Profiles](#permission-profiles) |
+| Tool access (connectors, MCP, commands) | [Tool Access](#tool-access) |
+| Multi-agent team patterns | [Team Composition](#team-composition) |
+| Common mistakes | [Pitfalls](#pitfalls) |
+| Real-world examples | [references/examples.md](references/examples.md) |
+
+## AgentsPluginConfig (Top-Level)
+
+```toml
+[plugins.agents]
+default_model = "gpt-4.1"   # Fallback when agent.model is blank
+max_agents = 10              # Pool size limit (1–100)
+```
+
+| Field | Type | Default | Constraint |
+|-------|------|---------|------------|
+| `default_model` | string | `"gpt-4.1"` | Any model ID |
+| `max_agents` | int | `10` | 1–100 |
+
+## AgentConfig Fields
+
+Each agent is a TOML table under `[plugins.agents.agents.<name>]`.
+
+| Field | Type | Default | Constraint | Purpose |
+|-------|------|---------|------------|---------|
+| `name` | string | `""` | — | Agent identifier |
+| `role` | string | `""` | — | Purpose description (for humans and triage) |
+| `model` | string | `""` | Blank → `default_model` | LLM model to use |
+| `skills` | list[str] | `[]` | Skill names | Skills to expose to the agent |
+| `connectors` | list[str] | `[]` | Connector prefix names | Connector access (`"github"`, `"azure"`, `"*"`) |
+| `connector_commands` | list[str] | `[]` | Command names | Explicit command allowlist (overrides connectors) |
+| `memory_scope` | literal | `"session"` | `"session"` / `"agent"` / `"global"` | Memory visibility |
+| `max_concurrent_tasks` | int | `1` | 1–10 | Parallel task capacity |
+| `heartbeat_interval` | int | `30` | 5–300 (seconds) | Health check frequency |
+| `system_prompt` | string | `""` | — | Behavior instructions for the LLM |
+| `is_lead` | bool | `false` | — | Coordinator/lead agent flag |
+| `permissions` | table | (see below) | — | Capability allowlist |
+
+### Minimal Agent
+
+```toml
+[plugins.agents.agents.reviewer]
+name = "reviewer"
+role = "Review code for quality"
+skills = ["review-code", "enforce-standards"]
+```
+
+This creates an agent with all defaults: session memory, 1 concurrent task,
+no connectors, no filesystem access, default model.
+
+## Permission Profiles
+
+Permissions inherit from `LlmPermissionsConfig` with agent-specific extensions.
+
+```toml
+[plugins.agents.agents.reviewer.permissions]
+# Inherited from LlmPermissionsConfig (defaults):
+# allow_shell = false      # Shell command execution
+# allow_filesystem = false # Filesystem read/write
+# allow_mcp = true         # MCP tool access (binary — all or none)
+# allow_custom_tools = true # Custom tool execution
+
+# Agent extensions:
+filesystem_paths = ["src/", "docs/"]        # Allowlisted paths (when filesystem enabled)
+shell_allowlist = ["ruff", "pytest"]        # Allowlisted shell commands (when shell enabled)
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `allow_shell` | bool | `false` | Enables shell execution |
+| `allow_filesystem` | bool | `false` | Enables file read/write |
+| `allow_mcp` | bool | `true` | Enables ALL MCP tools (binary gate, no per-server scoping yet) |
+| `allow_custom_tools` | bool | `true` | Enables custom tool execution |
+| `shell_allowlist` | list[str] | `null` | When set, only these commands allowed |
+| `filesystem_paths` | list[str] | `null` | When set, only these paths accessible |
+
+**Key insight:** `allow_mcp = true` is the default — all agents have MCP tool
+access out of the box. There is no per-MCP-server allowlist yet; it's all or none.
+If you need to restrict which MCP servers an agent can use, that requires an
+upstream feature (per-server scoping).
+
+### Principle of Least Privilege
+
+Start restrictive, open up as needed:
+
+```toml
+# Read-only reviewer — no shell, scoped filesystem
+[plugins.agents.agents.reviewer.permissions]
+filesystem_paths = ["src/", "components/", "docs/"]
+
+# Researcher — needs web access but no filesystem
+[plugins.agents.agents.researcher.permissions]
+# No filesystem_paths = no filesystem access (inherits allow_filesystem=false)
+
+# Builder — needs shell for running tools
+[plugins.agents.agents.builder.permissions]
+allow_shell = true
+shell_allowlist = ["ruff", "pytest", "npm"]
+filesystem_paths = ["src/", "tests/"]
+```
+
+## Tool Access
+
+Agents get tools from three sources: skills, connectors, and MCP servers.
+
+### Skills
+
+List skill names that should be available to the agent:
+
+```toml
+skills = ["enforce-standards", "ensure-accessibility", "review-code"]
+```
+
+Skills must exist in the registry (bundled, plugin-provided, or project-local).
+Unknown skill names are silently ignored today — validate with `skill_list`.
+
+### Connector Commands (Resolution Order)
+
+The orchestrator resolves commands in priority order:
+
+1. **`connector_commands` set** → use those exact command names (explicit override)
+2. **`connectors` empty** → deny-by-default, no connector commands
+3. **`"*"` in connectors** → all commands from all known connector prefixes
+4. **Specific connectors** → prefix-match (e.g., `connectors = ["github"]` → all `github_*` commands)
+
+```toml
+# Option A: All GitHub commands
+connectors = ["github"]
+
+# Option B: Specific commands only (overrides connectors)
+connector_commands = ["github_list_issues", "research_query"]
+
+# Option C: Everything (use sparingly)
+connectors = ["*"]
+```
+
+**Lesson learned:** `connector_commands` works for ANY command in the namespace,
+not just connector-prefixed ones. For example, `research_query` (Gemini + Google
+Search) is a standalone command that can be added via `connector_commands`.
+
+### MCP Tool Access
+
+MCP tools are enabled by default (`allow_mcp = true`). No additional config needed.
+To disable: set `allow_mcp = false` in the agent's permissions.
+
+Current limitation: binary gate — an agent either has access to all MCP servers
+or none. Per-server scoping is not yet available.
+
+## Memory Scope
+
+Controls what memory an agent can read and write:
+
+| Scope | Visibility | Use case |
+|-------|-----------|----------|
+| `"session"` | Current conversation only | Default. Stateless workers. |
+| `"agent"` | Persists across sessions for this agent | Reviewers, specialists with learned context. |
+| `"global"` | Shared across all agents | Coordinators, lead agents that need full picture. |
+
+```toml
+# Specialist — remembers its own context
+memory_scope = "agent"
+
+# Lead — sees everything
+memory_scope = "global"
+```
+
+**Recommendation:** Use `"agent"` for specialists that benefit from accumulated
+knowledge (e.g., a reviewer learning team conventions). Use `"global"` only for
+the lead/coordinator. Default `"session"` is fine for stateless workers.
+
+## System Prompt Authoring
+
+The system prompt is the most impactful field. It shapes agent behavior, quality,
+and routing discipline. Effective prompts follow a consistent structure.
+
+### Structure
+
+A well-structured system prompt has five sections:
+
+1. **Identity** — who the agent is, what team it serves
+2. **Voice** — communication style and tone
+3. **Severity framework** — how to classify findings (for review agents)
+4. **Capabilities** — what the agent does, tools available, workflow order
+5. **Routing boundaries** — what the agent does NOT do
+
+### Patterns That Work
+
+**Severity tagging** (for review/analysis agents):
+```
+Severity: Tag every finding clearly.
+- 🔴 Critical — blocks ship (accessibility violations, wrong component, broken interactions)
+- 🟡 Important — should fix before release (pattern deviations, token misuse, missing states)
+- 🔵 Suggestion — nice to have (polish, alternative approaches, optimization)
+```
+
+**Explicit routing boundaries** (prevents scope creep):
+```
+Routing boundaries:
+- You do NOT rewrite UX copy. Flag content needs and note them for [other agent].
+- You do NOT decide whether a feature should be built. That's a coordinator question.
+- You do NOT conduct user research. Flag research needs and note them.
+```
+
+**Output format prescription** (ensures consistent structure):
+```
+Output format: Start with a summary (X critical, Y important, Z suggestions),
+then list findings grouped by dimension, each with severity tag, specific issue,
+standard reference, and suggested fix.
+```
+
+**KB-refresh discipline** (for agents with Nexus/KB MCP access):
+```
+Before every review, search Nexus for current component docs, patterns, and
+accessibility guidance. Never rely on cached knowledge when the KB may have
+been updated. If Nexus is unavailable, note it and proceed with skill knowledge.
+```
+
+**Research workflow ordering** (for research agents):
+```
+Research workflow:
+1. Search Nexus first — check for existing KB content
+2. Search GitHub for related issues and patterns
+3. Use Gemini/Google for external sources and competitive analysis
+4. Synthesize findings with clear source attribution
+```
+
+### Anti-Patterns
+
+- **Vague instructions** — "Be helpful and thorough" tells the LLM nothing.
+  Be specific about output format, severity, and routing.
+- **Missing boundaries** — Without "I do NOT do X", agents will drift into
+  every domain. Explicit routing boundaries are essential for multi-agent teams.
+- **No severity framework** — Review agents without severity tags produce
+  walls of equally-weighted text. Always define severity levels.
+- **Over-prompting** — System prompts are not essays. Keep them focused on
+  behavior contracts, not background knowledge (that's what skills are for).
+
+## Team Composition
+
+### Roles That Work Well Together
+
+| Role | Purpose | Key config |
+|------|---------|------------|
+| **Reviewer** | Quality gate — design, code, accessibility | Skills-heavy, no connectors, scoped filesystem |
+| **Researcher** | Investigation — patterns, standards, competitive | Connectors + research tools, no filesystem |
+| **Coordinator** | Triage and delegation | `is_lead = true`, global memory, connectors for status |
+| **Builder** | Implementation — code generation, fixes | Shell access, broad filesystem, skills for standards |
+
+### Lead Agent Pattern
+
+One agent should be `is_lead = true`. This agent:
+- Has `memory_scope = "global"` to see all agent context
+- Handles triage, prioritization, and status
+- Delegates to specialists based on routing rules
+- Does NOT do specialist work itself
+
+```toml
+[plugins.agents.agents.coordinator]
+name = "coordinator"
+role = "Triage and delegate"
+is_lead = true
+memory_scope = "global"
+max_concurrent_tasks = 2
+
+# ... system_prompt with delegation rules
+```
+
+### Connector Scoping Pattern
+
+Give each agent only the connectors it needs:
+
+```toml
+# Reviewer: no external access — skills + filesystem only
+[plugins.agents.agents.reviewer]
+connectors = []
+skills = ["review-code", "ensure-accessibility"]
+
+# Researcher: GitHub + web research
+[plugins.agents.agents.researcher]
+connectors = ["github"]
+connector_commands = ["research_query"]
+
+# Coordinator: GitHub for triage
+[plugins.agents.agents.coordinator]
+connectors = ["github"]
+```
+
+## Pitfalls
+
+### 1. Blank model falls through to default_model
+
+If `model = ""` or not set, the agent uses `default_model` from the
+`[plugins.agents]` section. This is intentional — set `default_model` once,
+override per-agent only when needed.
+
+### 2. connector_commands overrides connectors
+
+If `connector_commands` is non-empty, it is the **complete** command list.
+The `connectors` field is ignored for command resolution. This is by design
+for explicit control, but can be surprising.
+
+```toml
+# This agent ONLY gets research_query — NOT all github_* commands
+connectors = ["github"]
+connector_commands = ["research_query"]
+```
+
+To get both GitHub commands AND research_query:
+```toml
+connector_commands = ["github_list_issues", "github_get_issue", "research_query"]
+```
+
+### 3. Unknown skills are silently ignored
+
+If you reference a skill name that doesn't exist in the registry, it's
+quietly dropped. Always verify with `skill_list` after configuration.
+
+### 4. allow_mcp is all-or-nothing
+
+Setting `allow_mcp = true` (the default) grants access to ALL registered
+MCP servers. There is no per-server scoping. If an agent should not have
+access to a specific MCP server, the only option today is `allow_mcp = false`
+(which blocks all MCP servers).
+
+### 5. filesystem_paths without allow_filesystem
+
+Setting `filesystem_paths` does NOT automatically enable filesystem access.
+You still need `allow_filesystem = true` or the paths are ignored.
+However, in practice the orchestrator uses `filesystem_paths` as a soft
+allowlist even when `allow_filesystem` is at its default — check your
+version's behavior.
+
+### 6. Config is Pydantic — not a dict
+
+`AgentsPluginConfig` is a Pydantic model. When loading in code:
+
+```python
+from botcore import load_config
+from botcore_agents import AgentsPluginConfig
+
+config = load_config()
+agents_section = config.plugins.get("agents", {})
+agents_config = AgentsPluginConfig(**agents_section)
+```
+
+Do not use `config["plugins"]["agents"]` — `BotCoreConfig` is not a dict.
+
+## Validation Checklist
+
+Before committing agent configuration:
+
+- [ ] Every agent has a `name` and `role`
+- [ ] `model` is set or `default_model` covers it
+- [ ] Skills referenced exist in the registry
+- [ ] Connectors referenced have matching connector plugins installed
+- [ ] `connector_commands` is intentional (overrides `connectors`)
+- [ ] `memory_scope` matches the agent's role (global only for lead)
+- [ ] `system_prompt` has: identity, voice, capabilities, routing boundaries
+- [ ] Permissions follow least-privilege (no unnecessary shell/filesystem)
+- [ ] `is_lead = true` on exactly one agent (for multi-agent teams)
