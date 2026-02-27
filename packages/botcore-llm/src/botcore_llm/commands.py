@@ -13,7 +13,7 @@ from afd import CommandResult, error, success
 
 from .bridge import bridge_commands
 from .client import CopilotClientManager
-from .config import LlmConfig, get_llm_config
+from .config import LlmConfig, LlmPermissionsConfig, get_llm_config
 from .permissions import create_permission_handler
 from .session import get_session_registry
 
@@ -59,6 +59,8 @@ async def llm_session_create(
     tools: list[str] | None = None,
     system_prompt: str | None = None,
     streaming: bool = True,
+    permissions: LlmPermissionsConfig | None = None,
+    agent_name: str = "",
 ) -> CommandResult[dict]:
     """Create a new LLM session with bridged botcore tools."""
     config = _get_config()
@@ -94,7 +96,8 @@ async def llm_session_create(
             )
 
     # Build session config
-    permission_handler = create_permission_handler(config.permissions)
+    perms = permissions or config.permissions
+    permission_handler = create_permission_handler(perms, agent_name=agent_name)
 
     session_config: dict[str, Any] = {
         "on_permission_request": permission_handler,
@@ -131,6 +134,7 @@ async def llm_session_create(
         model=model,
         tools=tool_names,
         config=session_config,
+        agent_name=agent_name,
     )
 
     return success(

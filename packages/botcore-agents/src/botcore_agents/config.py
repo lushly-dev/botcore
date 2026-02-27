@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from botcore_llm.config import LlmPermissionsConfig
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class AgentPermissionsConfig(LlmPermissionsConfig):
+    """Per-agent permission profile — extends LlmPermissionsConfig with allowlists."""
+
+    shell_allowlist: list[str] | None = None
+    filesystem_paths: list[str] | None = None
 
 
 class AgentConfig(BaseModel):
@@ -23,6 +31,7 @@ class AgentConfig(BaseModel):
     heartbeat_interval: int = Field(default=30, ge=5, le=300)
     system_prompt: str = ""
     is_lead: bool = False
+    permissions: AgentPermissionsConfig = Field(default_factory=AgentPermissionsConfig)
 
 
 class AgentsPluginConfig(BaseModel):

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from .config import AgentsPluginConfig
+from .config import AgentPermissionsConfig, AgentsPluginConfig
 from .state import JsonStateBackend, OrchestratorSnapshot, OrchestratorStateBackend
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ class AgentsPlugin:
 
 
 __all__ = [
+    "AgentPermissionsConfig",
     "AgentsPlugin",
     "AgentsPluginConfig",
     "JsonStateBackend",

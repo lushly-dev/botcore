@@ -46,7 +46,7 @@ packages/botcore-llm/           # LLM runtime plugin
 │   ├── session.py               # SessionRegistry
 │   ├── bridge.py                # Command-to-tool bridge
 │   ├── client.py                # CopilotClientManager
-│   └── config.py                # LlmConfig
+│   └── config.py                # LlmConfig, LlmPermissionsConfig
 └── tests/
 
 packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
@@ -56,7 +56,7 @@ packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
 │   ├── orchestrator.py          # AgentOrchestrator (pool + tasks + capability resolution + state)
 │   ├── state.py                 # OrchestratorSnapshot, StateBackend, JsonStateBackend
 │   ├── models.py                # Task, AgentHealth, AgentState
-│   └── config.py                # AgentConfig (skills, connectors, connector_commands)
+│   └── config.py                # AgentConfig, AgentPermissionsConfig, AgentsPluginConfig (skills, connectors, connector_commands)
 └── tests/
 
 packages/botcore-memory/        # Memory plugin (Phase 1)

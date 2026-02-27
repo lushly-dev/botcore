@@ -344,6 +344,7 @@ ruff check src/ --fix
 - [x] LLM runtime plugin (`botcore-llm` — Copilot SDK sessions)
 - [x] Agent orchestration Phase 1 (`botcore-agents` — single-agent lifecycle)
 - [x] Agent state serialization (`OrchestratorSnapshot`, pluggable backends, JSON file backend)
+- [x] Per-agent permission profiles (`AgentPermissionsConfig` — shell/filesystem allowlists, agent-scoped gates)
 - [x] Memory system (`botcore-memory` — local JSON store, 5 CRUD commands, scope-based access)
 - [ ] Foundation: agent capability declarations, state serialization, per-agent permissions
 - [ ] Async task execution, cost-aware routing

@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import botcore_agents.orchestrator as orch_mod
+from botcore_agents.config import AgentsPluginConfig
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
 
 
@@ -57,13 +58,34 @@ class TestStartAgent:
         assert result.error.code == "AGENT_ALREADY_STARTED"
 
     async def test_start_uses_config_model(self, orchestrator: AgentOrchestrator, mock_llm):
+        from botcore_agents.config import AgentPermissionsConfig
+
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         mock_llm["session_create"].assert_awaited_once_with(
             model="gpt-4.1",
             tools=["dev_test", "dev_lint"],
             system_prompt="You are a research agent.",
+            permissions=AgentPermissionsConfig(),
+            agent_name="researcher",
         )
+
+    async def test_start_passes_custom_permissions(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        from botcore_agents.config import AgentPermissionsConfig
+
+        custom_perms = AgentPermissionsConfig(
+            allow_shell=True,
+            shell_allowlist=["git *"],
+        )
+        sample_config.agents["researcher"].permissions = custom_perms
+        orch = AgentOrchestrator(sample_config)
+        await orch.create_agent("researcher")
+        await orch.start_agent("researcher")
+        call_kwargs = mock_llm["session_create"].call_args.kwargs
+        assert call_kwargs["permissions"] is custom_perms
+        assert call_kwargs["agent_name"] == "researcher"
 
 
 class TestStopAgent:
