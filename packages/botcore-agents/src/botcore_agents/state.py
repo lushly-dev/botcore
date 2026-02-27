@@ -96,7 +96,11 @@ class JsonStateBackend:
             return None
 
         raw = self._path.read_text(encoding="utf-8")
-        snapshot = OrchestratorSnapshot.model_validate_json(raw)
+        try:
+            snapshot = OrchestratorSnapshot.model_validate_json(raw)
+        except (ValueError, Exception) as exc:
+            logger.warning("Snapshot parse failed: %s", exc)
+            return None
 
         # Reject stale snapshots
         age_hours = (datetime.now(UTC) - snapshot.timestamp).total_seconds() / 3600

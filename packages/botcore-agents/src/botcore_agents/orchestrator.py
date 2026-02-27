@@ -488,6 +488,7 @@ class AgentOrchestrator:
         Restored agents are forced to ``stopped`` with cleared session
         metadata since sessions are not portable.
         """
+        logger.info("Replacing orchestrator config from snapshot (version=%s)", snapshot.version)
         self._config = snapshot.config.model_copy(deep=True)
         self._tasks = {tid: t.model_copy(deep=True) for tid, t in snapshot.tasks.items()}
 
@@ -581,8 +582,10 @@ def get_orchestrator(
         _orchestrator = AgentOrchestrator(config or AgentsPluginConfig(), backend=backend)
     elif backend is not None:
         logger.warning(
-            "get_orchestrator() called with backend= but singleton already exists; ignored"
+            "get_orchestrator() called with backend= but singleton already exists; "
+            "updating backend on existing instance"
         )
+        _orchestrator._backend = backend
     return _orchestrator
 
 
