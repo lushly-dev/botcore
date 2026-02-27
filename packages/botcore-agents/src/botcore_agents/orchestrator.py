@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,7 +16,7 @@ from .models import AgentHealth, AgentState, Task
 logger = logging.getLogger(__name__)
 
 # Cached command namespace — avoids re-discovering plugins on every start.
-_namespace: dict[str, Any] | None = None
+_namespace: dict[str, Callable[..., Any]] | None = None
 
 
 def resolve_connector_commands(
@@ -33,6 +34,9 @@ def resolve_connector_commands(
     """
     # 1. Explicit command list takes precedence
     if connector_commands:
+        missing = [c for c in connector_commands if c not in namespace]
+        if missing:
+            logger.warning("connector_commands not in namespace: %s", missing)
         return list(connector_commands)
 
     # 2. Deny-by-default
@@ -76,7 +80,7 @@ class AgentOrchestrator:
     def tasks(self) -> dict[str, Task]:
         return dict(self._tasks)
 
-    def _resolve_tools(self, config: AgentConfig) -> list[str] | None:
+    def _resolve_tools(self, config: AgentConfig) -> list[str]:
         """Build the combined tools list from skills + connector commands."""
         tools = list(config.skills)
 
@@ -93,7 +97,7 @@ class AgentOrchestrator:
                 _namespace,
             ))
 
-        return tools or None
+        return tools or []
 
     async def create_agent(self, name: str) -> CommandResult[dict]:
         """Create an agent from config. Does not start it."""
