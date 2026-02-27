@@ -8,7 +8,7 @@ description: >
   resolution, and multi-agent team composition patterns. Use when creating agent teams,
   writing agent configs, authoring system prompts, setting permissions, or debugging
   agent configuration issues.
-version: "1.0.0"
+version: "1.1.0"
 source: botcore
 category: agents
 triggers:
@@ -229,15 +229,19 @@ the lead/coordinator. Default `"session"` is fine for stateless workers.
 The system prompt is the most impactful field. It shapes agent behavior, quality,
 and routing discipline. Effective prompts follow a consistent structure.
 
-### Structure
+### Prompt-as-Contract
 
-A well-structured system prompt has five sections:
+Treat system prompts as formal specification contracts, not loose instructions.
+Ambiguous prompts cause cascading failures in multi-agent teams — the LLM fills
+gaps with hallucinated intent. A contract-style prompt has four required sections
+and two optional sections:
 
-1. **Identity** — who the agent is, what team it serves
-2. **Voice** — communication style and tone
-3. **Severity framework** — how to classify findings (for review agents)
-4. **Capabilities** — what the agent does, tools available, workflow order
-5. **Routing boundaries** — what the agent does NOT do
+1. **Intent & Role** — singular objective + persona (shapes analytical perspective)
+2. **Constraints** — immutable rules, negative constraints (what NOT to do), prioritization
+3. **Capabilities** — tools available, workflow order, delegation rules
+4. **Output schema** — exact format for downstream consumption (severity framework, structure)
+5. *Voice* (optional) — communication style when it matters for the domain
+6. *Routing boundaries* (recommended for multi-agent) — explicit handoff rules
 
 ### Patterns That Work
 
@@ -284,12 +288,16 @@ Research workflow:
 
 - **Vague instructions** — "Be helpful and thorough" tells the LLM nothing.
   Be specific about output format, severity, and routing.
-- **Missing boundaries** — Without "I do NOT do X", agents will drift into
-  every domain. Explicit routing boundaries are essential for multi-agent teams.
+- **Missing negative constraints** — Without explicit "I do NOT do X" rules,
+  agents drift into every domain. In multi-agent teams, boundary violations
+  cause duplicate work and conflicting outputs. Negative constraints are as
+  important as positive instructions.
 - **No severity framework** — Review agents without severity tags produce
   walls of equally-weighted text. Always define severity levels.
 - **Over-prompting** — System prompts are not essays. Keep them focused on
   behavior contracts, not background knowledge (that's what skills are for).
+- **No output schema** — Without a defined output format, downstream agents
+  and the orchestrator can't reliably parse results. Specify structure.
 
 ## Team Composition
 
@@ -320,6 +328,49 @@ max_concurrent_tasks = 2
 
 # ... system_prompt with delegation rules
 ```
+
+### Verifier Agent Pattern
+
+For critical workflows, add a dedicated verification agent that operates
+outside the execution loop. The verifier reviews synthesized outputs against
+the original task requirements — checking for hallucinations, role drift,
+or unauthorized capability escalation.
+
+```toml
+[plugins.agents.agents.verifier]
+name = "verifier"
+role = "Verify agent outputs against task requirements and quality standards"
+skills = ["review-code"]
+memory_scope = "session"  # stateless — fresh perspective each time
+system_prompt = """
+You are the quality verifier. You do NOT execute tasks.
+
+Your job: review the output of other agents against the original request.
+Check for:
+- Hallucinated claims (no source, no evidence)
+- Scope drift (output addresses things not asked for)
+- Missing requirements (request asked for X, output omits it) 
+- Format violations (output doesn't match requested structure)
+
+Output: PASS with confidence score, or FAIL with specific issues.
+"""
+```
+
+The verifier is most valuable when the cost of a wrong answer is high
+(e.g., security reviews, compliance checks, external communications).
+
+### Scaling Heuristics
+
+Match agent count and tool access to task complexity:
+
+| Complexity | Agents | Tool calls | Example |
+|-----------|--------|------------|----------|
+| Simple | 1 | 3–10 | Fact lookup, single-file review |
+| Moderate | 2–4 | 10–15 each | Multi-file analysis, comparative research |
+| Complex | 5+ | Open | Cross-domain investigation, multi-phase project |
+
+Set `max_concurrent_tasks` based on the expected task tier. Overprovisioning
+wastes tokens; underprovisioning creates bottlenecks.
 
 ### Connector Scoping Pattern
 

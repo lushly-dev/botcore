@@ -69,12 +69,19 @@ Features on the horizon that don't need detailed specs yet. Listed for direction
 
 - **Vector embedding search** — sqlite-vec or Azure AI Search for semantic memory queries. Same store interface, different backend.
 - **Memory-as-context-backing-store** — Pruned context topics archived to memory, retrievable on demand. Depends on SDK exposing context management hooks.
+- **Structured memory decomposition** — Separate agent memory into semantic state (known facts), optimization direction (current goal), and experience distribution (lessons from failures). Inspired by ContextEvolve pattern for long-running workflows. Reduces context bloat and goal drift.
 
 ### Agent Orchestration
 
 - **Distributed agent pool** — Multi-process/multi-machine orchestration via shared state backend (Redis, Postgres). Orchestrator interface stays the same — state backend changes.
 - **Persistent gateway** — Long-running orchestrator process that survives across MCP sessions. Builds on state serialization.
 - **Agent role templates** — Preconfigured roles (researcher, coder, reviewer) with default connectors, permissions, and system prompts.
+- **Per-agent skill locking** — `locked_skills` config on AgentConfig so operators can lock a skill for one agent while leaving it editable by another. Needed when multi-agent teams share skill directories. Depends on agent skill scoping (Phase 1 locking uses frontmatter `locked: true` only).
+- **Task-adaptive topologies** — Dynamic routing to parallel, sequential, hierarchical, or hybrid execution based on task DAG properties. Current orchestrator is hierarchical-only; this adds topology-aware dispatch.
+- **Token/cost budget caps** — Per-task token limits and cost budgets that terminate execution when exceeded. Prevents runaway agents from burning through resources on low-value tasks.
+- **Semantic routing** — Embedding-based task delegation using vector similarity against agent capability descriptions, replacing prefix-match connector resolution. Reduces misrouting as agent count grows.
+- **Fixed-point detection** — Auto-terminate agent loops when no new semantic information is being generated. Complements existing max_retries with content-aware stopping.
+- **Dynamic ABAC permissions** — Runtime context-aware authorization (time, threat level, data sensitivity) beyond static config-time RBAC. Gateway-mediated enforcement for all agent-to-external interactions.
 
 ### Security
 
