@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from afd import CommandResult, error, success
 from botcore_llm.commands import llm_chat, llm_session_create, llm_session_destroy
@@ -12,6 +13,44 @@ from .config import AgentConfig, AgentsPluginConfig
 from .models import AgentHealth, AgentState, Task
 
 logger = logging.getLogger(__name__)
+
+# Cached command namespace — avoids re-discovering plugins on every start.
+_namespace: dict[str, Any] | None = None
+
+
+def resolve_connector_commands(
+    connectors: list[str],
+    connector_commands: list[str],
+    namespace: dict[str, Any],
+) -> list[str]:
+    """Resolve which connector commands an agent may access.
+
+    Resolution order:
+    1. *connector_commands* non-empty → return those directly (explicit override).
+    2. *connectors* empty → ``[]`` (deny-by-default).
+    3. ``"*"`` in *connectors* → all known connector-prefixed commands.
+    4. Otherwise → prefix-filter *namespace* keys against *connectors*.
+    """
+    # 1. Explicit command list takes precedence
+    if connector_commands:
+        return list(connector_commands)
+
+    # 2. Deny-by-default
+    if not connectors:
+        return []
+
+    # 3. Wildcard — all connector-prefixed commands
+    if "*" in connectors:
+        try:
+            from botcore_connectors.config import KNOWN_CONNECTORS
+        except ImportError:
+            KNOWN_CONNECTORS: frozenset[str] = frozenset()
+        prefixes = tuple(f"{c}_" for c in KNOWN_CONNECTORS)
+        return [k for k in namespace if any(k.startswith(p) for p in prefixes)]
+
+    # 4. Prefix-filter against connectors list
+    prefixes = tuple(f"{c}_" for c in connectors)
+    return [k for k in namespace if any(k.startswith(p) for p in prefixes)]
 
 
 class AgentOrchestrator:
@@ -36,6 +75,25 @@ class AgentOrchestrator:
     @property
     def tasks(self) -> dict[str, Task]:
         return dict(self._tasks)
+
+    def _resolve_tools(self, config: AgentConfig) -> list[str] | None:
+        """Build the combined tools list from skills + connector commands."""
+        tools = list(config.skills)
+
+        if config.connectors or config.connector_commands:
+            global _namespace
+            if _namespace is None:
+                from botcore.server import build_namespace
+
+                _namespace, _ = build_namespace()
+
+            tools.extend(resolve_connector_commands(
+                config.connectors,
+                config.connector_commands,
+                _namespace,
+            ))
+
+        return tools or None
 
     async def create_agent(self, name: str) -> CommandResult[dict]:
         """Create an agent from config. Does not start it."""
@@ -83,7 +141,7 @@ class AgentOrchestrator:
             )
 
         model = state.config.model or self._config.default_model
-        tools = state.config.skills or None
+        tools = self._resolve_tools(state.config)
         system_prompt = state.config.system_prompt or None
 
         result = await llm_session_create(
