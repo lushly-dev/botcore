@@ -161,6 +161,8 @@ class AgentOrchestrator:
             model=model,
             tools=tools,
             system_prompt=system_prompt,
+            permissions=state.config.permissions,
+            agent_name=name,
         )
 
         if not result.success:

@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from botcore_agents.config import AgentConfig, AgentsPluginConfig, get_agents_config
+from botcore_agents.config import (
+    AgentConfig,
+    AgentPermissionsConfig,
+    AgentsPluginConfig,
+    get_agents_config,
+)
 
 
 class TestAgentConfig:
@@ -67,6 +72,44 @@ class TestAgentConfig:
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):
             AgentConfig(unknown_field="value")
+
+    def test_permissions_default(self):
+        cfg = AgentConfig()
+        assert isinstance(cfg.permissions, AgentPermissionsConfig)
+        assert cfg.permissions.allow_shell is False
+        assert cfg.permissions.allow_filesystem is False
+        assert cfg.permissions.allow_mcp is True
+        assert cfg.permissions.allow_custom_tools is True
+        assert cfg.permissions.shell_allowlist is None
+        assert cfg.permissions.filesystem_paths is None
+
+    def test_permissions_custom(self):
+        cfg = AgentConfig(
+            permissions=AgentPermissionsConfig(
+                allow_shell=True,
+                shell_allowlist=["git *"],
+                allow_filesystem=True,
+                filesystem_paths=["./src"],
+            ),
+        )
+        assert cfg.permissions.allow_shell is True
+        assert cfg.permissions.shell_allowlist == ["git *"]
+        assert cfg.permissions.filesystem_paths == ["./src"]
+
+    def test_permissions_from_dict(self):
+        raw = {
+            "name": "coder",
+            "permissions": {
+                "allow_shell": True,
+                "shell_allowlist": ["git *", "pytest *"],
+                "allow_filesystem": True,
+                "filesystem_paths": ["./src", "./tests"],
+            },
+        }
+        cfg = AgentConfig.model_validate(raw)
+        assert cfg.permissions.allow_shell is True
+        assert cfg.permissions.shell_allowlist == ["git *", "pytest *"]
+        assert cfg.permissions.filesystem_paths == ["./src", "./tests"]
 
 
 class TestAgentsPluginConfig:
