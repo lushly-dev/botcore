@@ -30,7 +30,7 @@ class TestAgentsPlugin:
         plugin.register(registry)
         registry.add_commands.assert_called_once()
         commands = registry.add_commands.call_args[0][0]
-        assert len(commands) == 7
+        assert len(commands) == 9
         names = {cmd.__name__ for cmd in commands}
         assert names == {
             "agent_create",
@@ -40,6 +40,8 @@ class TestAgentsPlugin:
             "agent_heartbeat",
             "task_assign",
             "task_status",
+            "state_save",
+            "state_load",
         }
 
     def test_register_sets_mcp_name(self):

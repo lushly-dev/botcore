@@ -5,13 +5,16 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afd import CommandResult, error, success
 from botcore_llm.commands import llm_chat, llm_session_create, llm_session_destroy
 
 from .config import AgentConfig, AgentsPluginConfig
 from .models import AgentHealth, AgentState, Task
+
+if TYPE_CHECKING:
+    from .state import OrchestratorSnapshot, OrchestratorStateBackend
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +66,16 @@ class AgentOrchestrator:
     Phase 1: synchronous task execution (no background loop).
     """
 
-    def __init__(self, config: AgentsPluginConfig) -> None:
+    def __init__(
+        self,
+        config: AgentsPluginConfig,
+        *,
+        backend: OrchestratorStateBackend | None = None,
+    ) -> None:
         self._config = config
         self._agents: dict[str, AgentState] = {}
         self._tasks: dict[str, Task] = {}
+        self._backend = backend
 
     @property
     def config(self) -> AgentsPluginConfig:
@@ -241,7 +250,7 @@ class AgentOrchestrator:
             return error(
                 "ROLE_NOT_CONFIGURED",
                 f"No agent configuration with role={role!r}",
-                suggestion=f"Add role = \"{role}\" to an agent config in botcore.toml",
+                suggestion=f'Add role = "{role}" to an agent config in botcore.toml',
             )
 
         # 3. Check pool capacity
@@ -448,6 +457,108 @@ class AgentOrchestrator:
             reasoning=f"Heartbeat for {name!r} at {now.isoformat()}",
         )
 
+    # -- State serialization ------------------------------------------------
+
+    def _build_snapshot(self) -> OrchestratorSnapshot:
+        """Create a snapshot of the current orchestrator state.
+
+        Deep-copies agents and tasks.  Session IDs are cleared in the copy
+        because sessions are not portable across processes.
+        """
+        from .state import OrchestratorSnapshot
+
+        agents: dict[str, AgentState] = {}
+        for name, state in self._agents.items():
+            copied = state.model_copy(deep=True)
+            copied.session_id = ""
+            agents[name] = copied
+
+        tasks = {tid: task.model_copy(deep=True) for tid, task in self._tasks.items()}
+
+        return OrchestratorSnapshot(
+            config=self._config.model_copy(deep=True),
+            agents=agents,
+            tasks=tasks,
+        )
+
+    def _restore_from_snapshot(self, snapshot: OrchestratorSnapshot) -> None:
+        """Replace live state with *snapshot* contents.
+
+        Deep-copies snapshot data so the original is not mutated.
+        Restored agents are forced to ``stopped`` with cleared session
+        metadata since sessions are not portable.
+        """
+        logger.info("Replacing orchestrator config from snapshot (version=%s)", snapshot.version)
+        self._config = snapshot.config.model_copy(deep=True)
+        self._tasks = {tid: t.model_copy(deep=True) for tid, t in snapshot.tasks.items()}
+
+        agents: dict[str, AgentState] = {}
+        for name, state in snapshot.agents.items():
+            copied = state.model_copy(deep=True)
+            copied.health.status = "stopped"
+            copied.health.current_task = ""
+            copied.session_id = ""
+            copied.active_tasks = []
+            copied.started_at = None
+            agents[name] = copied
+
+        self._agents = agents
+
+    async def save_state(self) -> CommandResult[dict]:
+        """Persist current state via the configured backend."""
+        if self._backend is None:
+            return error(
+                "NO_BACKEND",
+                "No state backend configured",
+                suggestion="Pass a backend= when constructing the orchestrator",
+            )
+        try:
+            snapshot = self._build_snapshot()
+            await self._backend.save(snapshot)
+            return success(
+                data={
+                    "saved": True,
+                    "agents": len(snapshot.agents),
+                    "tasks": len(snapshot.tasks),
+                    "timestamp": snapshot.timestamp.isoformat(),
+                },
+                reasoning="Orchestrator state saved",
+            )
+        except Exception as exc:
+            logger.warning("State save failed: %s", exc)
+            return error("STATE_SAVE_ERROR", f"Failed to save state: {exc}")
+
+    async def load_state(self) -> CommandResult[dict]:
+        """Restore state from the configured backend."""
+        if self._backend is None:
+            return error(
+                "NO_BACKEND",
+                "No state backend configured",
+                suggestion="Pass a backend= when constructing the orchestrator",
+            )
+        try:
+            snapshot = await self._backend.load()
+            if snapshot is None:
+                return success(
+                    data={"restored": False},
+                    reasoning="No saved state found (missing or stale)",
+                )
+            self._restore_from_snapshot(snapshot)
+            return success(
+                data={
+                    "restored": True,
+                    "agents": len(self._agents),
+                    "tasks": len(self._tasks),
+                    "timestamp": snapshot.timestamp.isoformat(),
+                },
+                reasoning="Orchestrator state restored from snapshot",
+            )
+        except Exception as exc:
+            logger.warning("State load failed: %s", exc)
+            return error("STATE_LOAD_ERROR", f"Failed to load state: {exc}")
+
+    # TODO: auto-save on state changes is deferred to a future iteration.
+
 
 # ---------------------------------------------------------------------------
 # Module-level singleton
@@ -456,7 +567,11 @@ class AgentOrchestrator:
 _orchestrator: AgentOrchestrator | None = None
 
 
-def get_orchestrator(config: AgentsPluginConfig | None = None) -> AgentOrchestrator:
+def get_orchestrator(
+    config: AgentsPluginConfig | None = None,
+    *,
+    backend: OrchestratorStateBackend | None = None,
+) -> AgentOrchestrator:
     """Return the module-level orchestrator singleton.
 
     If *config* is provided and no orchestrator exists, one is created.
@@ -464,7 +579,13 @@ def get_orchestrator(config: AgentsPluginConfig | None = None) -> AgentOrchestra
     """
     global _orchestrator
     if _orchestrator is None:
-        _orchestrator = AgentOrchestrator(config or AgentsPluginConfig())
+        _orchestrator = AgentOrchestrator(config or AgentsPluginConfig(), backend=backend)
+    elif backend is not None:
+        logger.warning(
+            "get_orchestrator() called with backend= but singleton already exists; "
+            "updating backend on existing instance"
+        )
+        _orchestrator._backend = backend
     return _orchestrator
 
 

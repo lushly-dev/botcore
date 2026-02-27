@@ -14,6 +14,8 @@ Single-agent lifecycle management with LLM-backed task execution.
 | `agent_heartbeat` | Update heartbeat timestamp, return health |
 | `task_assign` | Assign a task to a running agent (sync execution) |
 | `task_status` | Get task details by ID |
+| `state_save` | Persist orchestrator state to configured backend |
+| `state_load` | Restore orchestrator state from configured backend |
 
 ## Quick Start
 

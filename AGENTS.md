@@ -52,8 +52,9 @@ packages/botcore-llm/           # LLM runtime plugin
 packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
 ├── src/botcore_agents/
 │   ├── __init__.py              # AgentsPlugin
-│   ├── commands.py              # agent_create, task_assign, etc.
-│   ├── orchestrator.py          # AgentOrchestrator (pool + tasks + capability resolution)
+│   ├── commands.py              # agent_create, task_assign, state_save, etc.
+│   ├── orchestrator.py          # AgentOrchestrator (pool + tasks + capability resolution + state)
+│   ├── state.py                 # OrchestratorSnapshot, StateBackend, JsonStateBackend
 │   ├── models.py                # Task, AgentHealth, AgentState
 │   └── config.py                # AgentConfig (skills, connectors, connector_commands)
 └── tests/

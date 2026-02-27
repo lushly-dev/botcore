@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 from .config import AgentsPluginConfig
+from .state import JsonStateBackend, OrchestratorSnapshot, OrchestratorStateBackend
 
 if TYPE_CHECKING:
     from botcore.plugin import PluginRegistry
@@ -33,4 +34,10 @@ class AgentsPlugin:
         return AgentsPluginConfig
 
 
-__all__ = ["AgentsPlugin", "AgentsPluginConfig"]
+__all__ = [
+    "AgentsPlugin",
+    "AgentsPluginConfig",
+    "JsonStateBackend",
+    "OrchestratorSnapshot",
+    "OrchestratorStateBackend",
+]

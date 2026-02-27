@@ -87,6 +87,16 @@ async def task_status(task_id: str) -> CommandResult[dict]:
     return _get_orch().get_task(task_id)
 
 
+async def state_save() -> CommandResult[dict]:
+    """Persist orchestrator state to the configured backend."""
+    return await _get_orch().save_state()
+
+
+async def state_load() -> CommandResult[dict]:
+    """Restore orchestrator state from the configured backend."""
+    return await _get_orch().load_state()
+
+
 AGENT_COMMANDS: list = [
     agent_create,
     agent_start,
@@ -95,4 +105,6 @@ AGENT_COMMANDS: list = [
     agent_heartbeat,
     task_assign,
     task_status,
+    state_save,
+    state_load,
 ]
