@@ -53,9 +53,9 @@ packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
 ├── src/botcore_agents/
 │   ├── __init__.py              # AgentsPlugin
 │   ├── commands.py              # agent_create, task_assign, etc.
-│   ├── orchestrator.py          # AgentOrchestrator (pool + tasks)
+│   ├── orchestrator.py          # AgentOrchestrator (pool + tasks + capability resolution)
 │   ├── models.py                # Task, AgentHealth, AgentState
-│   └── config.py                # AgentConfig, AgentsPluginConfig
+│   └── config.py                # AgentConfig (skills, connectors, connector_commands)
 └── tests/
 
 packages/botcore-memory/        # Memory plugin (Phase 1)

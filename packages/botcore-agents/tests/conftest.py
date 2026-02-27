@@ -152,9 +152,62 @@ def orchestrator(sample_config: AgentsPluginConfig) -> AgentOrchestrator:
     return AgentOrchestrator(sample_config)
 
 
+@pytest.fixture()
+def sample_config_with_connectors() -> AgentsPluginConfig:
+    """Config with agents that have connectors set, for capability tests."""
+    return AgentsPluginConfig(
+        agents={
+            "researcher": AgentConfig(
+                name="researcher",
+                role="researcher",
+                model="gpt-4.1",
+                skills=["dev_test", "dev_lint"],
+                connectors=["github"],
+                max_concurrent_tasks=2,
+                system_prompt="You are a research agent.",
+            ),
+            "admin": AgentConfig(
+                name="admin",
+                role="admin",
+                model="gpt-4.1",
+                skills=["dev_build"],
+                connectors=["*"],
+                max_concurrent_tasks=1,
+            ),
+            "scoped": AgentConfig(
+                name="scoped",
+                role="scoped",
+                model="gpt-4.1",
+                skills=["dev_test"],
+                connector_commands=["github_issue_list"],
+                max_concurrent_tasks=1,
+            ),
+            "locked": AgentConfig(
+                name="locked",
+                role="locked",
+                model="gpt-4.1",
+                skills=["dev_test"],
+                max_concurrent_tasks=1,
+            ),
+        },
+        default_model="gpt-4.1",
+        max_agents=10,
+    )
+
+
+@pytest.fixture()
+def connector_orchestrator(sample_config_with_connectors: AgentsPluginConfig) -> AgentOrchestrator:
+    """Orchestrator pre-loaded with connector-aware agent configs."""
+    return AgentOrchestrator(sample_config_with_connectors)
+
+
 @pytest.fixture(autouse=True)
 def _clean_orchestrator():
-    """Reset the module-level singleton between tests."""
+    """Reset the module-level singleton and namespace cache between tests."""
+    import botcore_agents.orchestrator as _orch_mod
+
+    _orch_mod._namespace = None
     reset_orchestrator()
     yield
+    _orch_mod._namespace = None
     reset_orchestrator()

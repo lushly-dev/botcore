@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
+import botcore_agents.orchestrator as orch_mod
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
 
 
@@ -416,3 +419,145 @@ class TestRoleBasedPooling:
         result = await orchestrator.assign_task("Work", agent="researcher", role="coder")
         assert result.success
         assert result.data["agent"] == "researcher"
+
+
+# Fake namespace for capability declaration tests
+_FAKE_NS = {
+    "github_issue_list": lambda: None,
+    "github_issue_create": lambda: None,
+    "github_pr_list": lambda: None,
+    "email_send": lambda: None,
+    "dev_test": lambda: None,
+    "dev_lint": lambda: None,
+    "dev_build": lambda: None,
+}
+
+
+class TestCapabilityDeclarations:
+    """Verify that start_agent() restricts tools based on connector config."""
+
+    async def test_skills_only_no_connectors(self, orchestrator: AgentOrchestrator, mock_llm):
+        """Default researcher (connectors=[]) → only skills, no namespace lookup."""
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        mock_llm["session_create"].assert_awaited_once_with(
+            model="gpt-4.1",
+            tools=["dev_test", "dev_lint"],
+            system_prompt="You are a research agent.",
+        )
+
+    async def test_connectors_prefix_filtering(
+        self, connector_orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """connectors=["github"] → skills + github_* commands from namespace."""
+        orch_mod._namespace = _FAKE_NS
+
+        await connector_orchestrator.create_agent("researcher")
+        await connector_orchestrator.start_agent("researcher")
+
+        call_kwargs = mock_llm["session_create"].call_args.kwargs
+        tools = call_kwargs["tools"]
+        # skills first, then connector commands
+        assert "dev_test" in tools
+        assert "dev_lint" in tools
+        assert "github_issue_list" in tools
+        assert "github_issue_create" in tools
+        assert "github_pr_list" in tools
+        # email commands should NOT be included
+        assert "email_send" not in tools
+
+    async def test_connector_commands_override(
+        self, connector_orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """connector_commands=["github_issue_list"] → only that command."""
+        orch_mod._namespace = _FAKE_NS
+
+        await connector_orchestrator.create_agent("scoped")
+        await connector_orchestrator.start_agent("scoped")
+
+        call_kwargs = mock_llm["session_create"].call_args.kwargs
+        tools = call_kwargs["tools"]
+        assert "dev_test" in tools
+        assert "github_issue_list" in tools
+        assert len(tools) == 2  # only skill + the one command
+
+    async def test_empty_connectors_deny_by_default(
+        self, connector_orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """Default config (connectors=[], connector_commands=[]) → no connector commands."""
+        await connector_orchestrator.create_agent("locked")
+        await connector_orchestrator.start_agent("locked")
+
+        call_kwargs = mock_llm["session_create"].call_args.kwargs
+        tools = call_kwargs["tools"]
+        assert tools == ["dev_test"]
+
+    async def test_wildcard_connectors(
+        self, connector_orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """connectors=["*"] → all connector commands from KNOWN_CONNECTORS."""
+        orch_mod._namespace = _FAKE_NS
+        known = frozenset({"github", "email"})
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "botcore_connectors": __import__("types").ModuleType("botcore_connectors"),
+                "botcore_connectors.config": __import__("types").ModuleType(
+                    "botcore_connectors.config"
+                ),
+            },
+        ):
+            import sys
+
+            sys.modules["botcore_connectors.config"].KNOWN_CONNECTORS = known
+
+            await connector_orchestrator.create_agent("admin")
+            await connector_orchestrator.start_agent("admin")
+
+        call_kwargs = mock_llm["session_create"].call_args.kwargs
+        tools = call_kwargs["tools"]
+        assert "dev_build" in tools
+        assert "github_issue_list" in tools
+        assert "github_issue_create" in tools
+        assert "github_pr_list" in tools
+        assert "email_send" in tools
+
+    async def test_pooled_instance_inherits_connectors(
+        self, connector_orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """Spawned role instance gets same connectors as template."""
+        from afd import success
+
+        orch_mod._namespace = _FAKE_NS
+
+        call_count = 0
+
+        async def varying_session_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            return success(
+                data={
+                    "session_id": f"session-{call_count:03d}",
+                    "model": kwargs.get("model", "gpt-4.1"),
+                    "tools": [],
+                },
+                reasoning="Mock session",
+            )
+
+        mock_llm["session_create"].side_effect = varying_session_create
+
+        await connector_orchestrator.create_agent("researcher")
+        await connector_orchestrator.start_agent("researcher")
+
+        # Fill researcher to capacity
+        state = connector_orchestrator._agents["researcher"]
+        state.active_tasks.extend(["t1", "t2"])
+        state.health.status = "busy"
+
+        # Spawn researcher-1 via role
+        await connector_orchestrator.assign_task("Work", role="researcher")
+
+        spawned = connector_orchestrator._agents["researcher-1"]
+        assert spawned.config.connectors == ["github"]
+        assert spawned.config.connector_commands == []

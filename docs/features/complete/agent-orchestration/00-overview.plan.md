@@ -2,7 +2,7 @@
 
 > **Status:** Complete
 > **Date:** 2026-02-25
-> **Updated:** 2026-02-26 — Phase 1 (single agent) shipped in `packages/botcore-agents/`
+> **Updated:** 2026-02-26 — Phase 1 (single agent + capability declarations) shipped in `packages/botcore-agents/`
 > **Scope:** Multi-agent lifecycle, task routing, heartbeat, and coordination as separate botcore plugin package (`botcore-agents`)
 > **Depends on:** [LLM Runtime](../llm-runtime/00-overview.plan.md) (`botcore-llm` plugin), botcore core, `afd` Python package (reconnection, batch execution, telemetry, middleware)
 
@@ -84,6 +84,7 @@ class AgentConfig:
     model: str                             # "gpt-4.1"
     skills: list[str]                      # Botcore skill names
     connectors: list[str]                  # Connector command prefixes
+    connector_commands: list[str]          # Explicit command override (takes precedence)
     memory_scope: Literal["private", "team", "project"]
     max_concurrent_tasks: int = 1
     heartbeat_interval: int = 30           # seconds
@@ -311,6 +312,7 @@ packages/botcore-agents/
     ├── test_config.py
     ├── test_models.py
     ├── test_orchestrator.py
+    ├── test_resolve_connector_commands.py  # Pure function tests
     ├── test_commands.py
     └── test_plugin.py
 ```
@@ -352,8 +354,9 @@ class AgentsPlugin(BotCorePlugin):
 - [x] Copilot session creation with scoped tool bridge (from LLM Runtime)
 - [x] `task_assign` (explicit agent only, no routing)
 - [x] `agent_status` / `agent_heartbeat`
+- [x] Capability declarations — `connector_commands` field, `resolve_connector_commands()` with 4-step resolution (explicit → deny-by-default → wildcard → prefix filter), `_resolve_tools()` combining skills + connector commands
 - [ ] Telemetry integration: emit `TelemetryEvent` from agent lifecycle commands via AFD `TelemetrySink`
-- [x] Unit tests with mock Copilot sessions (82 tests)
+- [x] Unit tests with mock Copilot sessions (110 tests)
 - [ ] JTBD scenario tests for agent lifecycle (using AFD Python `afd.testing` scenario runner)
 
 **Acceptance criteria:**
@@ -394,7 +397,7 @@ class AgentsPlugin(BotCorePlugin):
 
 | Threat | Mitigation |
 |--------|-----------|
-| Agent escapes tool scope | Session-scoped tools from LLM Runtime. Each agent only sees declared commands. |
+| Agent escapes tool scope | Session-scoped tools from LLM Runtime. `resolve_connector_commands()` enforces deny-by-default — agents only see declared skills + resolved connector commands. |
 | Runaway task creation | Lead-only decomposition + depth limit (default: 3 levels) |
 | Agent-to-agent injection | No direct communication. All through orchestrator task queue. |
 | Resource exhaustion | `max_concurrent_tasks` per agent. Queue depth limits. |

@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Role-based agent pooling — `task_assign(role="pm")` routes to idle agents or auto-spawns new instances from config templates when all are busy
   - `_resolve_agent_for_role` with search order: reuse idle → spawn from template → error at pool capacity
   - Sequential instance naming (`researcher-1`, `researcher-2`, …) with config inheritance from role template
+  - Capability declarations — `connector_commands` field on `AgentConfig` for fine-grained tool access, `resolve_connector_commands()` with 4-step resolution (explicit list → deny-by-default → wildcard via `KNOWN_CONNECTORS` → prefix filter), and `_resolve_tools()` combining skills + connector commands at session creation
   - Synchronous task execution via `llm_chat` (background execution planned for Phase 3)
-  - 92 unit + integration tests with mocked LLM commands
+  - 110 unit + integration tests with mocked LLM commands
 - **botcore-llm plugin (Phase 1)** -- Separate `packages/botcore-llm/` package providing LLM runtime via Copilot SDK
   - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
   - `CopilotClientManager` singleton for client lifecycle (start/stop)

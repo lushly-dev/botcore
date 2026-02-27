@@ -17,6 +17,7 @@ class AgentConfig(BaseModel):
     model: str = ""
     skills: list[str] = Field(default_factory=list)
     connectors: list[str] = Field(default_factory=list)
+    connector_commands: list[str] = Field(default_factory=list)
     memory_scope: Literal["session", "agent", "global"] = "session"
     max_concurrent_tasks: int = Field(default=1, ge=1, le=10)
     heartbeat_interval: int = Field(default=30, ge=5, le=300)

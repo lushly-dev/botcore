@@ -52,6 +52,18 @@ class TestAgentConfig:
         with pytest.raises(ValidationError):
             AgentConfig(memory_scope="invalid")
 
+    def test_connector_commands_default(self):
+        cfg = AgentConfig()
+        assert cfg.connector_commands == []
+
+    def test_connector_commands_set(self):
+        cfg = AgentConfig(connector_commands=["github_issue_list", "github_pr_list"])
+        assert cfg.connector_commands == ["github_issue_list", "github_pr_list"]
+
+    def test_connectors_wildcard(self):
+        cfg = AgentConfig(connectors=["*"])
+        assert cfg.connectors == ["*"]
+
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):
             AgentConfig(unknown_field="value")
