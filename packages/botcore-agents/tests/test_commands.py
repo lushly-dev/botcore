@@ -122,6 +122,18 @@ class TestTaskAssign:
         assert not result.success
         assert result.error.code == "AGENT_NOT_FOUND"
 
+    async def test_assign_by_role(self, mock_llm):
+        await agent_create(name="researcher")
+        await agent_start(name="researcher")
+        result = await task_assign(description="Research task", role="researcher")
+        assert result.success
+        assert result.data["agent"] == "researcher"
+
+    async def test_assign_no_target(self):
+        result = await task_assign(description="Work")
+        assert not result.success
+        assert result.error.code == "NO_TARGET"
+
 
 class TestTaskStatus:
     async def test_task_status_found(self, mock_llm):

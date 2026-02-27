@@ -147,6 +147,11 @@ class TestAssignTask:
         assert not result.success
         assert result.error.code == "TASK_EXECUTION_ERROR"
 
+    async def test_assign_no_target_returns_error(self, orchestrator: AgentOrchestrator):
+        result = await orchestrator.assign_task("Do work")
+        assert not result.success
+        assert result.error.code == "NO_TARGET"
+
 
 class TestGetAgentStatus:
     async def test_status_stopped(self, orchestrator: AgentOrchestrator):
@@ -222,3 +227,192 @@ class TestSingleton:
         reset_orchestrator()
         orch2 = get_orchestrator()
         assert orch1 is not orch2
+
+
+class TestRoleBasedPooling:
+    """Role-based agent spawning: assign by role, auto-scale instances."""
+
+    async def test_assign_by_role_reuses_idle_agent(
+        self, orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """If an idle agent with the role exists, reuse it."""
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        result = await orchestrator.assign_task("Find bugs", role="researcher")
+        assert result.success
+        assert result.data["agent"] == "researcher"
+
+    async def test_assign_by_role_spawns_when_busy(self, orchestrator: AgentOrchestrator, mock_llm):
+        """If the existing role agent is busy, spawn a new instance."""
+        from afd import success
+
+        call_count = 0
+
+        async def varying_session_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            return success(
+                data={
+                    "session_id": f"session-{call_count:03d}",
+                    "model": kwargs.get("model", "gpt-4.1"),
+                    "tools": [],
+                },
+                reasoning="Mock session",
+            )
+
+        mock_llm["session_create"].side_effect = varying_session_create
+
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+
+        # Make the first instance busy
+        state = orchestrator._agents["researcher"]
+        state.active_tasks.append("fake-task-id")
+        state.active_tasks.append("fake-task-id-2")  # researcher has max_concurrent_tasks=2
+        state.health.status = "busy"
+
+        result = await orchestrator.assign_task("Second task", role="researcher")
+        assert result.success
+        # Should have spawned researcher-1
+        assert result.data["agent"] == "researcher-1"
+        assert "researcher-1" in orchestrator.agents
+
+    async def test_assign_by_role_spawns_sequential_names(
+        self, orchestrator: AgentOrchestrator, mock_llm
+    ):
+        """Spawned instances get sequential names: role-1, role-2, etc."""
+        from afd import success
+
+        call_count = 0
+
+        async def varying_session_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            return success(
+                data={
+                    "session_id": f"session-{call_count:03d}",
+                    "model": kwargs.get("model", "gpt-4.1"),
+                    "tools": [],
+                },
+                reasoning="Mock session",
+            )
+
+        mock_llm["session_create"].side_effect = varying_session_create
+
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+
+        # Fill researcher to capacity
+        state = orchestrator._agents["researcher"]
+        state.active_tasks.extend(["t1", "t2"])
+        state.health.status = "busy"
+
+        # Spawn researcher-1
+        r1 = await orchestrator.assign_task("Task A", role="researcher")
+        assert r1.success
+        assert r1.data["agent"] == "researcher-1"
+
+        # Fill researcher-1 to capacity
+        state1 = orchestrator._agents["researcher-1"]
+        state1.active_tasks.extend(["t3", "t4"])
+        state1.health.status = "busy"
+
+        # Spawn researcher-2
+        r2 = await orchestrator.assign_task("Task B", role="researcher")
+        assert r2.success
+        assert r2.data["agent"] == "researcher-2"
+
+    async def test_assign_by_role_unconfigured(self, orchestrator: AgentOrchestrator, mock_llm):
+        """Role with no matching config returns error."""
+        result = await orchestrator.assign_task("Work", role="unknown")
+        assert not result.success
+        assert result.error.code == "ROLE_NOT_CONFIGURED"
+
+    async def test_assign_by_role_pool_full(self, orchestrator: AgentOrchestrator, mock_llm):
+        """When pool hits max_agents and all role agents are busy, return error."""
+        from afd import success
+
+        call_count = 0
+
+        async def varying_session_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            return success(
+                data={
+                    "session_id": f"session-{call_count:03d}",
+                    "model": kwargs.get("model", "gpt-4.1"),
+                    "tools": [],
+                },
+                reasoning="Mock session",
+            )
+
+        mock_llm["session_create"].side_effect = varying_session_create
+
+        # Config has max_agents=5. Fill up the pool.
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        await orchestrator.create_agent("coder")
+        await orchestrator.start_agent("coder")
+
+        # Make researcher busy
+        orchestrator._agents["researcher"].active_tasks.extend(["t1", "t2"])
+        orchestrator._agents["researcher"].health.status = "busy"
+
+        # Spawn 3 more to hit max_agents=5
+        for _ in range(3):
+            result = await orchestrator.assign_task("Work", role="researcher")
+            assert result.success
+            spawned_name = result.data["agent"]
+            orchestrator._agents[spawned_name].active_tasks.extend(["tx", "ty"])
+            orchestrator._agents[spawned_name].health.status = "busy"
+
+        # Pool is now full (5 agents), all researchers busy → should fail
+        result = await orchestrator.assign_task("One more", role="researcher")
+        assert not result.success
+        assert result.error.code == "MAX_AGENTS_REACHED"
+
+    async def test_spawned_agent_inherits_config(self, orchestrator: AgentOrchestrator, mock_llm):
+        """Spawned instances get the same model, skills, and prompt as the template."""
+        from afd import success
+
+        call_count = 0
+        captured_kwargs = []
+
+        async def capturing_session_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            captured_kwargs.append(kwargs)
+            return success(
+                data={
+                    "session_id": f"session-{call_count:03d}",
+                    "model": kwargs.get("model", "gpt-4.1"),
+                    "tools": [],
+                },
+                reasoning="Mock session",
+            )
+
+        mock_llm["session_create"].side_effect = capturing_session_create
+
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+
+        # Make busy
+        orchestrator._agents["researcher"].active_tasks.extend(["t1", "t2"])
+        orchestrator._agents["researcher"].health.status = "busy"
+
+        await orchestrator.assign_task("Another task", role="researcher")
+
+        # The spawned instance should have same config
+        spawned = orchestrator._agents["researcher-1"]
+        assert spawned.config.model == "gpt-4.1"
+        assert spawned.config.skills == ["dev_test", "dev_lint"]
+        assert spawned.config.system_prompt == "You are a research agent."
+        assert spawned.config.role == "researcher"
+
+    async def test_agent_preferred_over_role(self, orchestrator: AgentOrchestrator, mock_llm):
+        """When both agent and role are provided, agent takes precedence."""
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        result = await orchestrator.assign_task("Work", agent="researcher", role="coder")
+        assert result.success
+        assert result.data["agent"] == "researcher"

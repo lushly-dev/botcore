@@ -33,3 +33,6 @@ Thumbs.db
 # Virtual environments
 .venv/
 venv/
+
+# Internal strategy
+LANDSCAPE.md

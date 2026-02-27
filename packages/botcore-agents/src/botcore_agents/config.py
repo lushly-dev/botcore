@@ -13,6 +13,7 @@ class AgentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = ""
+    role: str = ""
     model: str = ""
     skills: list[str] = Field(default_factory=list)
     connectors: list[str] = Field(default_factory=list)
@@ -33,7 +34,7 @@ class AgentsPluginConfig(BaseModel):
 
     agents: dict[str, AgentConfig] = Field(default_factory=dict)
     default_model: str = "gpt-4.1"
-    max_agents: int = Field(default=10, ge=1, le=50)
+    max_agents: int = Field(default=10, ge=1, le=100)
 
 
 def get_agents_config(plugin_config: dict[str, Any] | None = None) -> AgentsPluginConfig:

@@ -81,7 +81,7 @@ class TestAgentsPluginConfig:
         with pytest.raises(ValidationError):
             AgentsPluginConfig(max_agents=0)
         with pytest.raises(ValidationError):
-            AgentsPluginConfig(max_agents=51)
+            AgentsPluginConfig(max_agents=101)
 
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):

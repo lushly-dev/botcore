@@ -23,8 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Task`, `AgentHealth`, `AgentState` domain models with field constraints and status literals
   - 7 commands: `agent_create`, `agent_start`, `agent_stop`, `agent_status`, `agent_heartbeat`, `task_assign`, `task_status`
   - Direct `botcore-llm` integration — agents backed by LLM sessions with scoped tools
+  - Role-based agent pooling — `task_assign(role="pm")` routes to idle agents or auto-spawns new instances from config templates when all are busy
+  - `_resolve_agent_for_role` with search order: reuse idle → spawn from template → error at pool capacity
+  - Sequential instance naming (`researcher-1`, `researcher-2`, …) with config inheritance from role template
   - Synchronous task execution via `llm_chat` (background execution planned for Phase 3)
-  - 82 unit + integration tests with mocked LLM commands
+  - 92 unit + integration tests with mocked LLM commands
 - **botcore-llm plugin (Phase 1)** -- Separate `packages/botcore-llm/` package providing LLM runtime via Copilot SDK
   - `LlmPlugin` implementing `BotCorePlugin` protocol with entry-point discovery
   - `CopilotClientManager` singleton for client lifecycle (start/stop)

@@ -69,11 +69,17 @@ async def agent_heartbeat(name: str) -> CommandResult[dict]:
 
 async def task_assign(
     description: str,
-    agent: str,
+    agent: str = "",
+    role: str = "",
     priority: int = 5,
 ) -> CommandResult[dict]:
-    """Assign a task to a running agent for synchronous execution."""
-    return await _get_orch().assign_task(description, agent, priority)
+    """Assign a task to a running agent or a role.
+
+    Pass *agent* to target a specific instance, or *role* to let the
+    orchestrator pick an idle agent of that role (spawning a new instance
+    if all are busy and pool capacity allows).
+    """
+    return await _get_orch().assign_task(description, agent=agent, role=role, priority=priority)
 
 
 async def task_status(task_id: str) -> CommandResult[dict]:

@@ -39,6 +39,7 @@ class _MockSessionEvent:
 def sample_agent_config() -> AgentConfig:
     return AgentConfig(
         name="researcher",
+        role="researcher",
         model="gpt-4.1",
         skills=["dev_test", "dev_lint"],
         max_concurrent_tasks=2,
@@ -53,6 +54,7 @@ def sample_config(sample_agent_config: AgentConfig) -> AgentsPluginConfig:
             "researcher": sample_agent_config,
             "coder": AgentConfig(
                 name="coder",
+                role="coder",
                 model="gpt-4.1",
                 skills=["dev_build"],
                 max_concurrent_tasks=1,

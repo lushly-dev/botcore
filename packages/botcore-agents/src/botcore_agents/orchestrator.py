@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from afd import CommandResult, error, success
 from botcore_llm.commands import llm_chat, llm_session_create, llm_session_destroy
 
-from .config import AgentsPluginConfig
+from .config import AgentConfig, AgentsPluginConfig
 from .models import AgentHealth, AgentState, Task
 
 logger = logging.getLogger(__name__)
@@ -153,13 +153,111 @@ class AgentOrchestrator:
             reasoning=f"Agent {name!r} stopped, {len(cancelled_tasks)} task(s) cancelled",
         )
 
+    async def _resolve_agent_for_role(self, role: str) -> CommandResult[dict]:
+        """Find an idle agent for *role*, or spawn a new instance.
+
+        Search order:
+        1. Existing idle agent with matching role → use it
+        2. Pool has capacity → create + start a new instance from the role template
+        3. All at capacity → return error
+        """
+        # 1. Find an instance with capacity
+        for name, state in self._agents.items():
+            if (
+                state.config.role == role
+                and state.health.status in ("idle", "busy")
+                and len(state.active_tasks) < state.config.max_concurrent_tasks
+            ):
+                return success(
+                    data={"name": name},
+                    reasoning=f"Reusing agent {name!r} for role {role!r}",
+                )
+
+        # 2. Find the config template for this role
+        template_config = self._find_role_config(role)
+        if template_config is None:
+            return error(
+                "ROLE_NOT_CONFIGURED",
+                f"No agent configuration with role={role!r}",
+                suggestion=f"Add role = \"{role}\" to an agent config in botcore.toml",
+            )
+
+        # 3. Check pool capacity
+        if len(self._agents) >= self._config.max_agents:
+            return error(
+                "MAX_AGENTS_REACHED",
+                f"Agent pool is full ({self._config.max_agents} max) "
+                f"and no idle {role!r} agents available",
+                suggestion="Stop idle agents or increase max_agents",
+            )
+
+        # 4. Create + start a new instance
+        instance_name = self._next_instance_name(role)
+        agent_config = template_config.model_copy(update={"name": instance_name})
+        health = AgentHealth(name=instance_name, status="stopped")
+        state = AgentState(config=agent_config, health=health)
+        self._agents[instance_name] = state
+
+        start_result = await self.start_agent(instance_name)
+        if not start_result.success:
+            # Clean up the created-but-failed-to-start agent
+            del self._agents[instance_name]
+            return error(
+                "ROLE_SPAWN_FAILED",
+                f"Spawned {instance_name!r} for role {role!r} but failed to start: "
+                f"{start_result.error.message}",
+            )
+
+        return success(
+            data={"name": instance_name, "spawned": True},
+            reasoning=f"Spawned new agent {instance_name!r} for role {role!r}",
+        )
+
+    def _find_role_config(self, role: str) -> AgentConfig | None:
+        """Return the first configured agent template matching *role*.
+
+        Uses insertion-order (dict order) so the first matching entry
+        in ``[plugins.agents.agents]`` wins.
+        """
+        for cfg in self._config.agents.values():
+            if cfg.role == role:
+                return cfg
+        return None
+
+    def _next_instance_name(self, role: str) -> str:
+        """Generate the next sequential instance name for *role*."""
+        idx = 1
+        while f"{role}-{idx}" in self._agents:
+            idx += 1
+        return f"{role}-{idx}"
+
     async def assign_task(
         self,
         description: str,
-        agent: str,
+        agent: str = "",
+        role: str = "",
         priority: int = 5,
     ) -> CommandResult[dict]:
-        """Assign and execute a task synchronously via the agent's LLM session."""
+        """Assign and execute a task synchronously via an agent's LLM session.
+
+        Supply *agent* to target a specific instance, or *role* to let the
+        orchestrator pick an idle instance (or spawn a new one from the role's
+        config template).
+        """
+        if not agent and not role:
+            return error(
+                "NO_TARGET",
+                "Provide either 'agent' or 'role' to assign the task",
+                suggestion="Pass agent='name' or role='pm'",
+            )
+
+        # Role-based routing: find an idle agent or spawn a new instance
+        if role and not agent:
+            resolved = await self._resolve_agent_for_role(role)
+            if not resolved.success:
+                return resolved
+            agent = resolved.data["name"]
+
         if agent not in self._agents:
             return error("AGENT_NOT_FOUND", f"Agent {agent!r} does not exist")
 
