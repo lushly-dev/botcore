@@ -118,7 +118,15 @@ def _matches_shell_allowlist(command: str, allowlist: list[str]) -> bool:
     Splits on shell operators (``&&``, ``||``, ``;``, ``|``) and requires
     every non-empty segment to match at least one allowlist pattern via
     ``fnmatch.fnmatch``.
+
+    Denies empty/whitespace-only commands and commands containing subshell
+    injection vectors (backticks, ``$()``).
     """
+    if not command or not command.strip():
+        return False
+    # Reject subshell injection vectors that bypass operator splitting
+    if re.search(r"`|\$\(", command):
+        return False
     segments = re.split(r"\s*(?:&&|\|\||[;|])\s*", command)
     return all(
         any(fnmatch.fnmatch(seg.strip(), pat) for pat in allowlist)

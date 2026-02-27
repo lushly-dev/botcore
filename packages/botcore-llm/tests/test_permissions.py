@@ -155,7 +155,16 @@ class TestShellAllowlist:
         assert not _matches_shell_allowlist("git status || rm -rf /", ["git *"])
 
     def test_empty_command(self):
-        assert _matches_shell_allowlist("", ["git *"])
+        assert not _matches_shell_allowlist("", ["git *"])
+
+    def test_whitespace_only_command(self):
+        assert not _matches_shell_allowlist("   ", ["git *"])
+
+    def test_backtick_injection_denied(self):
+        assert not _matches_shell_allowlist("git `rm -rf /`", ["git *"])
+
+    def test_subshell_injection_denied(self):
+        assert not _matches_shell_allowlist("git $(rm -rf /)", ["git *"])
 
     def test_exact_match_pattern(self):
         assert _matches_shell_allowlist("ls", ["ls"])

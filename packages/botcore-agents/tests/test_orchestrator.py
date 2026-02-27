@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import botcore_agents.orchestrator as orch_mod
-from botcore_agents.config import AgentsPluginConfig
+from botcore_agents.config import AgentPermissionsConfig, AgentsPluginConfig
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
 
 
@@ -466,6 +466,8 @@ class TestCapabilityDeclarations:
             model="gpt-4.1",
             tools=["dev_test", "dev_lint"],
             system_prompt="You are a research agent.",
+            permissions=AgentPermissionsConfig(),
+            agent_name="researcher",
         )
 
     async def test_connectors_prefix_filtering(
