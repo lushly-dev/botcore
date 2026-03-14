@@ -23,9 +23,8 @@ Expanded reference for the full release procedure.
 
 ## Changelog
 
-- [ ] Run `changeset_consume(version="X.Y.Z")` to generate changelog from pending changesets
-- [ ] If no changesets, manually add entries under `[X.Y.Z] - YYYY-MM-DD` heading
-- [ ] Fresh `[Unreleased]` section exists at top
+- [ ] `[Unreleased]` entries moved to version heading `[X.Y.Z] - YYYY-MM-DD`
+- [ ] Fresh `[Unreleased]` section added at top
 - [ ] Entries match actual changes (compare with `git log`)
 - [ ] Breaking changes prominently noted
 - [ ] Migration instructions included for breaking changes

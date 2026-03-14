@@ -65,9 +65,9 @@ Reference skills and other docs instead of copying content. Duplication leads to
 
 README.md serves developers (self-contained quick start). AGENTS.md serves AI tools (canonical instructions). CHANGELOG.md serves users (human-curated history). ROADMAP.md serves stakeholders (aspirational direction). Skills serve AI agents and developers (deep guidance).
 
-### 5. Changeset-Based Changelog
+### 5. Keep a Changelog
 
-CHANGELOG.md follows Keep a Changelog 1.1.0 format. Entries are authored as changeset files in `.changeset/` and consumed into CHANGELOG.md at release time via `changeset_consume`. Always maintain an `[Unreleased]` section.
+CHANGELOG.md follows Keep a Changelog 1.1.0 strictly. Entries are human-curated summaries, never git log dumps. Always maintain an `[Unreleased]` section.
 
 ## Workflow
 

@@ -57,7 +57,7 @@ All checks are language-aware — only relevant checks run based on detected pro
 
 | Check | Tool | Judgment required |
 |-------|------|-------------------|
-| CHANGELOG.md / changesets | `docs_check_changelog` | Create changeset if source files changed |
+| CHANGELOG.md staleness | `docs_check_changelog` | Update if source files changed |
 | AGENTS.md staleness | `docs_check_agents` | Update if structure changed (new commands, packages) |
 | README.md currency | Manual review | Update if new features, commands, or setup steps |
 | Skill validation | `skill_lint` | Only if skill files were modified |

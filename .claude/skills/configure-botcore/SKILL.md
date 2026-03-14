@@ -122,32 +122,6 @@ coverage_threshold = 90    # Percent (default: 80)
 | TypeScript | biome | vitest | biome |
 | Rust | clippy | cargo-test | rustfmt |
 
-## CLI Setup
-
-The recommended way to create initial config is through the CLI:
-
-```bash
-# Interactive — detects language, prompts for preferences
-botcore init
-
-# Non-interactive — accepts all defaults, no prompts (agent/CI safe)
-botcore init --non-interactive
-
-# Force regenerate existing config
-botcore init --force
-
-# Override detected language
-botcore init --non-interactive --language typescript
-```
-
-`botcore init` performs these steps:
-1. Detects language via workspace markers (pyproject.toml, package.json, Cargo.toml)
-2. Generates `botcore.toml` with language-appropriate tool defaults
-3. Seeds bundled skills into `.claude/skills/` (skip with `--no-skills`)
-4. Reports available extension packages (agents, llm, memory)
-
-The command is idempotent — running it twice is safe. It skips existing config unless `--force` is used, and `skill_seed` handles already-present skills.
-
 ## Checklist
 
 - [ ] Config placed in `pyproject.toml [tool.botcore]` or standalone `botcore.toml`

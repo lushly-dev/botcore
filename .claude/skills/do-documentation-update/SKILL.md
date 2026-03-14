@@ -61,15 +61,15 @@ cat pyproject.toml | grep 'version'   # Python
 cat Cargo.toml | grep 'version'       # Rust
 ```
 
-### Step 2: Create Changeset
+### Step 2: Update CHANGELOG.md
 
-**Every user-visible change gets a changeset file.** This is the most commonly skipped step — do not skip it.
+**Every user-visible change gets a changelog entry.** This is the most commonly skipped step — do not skip it.
 
-Run `docs_check_changelog` first — it checks for staged source changes and reports whether a changeset is needed. If changeset files already exist for the work, the check passes.
+Run `docs_check_changelog` first — it compares staged source files against CHANGELOG.md and reports whether an update is needed.
 
-#### When to create a changeset
+#### What goes in the changelog
 
-| Create changeset | Skip changeset |
+| Include | Exclude |
 |---------|---------|
 | New features (`feat:`) | Internal refactors with no behavior change |
 | Bug fixes (`fix:`) | Test-only changes |
@@ -78,30 +78,35 @@ Run `docs_check_changelog` first — it checks for staged source changes and rep
 | Security fixes | Dependency bumps (unless user-facing) |
 | Removed features | Typo fixes in code |
 
-#### Creating a changeset
+#### Format: Keep a Changelog 1.1.0
 
-Use the `changeset_create` command or `botcore changeset-create` CLI:
+Add entries under `## [Unreleased]` using the six standard categories. Omit empty categories.
 
-```bash
-botcore changeset-create --type added --description "**cli** -- add init command for project scaffolding"
-```
+| Category | When to use |
+|----------|-------------|
+| **Added** | New features, new commands, new APIs |
+| **Changed** | Behavior changes to existing features |
+| **Deprecated** | Features marked for future removal |
+| **Removed** | Features or APIs that were removed |
+| **Fixed** | Bug fixes |
+| **Security** | Vulnerability patches |
 
-This creates a file in `.changeset/` with the entry. Valid types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
-
-#### Changeset file format
+#### Entry format
 
 ```markdown
----
-type: added
----
+## [Unreleased]
 
+### Added
 - **component-name** -- brief description of what and why
+
+### Fixed
+- **auth** -- session token no longer expires during active use
 ```
 
 Rules:
 - Bold the component or area name
 - Describe **what changed** and **why it matters** — not implementation details
-- One changeset per logical change, not per commit
+- One entry per logical change, not per commit
 - Use sub-entries (indented `-`) for multi-part features
 
 #### Version headings and semver
