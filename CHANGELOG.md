@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-14
+
 ### Added
 
 - **cli** -- Click CLI entry point (`botcore` command) with `init`, `serve`, `skill-seed`, `skill-list`, `skill-status`, `info`, `changeset-create`, `changeset-status`, and `changeset-consume` subcommands. `botcore init` scaffolds a new project with language-detected `botcore.toml` and skill seeding. `--non-interactive --json` mode for agent-safe zero-prompt setup with structured output. `--language`, `--force`, `--no-skills`, and extension flags (`--with-agents`, `--with-llm`, `--with-memory`) for fine-grained control. `botcore serve` starts the MCP server. `python -m botcore` delegates to the CLI. Entry point registered via `[project.scripts]` in pyproject.toml.
@@ -57,7 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **do-documentation-update** -- standalone skill for documentation update passes (CHANGELOG, AGENTS.md, README.md, specs, roadmap, link verification). Includes changelog-versioning reference covering SemVer, git tags, comparison links, and monorepo strategies.
 - **do-clean-repo** -- periodic repo cleanup skill for stale branches, orphaned worktrees, dead test files, agent artifacts, build output, orphaned configs, and lockfile hygiene. Scan and full modes with confirmation before destructive actions.
 - **retry_async** -- shared async retry utility in `botcore.utils.runner` with configurable attempts, delay, and input validation. CDP retry loops refactored to use it.
-- **PluginRegistry.add_middleware()** -- registration stub for plugin middleware callables (foundation for future command pre/post-processing chain)
+- **AFD 0.6.0 adoption** -- Full adoption of AFD 0.6.0 features across botcore core:
+  - **Middleware stack** -- `MiddlewareRegistry` wrapper applies `default_middleware()` (trace_id, logging, timing) plus plugin-registered middleware to every command execution via `get_client()`
+  - **Telemetry** -- Opt-in telemetry via `telemetry_enabled` and `telemetry_format` config fields; wires `ConsoleTelemetrySink` into the middleware chain when enabled
+  - **Batch execution** -- `batch_execute()` helper runs multiple commands with timing, summary, confidence, and `stop_on_error` support
+  - **Pipeline docs** -- `PIPELINE_DOCS` constant documenting `DirectClient.pipe()` with variable resolution, aliases, conditionals, and error handling
+  - **Richer CommandResult** -- `suggestions` on info/docs commands, `confidence` and `sources` on research results
+  - **Testing helpers** -- Migrated 10 test files (~80 assertions) to `afd.testing.assert_success` / `assert_error`
+  - **Plugin middleware wiring** -- `add_middleware()` activated with proper signature; CLI startup discovers plugins and wires middleware into registry
 - **5 active plugin specs** -- LLM Runtime, Agent Orchestration, Connectors, Memory System, and Teams Interface plugin specs with AFD integration sections
 - **botcore-teams plugin (Phase 1)** -- Microsoft Teams bot interface as first external plugin in `plugins/botcore-teams/`
   - Regex intent parser (6 patterns: task_assign, task_status, team_status, task_cancel, task_list, unknown)
