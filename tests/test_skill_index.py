@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.index import skill_index
 
 
@@ -34,8 +36,7 @@ async def test_index_no_workspace() -> None:
     with patch("botcore.commands.skill.index.find_workspace", return_value=None):
         result = await skill_index()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_index_generates_table(tmp_path: Path) -> None:
@@ -49,10 +50,10 @@ async def test_index_generates_table(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.index.find_workspace", return_value=ws):
         result = await skill_index(write=True)
 
-    assert result.success is True
-    assert result.data["written"] is True
+    data = assert_success(result)
+    assert data["written"] is True
 
-    content = result.data["content"]
+    content = data["content"]
     assert "# Skill Index" in content
     assert "[security]" in content
     assert "[testing]" in content
@@ -73,9 +74,9 @@ async def test_index_dry_run(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.index.find_workspace", return_value=ws):
         result = await skill_index(write=False)
 
-    assert result.success is True
-    assert result.data["written"] is False
-    assert "# Skill Index" in result.data["content"]
+    data = assert_success(result)
+    assert data["written"] is False
+    assert "# Skill Index" in data["content"]
 
     # File was NOT written
     assert not (skills_dir / "_index.md").exists()
@@ -88,5 +89,4 @@ async def test_index_no_skills_dir(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.index.find_workspace", return_value=ws):
         result = await skill_index()
 
-    assert result.success is False
-    assert result.error.code == "NO_SKILLS_DIR"
+    assert_error(result, "NO_SKILLS_DIR")

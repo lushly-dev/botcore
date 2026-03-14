@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **cli** -- Click CLI entry point (`botcore` command) with `init`, `serve`, `skill-seed`, `skill-list`, `skill-status`, `info`, `changeset-create`, `changeset-status`, and `changeset-consume` subcommands. `botcore init` scaffolds a new project with language-detected `botcore.toml` and skill seeding. `--non-interactive --json` mode for agent-safe zero-prompt setup with structured output. `--language`, `--force`, `--no-skills`, and extension flags (`--with-agents`, `--with-llm`, `--with-memory`) for fine-grained control. `botcore serve` starts the MCP server. `python -m botcore` delegates to the CLI. Entry point registered via `[project.scripts]` in pyproject.toml.
+- **changesets** -- Changeset-based changelog workflow. Each user-visible change gets a `.changeset/<id>.md` file with type and description. Three new commands: `changeset_create` (create a changeset file), `changeset_status` (list pending changesets), `changeset_consume` (consume changesets into CHANGELOG.md grouped by type). `docs_check_changelog` updated to be changeset-aware — passes when changeset files exist for staged changes. CLI commands: `botcore changeset-create`, `botcore changeset-status`, `botcore changeset-consume`. No new dependencies.
 - **botcore-agents** -- Per-agent permission profiles (`AgentPermissionsConfig`) extending `LlmPermissionsConfig` with `shell_allowlist` (fnmatch glob patterns, shell operator splitting) and `filesystem_paths` (resolved prefix matching). Each agent declares its own `permissions` in config; the orchestrator passes them through to `llm_session_create`. Permission handler includes `agent_name` in all audit log messages. Secure by default — shell and filesystem denied unless explicitly enabled.
 - **botcore-architecture skill** — System topology, package map, request flows, security boundaries, and extension points for agent learning
 - **botcore-principles skill** — 12 design tenets (CommandResult Everywhere, Opt-In Composability, Constrained Agency, Meta-Tool Pattern, etc.) with decision heuristics and anti-patterns
@@ -68,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **version** -- `__init__.__version__` now matches `pyproject.toml` version (was `0.2.0`, should be `0.2.1`)
 - **connectors** -- Fix stale pre-flight GitHub rate-limit gating by allowing requests after reset window expiry; harden audit sanitization to recurse into list/tuple/set containers so nested sensitive keys are redacted
 - **teams** -- Repair dispatch path to use DirectClient with UNKNOWN_TOOL fallback; add `allowed_groups` authorization gate; thread `original_text` through Retry button action data; change `TeamsIdentity.roles` to immutable `tuple[str, ...]`
 - **memory** -- Wire plugin config injection via `configure` hook in `build_namespace`; enforce `max_entries_per_scope` atomically in local store with `MEMORY_SCOPE_FULL` error
@@ -76,6 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **afd** -- Bumped minimum from `>=0.1.0` to `>=0.6.0`. Picks up Python-TypeScript parity (batch execution, streaming, middleware stack, telemetry, MCP client, testing helpers, connectors, handoff), contextual tool loading, output shape predictability, schema examples, and command prerequisites. No breaking changes for botcore — all existing `CommandResult`, `success`, `error`, `DirectClient` usage is unchanged.
+- **`__main__.py`** — `python -m botcore` now delegates to the CLI instead of starting the MCP server directly. Use `botcore serve` to start the server.
+- **AGENTS.md** — Added CLI section with command table; added `cli.py` to architecture tree
 - **AGENTS.md** — Added Architecture & Principles section and Roadmap section referencing new skills and feature trajectory
 - **LANDSCAPE.md** — Trimmed to pure competitive positioning; architecture and vision sections replaced with pointers to skills, specs, and ROADMAP.md
 - **monorepo layout** -- Moved `botcore-llm/` into `packages/botcore-llm/` to establish `packages/` convention for plugin packages

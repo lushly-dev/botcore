@@ -10,6 +10,49 @@ from afd import CommandResult, error, success
 
 from botcore.utils.workspace import find_workspace
 
+PIPELINE_DOCS = """# Pipelines
+
+DirectClient supports multi-step command pipelines via `client.pipe()`.
+Each step can reference outputs from previous steps using variable syntax.
+
+## Variable Resolution
+
+- `$prev` — Previous step's `result.data`
+- `$prev.field` — Access a specific field from previous step's data
+- `$alias` — Named step's `result.data` (via `as` key in step dict)
+- `$alias.field` — Field from a named step's data
+
+## Example
+
+```python
+from botcore.registry import get_client
+
+client = get_client()
+result = await client.pipe([
+    {"command": "info-workspace", "as": "ws"},
+    {"command": "info-env", "input": {}},
+])
+# result.steps contains individual step results
+# result.data contains the final step's data
+```
+
+## Conditional Steps
+
+Use `when` to conditionally execute a step:
+
+```python
+result = await client.pipe([
+    {"command": "docs-check-changelog", "as": "check"},
+    {"command": "changeset-create", "input": {"type": "added", "description": "..."}, "when": "$check.needs_update"},
+])
+```
+
+## Error Handling
+
+If any step fails, the pipeline stops and returns the failure.
+The `result.steps` list shows which steps completed before the failure.
+"""
+
 _FRONTMATTER_REQUIRED_FIELDS = {"status", "author", "created"}
 
 
@@ -225,14 +268,23 @@ async def docs_lint(path: str | None = None) -> CommandResult[dict]:
             details={"issues": issues},
         )
 
+    suggestions = []
+    if issues:
+        suggestions.append("Fix warnings to improve documentation quality")
     return success(
         data={"files_checked": files_checked, "issues": issues, "passed": True},
         reasoning=f"Checked {files_checked} markdown files, no issues found",
+        suggestions=suggestions if suggestions else None,
     )
 
 
 async def docs_check_changelog() -> CommandResult[dict]:
-    """Check if CHANGELOG.md needs updating based on staged changes."""
+    """Check if CHANGELOG.md needs updating based on staged changes.
+
+    Changeset-aware: if source files are staged without a CHANGELOG.md update,
+    checks for pending changeset files in .changeset/. If changesets exist,
+    the changelog will be updated at release time — no manual edit needed.
+    """
     ws = find_workspace()
     if not ws:
         return error(
@@ -244,7 +296,7 @@ async def docs_check_changelog() -> CommandResult[dict]:
     changelog = ws / "CHANGELOG.md"
     if not changelog.exists():
         return success(
-            data={"has_changelog": False, "needs_update": False},
+            data={"has_changelog": False, "needs_update": False, "changeset_count": 0},
             reasoning="No CHANGELOG.md found - skipping check",
         )
 
@@ -260,18 +312,46 @@ async def docs_check_changelog() -> CommandResult[dict]:
     src_staged = any(f.startswith("src/") and f.endswith(".py") for f in staged_files)
     changelog_staged = "CHANGELOG.md" in staged_files
 
+    # Count pending changeset files
+    changeset_dir = ws / ".changeset"
+    changeset_count = 0
+    if changeset_dir.exists():
+        changeset_count = len([
+            f for f in changeset_dir.glob("*.md")
+            if f.name.lower() != "readme.md"
+        ])
+
     if src_staged and not changelog_staged:
+        if changeset_count > 0:
+            return success(
+                data={
+                    "has_changelog": True,
+                    "needs_update": False,
+                    "changeset_count": changeset_count,
+                    "staged_src_files": [f for f in staged_files if f.startswith("src/")],
+                },
+                reasoning=f"{changeset_count} changeset(s) pending — changelog "
+                "will be updated at release time",
+            )
         return success(
             data={
                 "has_changelog": True,
                 "needs_update": True,
+                "changeset_count": 0,
                 "staged_src_files": [f for f in staged_files if f.startswith("src/")],
             },
-            reasoning="Source files staged but CHANGELOG.md not updated",
+            reasoning="Source files staged but no CHANGELOG.md update "
+            "and no changeset files found. Create a changeset with "
+            "changeset_create() or update CHANGELOG.md manually.",
+            suggestions=["Run changeset_create to record this change"],
         )
 
     return success(
-        data={"has_changelog": True, "needs_update": False},
+        data={
+            "has_changelog": True,
+            "needs_update": False,
+            "changeset_count": changeset_count,
+        },
         reasoning="CHANGELOG.md is up to date or no source changes",
     )
 
@@ -320,6 +400,7 @@ async def docs_check_agents() -> CommandResult[dict]:
                 "structural_changes": structural_changes,
             },
             reasoning=f"Structural changes but AGENTS.md not updated: {changes_summary}",
+            suggestions=["Update AGENTS.md to reflect structural changes"],
         )
 
     return success(

@@ -14,6 +14,23 @@ Shared bot infrastructure — config, plugin contract, skill registry, and extra
 | `ruff check src/` | Lint check |
 | `ruff check src/ --fix` | Auto-fix lint issues |
 
+## CLI
+
+| Command | Purpose |
+|---------|---------|
+| `botcore init --non-interactive --json` | Agentic setup — creates config, seeds skills, returns JSON |
+| `botcore init` | Interactive project setup with prompts |
+| `botcore serve` | Start the MCP server (stdio by default) |
+| `botcore skill-seed` | Seed bundled skills into `.claude/skills/` |
+| `botcore skill-list` | List available and installed skills |
+| `botcore skill-status` | Show skill version drift |
+| `botcore info` | Show workspace information |
+| `botcore changeset-create` | Create a changeset file for the next release |
+| `botcore changeset-status` | Show pending changeset files |
+| `botcore changeset-consume` | Consume changesets and update CHANGELOG.md |
+
+All commands except `serve` support `--json` for machine-readable output. Exit codes: 0 = success, 1 = error.
+
 ## Architecture
 
 ```
@@ -23,6 +40,7 @@ src/botcore/                    # Core package
 ├── docs.py                     # Doc topic registry
 ├── plugin.py                   # Plugin contract + PluginRegistry
 ├── registry.py                 # Command registry
+├── cli.py                      # Click CLI entry point (init, serve, skill-*, info)
 ├── server.py                   # MCP server factory (build_namespace, build_docs, create_mcp_server)
 ├── commands/                   # Built-in commands
 │   ├── dev/                    # Dev commands (lint, test, build, check-*)

@@ -23,6 +23,22 @@ Architectural interfaces that must exist before expanding agent or connector fea
 | [Per-Agent Permission Profiles](docs/features/active/per-agent-permissions/spec.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Active |
 | [Orchestrator State Serialization](docs/features/active/orchestrator-state-serialization/spec.md) | Without this, can't add persistence or crash recovery later. `save_state()` / `load_state()` interface with JSON backend. | Active |
 
+## AFD 0.6.0 Adoption
+
+Cross-cutting adoption of AFD 0.6.0 capabilities. Seven work items, independently implementable.
+
+| Work Item | Priority | Depends On | Status |
+|-----------|----------|------------|--------|
+| [Testing Helpers](docs/features/active/afd-060-adoption/spec.md#p1-testing-helpers) | P1 | — | Active |
+| [Middleware Stack](docs/features/active/afd-060-adoption/spec.md#p2-middleware-stack-integration) | P2 | — | Active |
+| [Telemetry](docs/features/active/afd-060-adoption/spec.md#p3-telemetry-integration) | P3 | P2 | Active |
+| [Richer CommandResult Fields](docs/features/active/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Active |
+| [Pipelines](docs/features/active/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Active |
+| [Batch Execution](docs/features/active/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Active |
+| [Streaming](docs/features/active/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
+
+See [full spec](docs/features/active/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
+
 ## Phase 2 — Proposed
 
 Features that the plugin architecture supports adding without rearchitecture. Each is additive — no changes to CommandResult, plugin protocol, or core.

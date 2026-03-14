@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.docs import (
     _extract_headings,
     _slugify_heading,
@@ -33,8 +35,7 @@ async def test_docs_lint_no_docs_dir(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is False
-    assert result.error.code == "PATH_NOT_FOUND"
+    assert_error(result, "PATH_NOT_FOUND")
 
 
 async def test_docs_lint_no_issues(tmp_path) -> None:
@@ -46,9 +47,9 @@ async def test_docs_lint_no_issues(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
-    assert result.data["files_checked"] == 1
-    assert result.data["passed"] is True
+    data = assert_success(result)
+    assert data["files_checked"] == 1
+    assert data["passed"] is True
 
 
 async def test_docs_lint_broken_link(tmp_path) -> None:
@@ -60,8 +61,7 @@ async def test_docs_lint_broken_link(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is False
-    assert result.error.code == "BROKEN_LINKS"
+    assert_error(result, "BROKEN_LINKS")
 
 
 async def test_docs_check_changelog_no_workspace() -> None:
@@ -69,8 +69,7 @@ async def test_docs_check_changelog_no_workspace() -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=None):
         result = await docs_check_changelog()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_docs_check_changelog_no_file(tmp_path) -> None:
@@ -78,5 +77,5 @@ async def test_docs_check_changelog_no_file(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_check_changelog()
 
-    assert result.success is True
-    assert result.data["has_changelog"] is False
+    data = assert_success(result)
+    assert data["has_changelog"] is False

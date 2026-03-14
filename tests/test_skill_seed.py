@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.seed import skill_seed
 
 
@@ -48,8 +50,7 @@ async def test_seed_no_workspace() -> None:
     with patch("botcore.commands.skill.seed.find_workspace", return_value=None):
         result = await skill_seed()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_seed_no_available_skills(tmp_path: Path) -> None:
@@ -67,8 +68,7 @@ async def test_seed_no_available_skills(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is False
-    assert result.error.code == "NO_SKILLS_AVAILABLE"
+    assert_error(result, "NO_SKILLS_AVAILABLE")
 
 
 async def test_seed_creates_new_skills(tmp_path: Path) -> None:
@@ -95,9 +95,9 @@ async def test_seed_creates_new_skills(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
-    assert sorted(result.data["seeded"]) == ["security", "testing"]
-    assert len(result.data["skipped"]) == 0
+    data = assert_success(result)
+    assert sorted(data["seeded"]) == ["security", "testing"]
+    assert len(data["skipped"]) == 0
 
     # Verify files were copied and source: injected
     security_skill = ws / ".claude" / "skills" / "security" / "SKILL.md"
@@ -134,10 +134,10 @@ async def test_seed_skips_different_source(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
-    assert result.data["seeded"] == []
-    assert len(result.data["skipped"]) == 1
-    assert result.data["skipped"][0]["reason"] == "owned by custom-plugin"
+    data = assert_success(result)
+    assert data["seeded"] == []
+    assert len(data["skipped"]) == 1
+    assert data["skipped"][0]["reason"] == "owned by custom-plugin"
 
 
 async def test_seed_updates_matching_source(tmp_path: Path) -> None:
@@ -167,8 +167,8 @@ async def test_seed_updates_matching_source(tmp_path: Path) -> None:
     ):
         result = await skill_seed(update=True)
 
-    assert result.success is True
-    assert result.data["updated"] == ["security"]
+    data = assert_success(result)
+    assert data["updated"] == ["security"]
 
 
 async def test_seed_skips_unmanaged(tmp_path: Path) -> None:
@@ -199,9 +199,9 @@ async def test_seed_skips_unmanaged(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
-    assert result.data["seeded"] == []
-    assert any("unmanaged" in s["reason"] for s in result.data["skipped"])
+    data = assert_success(result)
+    assert data["seeded"] == []
+    assert any("unmanaged" in s["reason"] for s in data["skipped"])
 
 
 async def test_seed_dry_run(tmp_path: Path) -> None:
@@ -227,9 +227,9 @@ async def test_seed_dry_run(tmp_path: Path) -> None:
     ):
         result = await skill_seed(dry_run=True)
 
-    assert result.success is True
-    assert result.data["dry_run"] is True
-    assert result.data["seeded"] == ["testing"]
+    data = assert_success(result)
+    assert data["dry_run"] is True
+    assert data["seeded"] == ["testing"]
     # File should NOT exist
     assert not (ws / ".claude" / "skills" / "testing").exists()
 
@@ -265,8 +265,8 @@ async def test_seed_include_filter(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
-    assert result.data["seeded"] == ["testing"]
+    data = assert_success(result)
+    assert data["seeded"] == ["testing"]
 
 
 async def test_seed_skip_filter(tmp_path: Path) -> None:
@@ -299,8 +299,8 @@ async def test_seed_skip_filter(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
-    assert result.data["seeded"] == ["testing"]
+    data = assert_success(result)
+    assert data["seeded"] == ["testing"]
 
 
 async def test_seed_copies_references(tmp_path: Path) -> None:
@@ -326,6 +326,6 @@ async def test_seed_copies_references(tmp_path: Path) -> None:
     ):
         result = await skill_seed()
 
-    assert result.success is True
+    assert_success(result)
     refs = ws / ".claude" / "skills" / "testing" / "references" / "guide.md"
     assert refs.exists()

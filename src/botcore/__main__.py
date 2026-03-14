@@ -1,6 +1,6 @@
-"""Entry point for `python -m botcore` — starts the MCP server."""
+"""Entry point for `python -m botcore` — delegates to CLI."""
 
-from botcore.server import create_mcp_server
+from botcore.cli import cli
 
-server = create_mcp_server("botcore", version="0.2.0")
-server.run(transport="stdio")
+if __name__ == "__main__":
+    cli()

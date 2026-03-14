@@ -185,20 +185,34 @@ docs: update plugin setup guide
 test: add coverage for skill seeding
 ```
 
+## Changesets
+
+When making user-visible changes (features, fixes, breaking changes), create a changeset file:
+
+```bash
+botcore changeset-create --type added --description "**component** -- what changed and why"
+```
+
+This creates a `.changeset/<id>.md` file. Commit it with your code. At release time, changesets are consumed to generate CHANGELOG.md entries automatically.
+
+Valid types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
+
 ## Submitting Changes
 
 1. Create a branch from `main`
 2. Make changes following the patterns above
-3. Verify locally:
+3. Create a changeset if the change is user-visible
+4. Verify locally:
    - `ruff check src/` — no lint errors
    - `ruff format --check src/` — formatting clean
    - `pytest tests/ -v` — all tests pass
-4. Push and open a pull request
+5. Push and open a pull request
 
 ### PR Guidelines
 
 - Keep PRs focused on a single concern
 - Include tests for new commands and config changes
+- Include a changeset for user-visible changes
 - Update `AGENTS.md` if adding commands or changing architecture
 - All Lefthook hooks must pass
 

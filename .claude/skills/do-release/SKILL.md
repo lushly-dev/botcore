@@ -57,12 +57,12 @@ For monorepos with multiple packages, bump each changed package.
 
 ### Step 3: Changelog Finalize
 
-Update CHANGELOG.md:
+Consume pending changesets to generate the changelog section:
 
-1. Move entries under `## [Unreleased]` to a new version heading: `## [X.Y.Z] - YYYY-MM-DD`
-2. Add a fresh empty `## [Unreleased]` section at the top
-3. Verify entries reflect actual changes (cross-reference with commits)
-4. Reference `manage-documentation` skill for changelog format conventions
+1. Run `changeset_consume(version="X.Y.Z")` — this reads all `.changeset/*.md` files, groups entries by type (Added/Changed/Fixed/etc.), inserts the new version section into CHANGELOG.md, and deletes consumed files
+2. Review the generated section — verify entries reflect actual changes
+3. If no changesets exist, add entries manually under a new `## [X.Y.Z] - YYYY-MM-DD` heading
+4. A fresh `## [Unreleased]` section is automatically maintained above the new version
 
 ### Step 4: Build
 

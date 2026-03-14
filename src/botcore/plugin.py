@@ -64,9 +64,8 @@ class PluginRegistry:
     def add_middleware(self, middleware: Callable[..., Any]) -> None:
         """Register a middleware callable for command pre/post-processing.
 
-        Middleware will be invoked around command execution once the
-        server factory integrates the middleware chain.  Signature
-        is not yet stabilised — this is a registration-only stub.
+        Middleware signature: (name, args, context, next_fn) -> CommandResult.
+        Applied around every command execution via MiddlewareRegistry.
         """
         self._middleware.append(middleware)
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.status import skill_status
 
 
@@ -34,8 +36,7 @@ async def test_status_no_workspace() -> None:
     with patch("botcore.commands.skill.status.find_workspace", return_value=None):
         result = await skill_status()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_status_ok(tmp_path: Path) -> None:
@@ -65,10 +66,10 @@ async def test_status_ok(tmp_path: Path) -> None:
     ):
         result = await skill_status()
 
-    assert result.success is True
-    sec = next(s for s in result.data["skills"] if s["name"] == "security")
+    data = assert_success(result)
+    sec = next(s for s in data["skills"] if s["name"] == "security")
     assert sec["status"] == "ok"
-    assert result.data["summary"]["ok"] == 1
+    assert data["summary"]["ok"] == 1
 
 
 async def test_status_stale(tmp_path: Path) -> None:
@@ -98,8 +99,8 @@ async def test_status_stale(tmp_path: Path) -> None:
     ):
         result = await skill_status()
 
-    assert result.success is True
-    sec = next(s for s in result.data["skills"] if s["name"] == "security")
+    data = assert_success(result)
+    sec = next(s for s in data["skills"] if s["name"] == "security")
     assert sec["status"] == "stale"
 
 
@@ -125,8 +126,8 @@ async def test_status_missing(tmp_path: Path) -> None:
     ):
         result = await skill_status()
 
-    assert result.success is True
-    test = next(s for s in result.data["skills"] if s["name"] == "testing")
+    data = assert_success(result)
+    test = next(s for s in data["skills"] if s["name"] == "testing")
     assert test["status"] == "missing"
 
 
@@ -156,8 +157,8 @@ async def test_status_unmanaged(tmp_path: Path) -> None:
     ):
         result = await skill_status()
 
-    assert result.success is True
-    sec = next(s for s in result.data["skills"] if s["name"] == "security")
+    data = assert_success(result)
+    sec = next(s for s in data["skills"] if s["name"] == "security")
     assert sec["status"] == "unmanaged"
 
 
@@ -187,6 +188,6 @@ async def test_status_conflict(tmp_path: Path) -> None:
     ):
         result = await skill_status()
 
-    assert result.success is True
-    sec = next(s for s in result.data["skills"] if s["name"] == "security")
+    data = assert_success(result)
+    sec = next(s for s in data["skills"] if s["name"] == "security")
     assert sec["status"] == "conflict"

@@ -272,7 +272,28 @@ pip install lushly-botcore
 pip install -e ".[dev,mcp]"
 ```
 
-### Create an MCP Server
+### Quick Setup
+
+```bash
+# Interactive — detects language, prompts for preferences
+botcore init
+
+# Non-interactive (agent-safe) — accepts all defaults
+botcore init --non-interactive
+
+# Start the MCP server
+botcore serve
+```
+
+For agentic setup with structured output:
+
+```bash
+pip install lushly-botcore
+botcore init --non-interactive --json
+# Returns: {config_path, language, skills_seeded, extensions_available}
+```
+
+### Create a Custom MCP Server
 
 ```python
 from botcore.server import create_mcp_server
@@ -296,7 +317,7 @@ result = await client.call("dev_lint")
 result = await client.call("skill_seed", {"update": True})
 ```
 
-### Seed Skills
+### Manage Skills
 
 ```bash
 # Copy all 54 bundled skills into .claude/skills/
@@ -305,8 +326,8 @@ botcore skill-seed
 # Check for version drift
 botcore skill-status
 
-# Lint skills for quality
-botcore skill-lint
+# List all skills
+botcore skill-list
 ```
 
 ## Development

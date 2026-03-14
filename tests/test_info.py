@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.info import info_env, info_scripts, info_workspace
 
 
@@ -15,9 +17,9 @@ async def test_info_workspace_found(tmp_workspace: Path) -> None:
     with patch("botcore.commands.info.find_workspace", return_value=tmp_workspace):
         result = await info_workspace()
 
-    assert result.success is True
-    assert result.data["workspace_root"] == str(tmp_workspace)
-    assert isinstance(result.data["packages"], list)
+    data = assert_success(result)
+    assert data["workspace_root"] == str(tmp_workspace)
+    assert isinstance(data["packages"], list)
 
 
 async def test_info_workspace_not_found() -> None:
@@ -25,19 +27,17 @@ async def test_info_workspace_not_found() -> None:
     with patch("botcore.commands.info.find_workspace", return_value=None):
         result = await info_workspace()
 
-    assert result.success is False
-    assert result.error is not None
-    assert "WORKSPACE_NOT_FOUND" in str(result.error)
+    assert_error(result, "WORKSPACE_NOT_FOUND")
 
 
 async def test_info_env() -> None:
     """Returns python version and platform."""
     result = await info_env()
 
-    assert result.success is True
-    assert sys.version in result.data["python_version"]
-    assert result.data["platform"] == sys.platform
-    assert result.data["cwd"] == os.getcwd()
+    data = assert_success(result)
+    assert sys.version in data["python_version"]
+    assert data["platform"] == sys.platform
+    assert data["cwd"] == os.getcwd()
 
 
 async def test_info_scripts(tmp_workspace_with_packages: Path) -> None:
@@ -52,10 +52,10 @@ async def test_info_scripts(tmp_workspace_with_packages: Path) -> None:
     with patch("botcore.commands.info.find_workspace", return_value=tmp_workspace_with_packages):
         result = await info_scripts()
 
-    assert result.success is True
-    assert "core" in result.data
-    assert "build" in result.data["core"]
-    assert "test" in result.data["core"]
+    data = assert_success(result)
+    assert "core" in data
+    assert "build" in data["core"]
+    assert "test" in data["core"]
 
 
 async def test_info_scripts_no_workspace() -> None:
@@ -63,7 +63,7 @@ async def test_info_scripts_no_workspace() -> None:
     with patch("botcore.commands.info.find_workspace", return_value=None):
         result = await info_scripts()
 
-    assert result.success is False
+    assert_error(result)
 
 
 async def test_info_workspace_with_packages(tmp_workspace_with_packages: Path) -> None:
@@ -71,8 +71,8 @@ async def test_info_workspace_with_packages(tmp_workspace_with_packages: Path) -
     with patch("botcore.commands.info.find_workspace", return_value=tmp_workspace_with_packages):
         result = await info_workspace()
 
-    assert result.success is True
-    assert result.data["package_count"] == 3
-    assert "core" in result.data["packages"]
-    assert "data" in result.data["packages"]
-    assert "utils" in result.data["packages"]
+    data = assert_success(result)
+    assert data["package_count"] == 3
+    assert "core" in data["packages"]
+    assert "data" in data["packages"]
+    assert "utils" in data["packages"]

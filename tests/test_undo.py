@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from afd.testing import assert_success
+
 from botcore.commands.undo import (
     clear_history,
     load_history,
@@ -18,8 +20,8 @@ async def test_undo_status_no_history(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", tmp_path / "nonexistent.json"):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["has_history"] is False
+    data = assert_success(result)
+    assert data["has_history"] is False
 
 
 async def test_undo_status_with_history(tmp_path) -> None:
@@ -32,10 +34,10 @@ async def test_undo_status_with_history(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["has_history"] is True
-    assert result.data["last_action"] == "work.start"
-    assert any("git checkout" in cmd for cmd in result.data["rollback_commands"])
+    data = assert_success(result)
+    assert data["has_history"] is True
+    assert data["last_action"] == "work.start"
+    assert any("git checkout" in cmd for cmd in data["rollback_commands"])
 
 
 async def test_undo_clear(tmp_path) -> None:
@@ -46,8 +48,8 @@ async def test_undo_clear(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_clear()
 
-    assert result.success is True
-    assert result.data["cleared"] is True
+    data = assert_success(result)
+    assert data["cleared"] is True
     assert not history_file.exists()
 
 

@@ -29,7 +29,11 @@ async def info_workspace() -> CommandResult[dict]:
             "workspace_root": str(ws),
             "packages": package_names,
             "package_count": len(packages),
-        }
+        },
+        suggestions=[
+            "Use info_scripts to see available package scripts",
+            "Use info_env for runtime environment details",
+        ],
     )
 
 
@@ -73,7 +77,10 @@ async def info_scripts() -> CommandResult[dict]:
 
         result[pkg.name] = scripts
 
-    return success(data=result)
+    return success(
+        data=result,
+        suggestions=["Run scripts with dev_test or dev_lint commands"],
+    )
 
 
 async def info_env() -> CommandResult[dict]:
@@ -86,5 +93,6 @@ async def info_env() -> CommandResult[dict]:
             "python_version": sys.version,
             "platform": sys.platform,
             "cwd": os.getcwd(),
-        }
+        },
+        suggestions=["Use info_workspace for project structure"],
     )

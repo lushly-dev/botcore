@@ -87,6 +87,8 @@ class BotCoreConfig(BaseModel):
     circular_deps_allowed: int = 0
     check_changelog: bool = True
     check_agents: bool = True
+    telemetry_enabled: bool = False
+    telemetry_format: str = "text"  # "text" or "json"
 
     # Nested sections
     skills: SkillsConfig = SkillsConfig()

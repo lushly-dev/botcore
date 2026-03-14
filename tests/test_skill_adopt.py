@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.adopt import skill_adopt
 
 
@@ -34,8 +36,7 @@ async def test_adopt_no_workspace() -> None:
     with patch("botcore.commands.skill.adopt.find_workspace", return_value=None):
         result = await skill_adopt("test-skill")
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_adopt_skill_not_found(tmp_path: Path) -> None:
@@ -45,8 +46,7 @@ async def test_adopt_skill_not_found(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
         result = await skill_adopt("nonexistent")
 
-    assert result.success is False
-    assert result.error.code == "SKILL_NOT_FOUND"
+    assert_error(result, "SKILL_NOT_FOUND")
 
 
 async def test_adopt_adds_source(tmp_path: Path) -> None:
@@ -59,9 +59,9 @@ async def test_adopt_adds_source(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
         result = await skill_adopt("my-skill", source="local")
 
-    assert result.success is True
-    assert result.data["changed"] is True
-    assert result.data["source"] == "local"
+    data = assert_success(result)
+    assert data["changed"] is True
+    assert data["source"] == "local"
 
     # Verify file was updated
     content = (skills_dir / "my-skill" / "SKILL.md").read_text(encoding="utf-8")
@@ -78,8 +78,8 @@ async def test_adopt_already_adopted(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
         result = await skill_adopt("my-skill", source="local")
 
-    assert result.success is True
-    assert result.data["changed"] is False
+    data = assert_success(result)
+    assert data["changed"] is False
 
 
 async def test_adopt_conflict(tmp_path: Path) -> None:
@@ -92,5 +92,4 @@ async def test_adopt_conflict(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
         result = await skill_adopt("my-skill", source="custom")
 
-    assert result.success is False
-    assert result.error.code == "SOURCE_CONFLICT"
+    assert_error(result, "SOURCE_CONFLICT")

@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.list import skill_list
 
 
@@ -34,8 +36,7 @@ async def test_list_no_workspace() -> None:
     with patch("botcore.commands.skill.list.find_workspace", return_value=None):
         result = await skill_list()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_list_empty(tmp_path: Path) -> None:
@@ -48,9 +49,9 @@ async def test_list_empty(tmp_path: Path) -> None:
     ):
         result = await skill_list()
 
-    assert result.success is True
-    assert result.data["installed_count"] == 0
-    assert result.data["available_count"] == 0
+    data = assert_success(result)
+    assert data["installed_count"] == 0
+    assert data["available_count"] == 0
 
 
 async def test_list_shows_installed_and_available(tmp_path: Path) -> None:
@@ -84,16 +85,16 @@ async def test_list_shows_installed_and_available(tmp_path: Path) -> None:
     ):
         result = await skill_list(show_source=True)
 
-    assert result.success is True
-    assert result.data["installed_count"] == 1
-    assert result.data["available_count"] == 2
+    data = assert_success(result)
+    assert data["installed_count"] == 1
+    assert data["available_count"] == 2
 
     # Installed skill includes source
-    installed = result.data["installed"]
+    installed = data["installed"]
     assert any(s["name"] == "security" and s.get("source") == "botcore" for s in installed)
 
     # Available includes installed flag
-    avail = result.data["available"]
+    avail = data["available"]
     sec = next(s for s in avail if s["name"] == "security")
     assert sec["installed"] is True
     test = next(s for s in avail if s["name"] == "testing")
@@ -113,7 +114,7 @@ async def test_list_without_source(tmp_path: Path) -> None:
     ):
         result = await skill_list(show_source=False)
 
-    assert result.success is True
-    installed = result.data["installed"]
+    data = assert_success(result)
+    installed = data["installed"]
     assert len(installed) == 1
     assert "source" not in installed[0]

@@ -105,6 +105,8 @@ async def research_query(query: str, mode: str = "fast") -> CommandResult[dict]:
                 "sources": sources,
             },
             reasoning=f"Research completed via {model_name}",
+            confidence=0.85 if sources else 0.5,
+            sources=sources,
         )
 
     except Exception as e:

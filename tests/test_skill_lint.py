@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.skill.lint import skill_lint
 
 
@@ -33,8 +35,7 @@ async def test_lint_no_workspace() -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=None):
         result = await skill_lint()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_lint_no_skills_dir(tmp_path: Path) -> None:
@@ -44,8 +45,7 @@ async def test_lint_no_skills_dir(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    assert result.success is False
-    assert result.error.code == "NO_SKILLS_DIR"
+    assert_error(result, "NO_SKILLS_DIR")
 
 
 async def test_lint_valid_skill(tmp_path: Path) -> None:
@@ -58,9 +58,9 @@ async def test_lint_valid_skill(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    assert result.success is True
-    assert result.data["errors"] == 0
-    assert result.data["passed"] == 1
+    data = assert_success(result)
+    assert data["errors"] == 0
+    assert data["passed"] == 1
 
 
 async def test_lint_sk001_missing_file(tmp_path: Path) -> None:
@@ -75,8 +75,7 @@ async def test_lint_sk001_missing_file(tmp_path: Path) -> None:
         result = await skill_lint()
 
     # bad-skill is skipped by discover_local_skills since it has no SKILL.md
-    assert result.success is False
-    assert result.error.code == "NO_SKILLS"
+    assert_error(result, "NO_SKILLS")
 
 
 async def test_lint_sk001_no_frontmatter(tmp_path: Path) -> None:
@@ -90,8 +89,8 @@ async def test_lint_sk001_no_frontmatter(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    assert result.success is True
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK001" for v in violations)
 
 
@@ -109,8 +108,8 @@ async def test_lint_sk002_missing_name(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    assert result.success is True
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK002" for v in violations)
 
 
@@ -128,7 +127,8 @@ async def test_lint_sk004_kebab_case(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK004" for v in violations)
 
 
@@ -146,7 +146,8 @@ async def test_lint_sk006_no_triggers(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     trigger_v = next(v for v in violations if v["rule"] == "SK006")
     assert trigger_v["severity"] == "warning"
 
@@ -166,7 +167,8 @@ async def test_lint_sk010_placeholder(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK010" for v in violations)
 
 
@@ -185,7 +187,8 @@ async def test_lint_sk012_dir_name_mismatch(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK012" for v in violations)
 
 
@@ -203,7 +206,8 @@ async def test_lint_sk013_no_version(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint()
 
-    violations = result.data["skills"][0]["violations"]
+    data = assert_success(result)
+    violations = data["skills"][0]["violations"]
     assert any(v["rule"] == "SK013" for v in violations)
 
 
@@ -218,6 +222,6 @@ async def test_lint_single_skill_path(tmp_path: Path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint(path="good")
 
-    assert result.success is True
-    assert result.data["total"] == 1
-    assert result.data["skills"][0]["skill"] == "good"
+    data = assert_success(result)
+    assert data["total"] == 1
+    assert data["skills"][0]["skill"] == "good"

@@ -1,0 +1,113 @@
+"""Tests for DirectClient pipeline support (P5)."""
+
+from __future__ import annotations
+
+from afd import SimpleRegistry, create_direct_client, error, success
+
+from botcore.registry import MiddlewareRegistry
+
+
+def _make_pipeline_registry():
+    """Create a registry with commands suitable for pipeline testing."""
+    reg = SimpleRegistry()
+
+    @reg.command("greet")
+    async def greet(name: str = "world"):
+        return success(data={"greeting": f"Hello, {name}!", "name": name})
+
+    @reg.command("uppercase")
+    async def uppercase(text: str = ""):
+        return success(data={"result": text.upper(), "original": text})
+
+    @reg.command("failing")
+    async def failing():
+        return error("DELIBERATE_FAIL", "This command always fails")
+
+    @reg.command("count-chars")
+    async def count_chars(text: str = ""):
+        return success(data={"length": len(text), "text": text})
+
+    return reg
+
+
+def _make_client(reg=None):
+    """Create a DirectClient from a registry."""
+    if reg is None:
+        reg = _make_pipeline_registry()
+    mw_reg = MiddlewareRegistry(reg)
+    return create_direct_client(mw_reg, source="test")
+
+
+async def test_simple_two_step_pipeline():
+    """Two-step pipeline with $prev variable resolution."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Alice"}},
+        {"command": "uppercase", "input": {"text": "$prev.greeting"}},
+    ])
+
+    assert result.success is True
+    assert result.final.data["result"] == "HELLO, ALICE!"
+
+
+async def test_pipeline_with_alias():
+    """Pipeline step with alias and $alias.field access."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Bob"}, "as": "g"},
+        {"command": "count-chars", "input": {"text": "$g.greeting"}},
+    ])
+
+    assert result.success is True
+    assert result.final.data["length"] == len("Hello, Bob!")
+
+
+async def test_pipeline_failure_propagation():
+    """Pipeline failure at step 2 stops execution."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Test"}},
+        {"command": "failing"},
+    ])
+
+    assert result.success is False
+    # First step succeeded, second failed
+    assert result.steps[0].result.success is True
+    assert result.steps[1].result.success is False
+
+
+async def test_pipeline_with_when_true():
+    """Pipeline step with when condition that evaluates to true."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Alice"}, "as": "g"},
+        {"command": "uppercase", "input": {"text": "$g.greeting"}, "when": "$g.name"},
+    ])
+
+    assert result.success is True
+    assert result.final.data["result"] == "HELLO, ALICE!"
+
+
+async def test_single_step_pipeline():
+    """Single-step pipeline works as a simple call."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Solo"}},
+    ])
+
+    assert result.success is True
+    assert result.final.data["greeting"] == "Hello, Solo!"
+
+
+async def test_pipeline_three_steps():
+    """Three-step pipeline chains data through multiple commands."""
+    client = _make_client()
+    result = await client.pipe([
+        {"command": "greet", "input": {"name": "Chain"}, "as": "g"},
+        {"command": "count-chars", "input": {"text": "$g.greeting"}, "as": "c"},
+        {"command": "greet", "input": {"name": "Done"}},
+    ])
+
+    assert result.success is True
+    assert len(result.steps) == 3
+    assert result.final.data["greeting"] == "Hello, Done!"
