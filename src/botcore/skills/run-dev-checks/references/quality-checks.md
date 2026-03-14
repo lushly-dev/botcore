@@ -3,7 +3,7 @@
 ## dev_check_size()
 
 ```python
-async def dev_check_size() -> CommandResult[dict]
+async def dev_check_size(staged_only: bool = False) -> CommandResult[dict]
 ```
 
 Checks Python file line counts against configurable thresholds. Large files are hard for agents and humans to navigate.
@@ -12,6 +12,7 @@ Checks Python file line counts against configurable thresholds. Large files are 
 - Scans all `.py` files recursively in the workspace
 - Excludes test files and `__pycache__` directories
 - Compares line counts against `file_size_warn` and `file_size_error` thresholds
+- When `staged_only=True`, only checks files currently staged in git (useful for pre-commit hooks)
 
 **Config fields:**
 | Field | Default | Effect |
@@ -86,6 +87,33 @@ Checks Python dependencies against PyPI for version staleness. Requires `httpx` 
 - `warnings` — Dependencies with minor version lag
 - `up_to_date` — Dependencies at or near latest
 - `packages` — Full detail per dependency (name, current, latest, lag)
+
+## dev_check_lockfile()
+
+```python
+async def dev_check_lockfile() -> CommandResult[dict]
+```
+
+Detects lockfile drift — a lockfile staged in git without a corresponding manifest change. This catches accidental lockfile-only commits that may indicate dependency drift or unintentional modifications.
+
+**Behavior:**
+- Inspects the git staging area for known lockfile/manifest pairs
+- If a lockfile is staged but its manifest is not, reports a warning
+- Warning-only — does not block commits
+
+**Language support:**
+
+| Language | Lockfile | Manifest |
+|---|---|---|
+| TypeScript | `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock` | `package.json` |
+| Python | `poetry.lock`, `uv.lock`, `Pipfile.lock` | `pyproject.toml`, `Pipfile` |
+| Rust | `Cargo.lock` | `Cargo.toml` |
+
+**Config fields:** None — no configuration needed.
+
+**Return data:**
+- `drift` — List of lockfiles staged without a manifest change (each with lockfile and expected manifest paths)
+- `ok` — Whether no drift was detected
 
 ## Threshold Strategy
 

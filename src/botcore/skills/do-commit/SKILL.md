@@ -106,7 +106,7 @@ The `scripts/quality_gate.py` script automates deterministic checks. Run it from
 python {skill-dir}/scripts/quality_gate.py
 ```
 
-It reads `botcore.toml` for per-repo thresholds and detects languages from config files. Output is JSON:
+It reads `botcore.toml` for per-repo thresholds and detects languages from config files. The gate includes a lockfile-drift check (`dev_check_lockfile`) that warns when a lockfile is staged without its corresponding manifest. Output is JSON:
 
 ```json
 {

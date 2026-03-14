@@ -36,11 +36,13 @@ async def dev_check_size(
     warn_threshold: int | None = None,
     error_threshold: int | None = None,
     language: str | None = None,
+    staged_only: bool = False,
 ) -> CommandResult[dict]:
     """Check file sizes for agent-friendly limits.
 
     Scans files matching the configured language extensions.
     Uses warn/error thresholds from config if not explicitly provided.
+    When staged_only=True, only checks files staged in git.
     """
     ws = find_workspace()
     config = load_config(workspace=ws)
@@ -56,6 +58,23 @@ async def dev_check_size(
             suggestion="Verify the path exists or omit to use default src/",
         )
 
+    # If staged_only, filter to only staged files
+    if staged_only:
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=ws or Path.cwd(), capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            staged_files = set(
+                str((ws or Path.cwd()) / f.strip())
+                for f in result.stdout.strip().split("\n")
+                if f.strip()
+            )
+        else:
+            staged_files = None  # Fall back to scanning all
+    else:
+        staged_files = None
+
     # Determine which extensions to scan
     lang = resolve_language(
         Path(path) if path else None, config, ws, language_override=language,
@@ -70,6 +89,8 @@ async def dev_check_size(
 
     for source_file in check_path.rglob("*"):
         if not source_file.is_file():
+            continue
+        if staged_files is not None and str(source_file) not in staged_files:
             continue
         if source_file.suffix not in extensions:
             continue
@@ -519,3 +540,106 @@ async def dev_check_deps(
     )
 
     return await _check_deps_for_language(lang or "python", ws, config, staged_only)
+
+
+async def dev_check_lockfile(
+    path: str | None = None,
+    language: str | None = None,
+) -> CommandResult[dict]:
+    """Check for lockfile drift — lockfile changed without manifest change.
+
+    Detects when a lockfile is staged for commit without a corresponding
+    manifest file change, which usually indicates accidental drift from
+    running install commands.
+
+    Warning-only: always returns success, but includes a warning message.
+    """
+    ws = find_workspace()
+    if not ws:
+        return error(
+            "NO_WORKSPACE",
+            "Could not find workspace root",
+            suggestion="Run from within a Git repository",
+        )
+
+    config = load_config(workspace=ws)
+    lang = resolve_language(
+        Path(path) if path else None, config, ws, language_override=language,
+    ) if ws else (language or config.language)
+
+    # Language-specific lockfile -> manifest mappings
+    lockfile_pairs: dict[str, list[tuple[str, list[str]]]] = {
+        "typescript": [
+            ("pnpm-lock.yaml", ["package.json", "packages/*/package.json"]),
+            ("package-lock.json", ["package.json", "packages/*/package.json"]),
+            ("yarn.lock", ["package.json", "packages/*/package.json"]),
+        ],
+        "python": [
+            ("poetry.lock", ["pyproject.toml"]),
+            ("uv.lock", ["pyproject.toml"]),
+            ("Pipfile.lock", ["Pipfile"]),
+        ],
+        "rust": [
+            ("Cargo.lock", ["Cargo.toml"]),
+        ],
+    }
+
+    # Get staged files
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=ws, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        return success(
+            data={"checked": False, "reason": "git diff failed"},
+            reasoning="Could not check staged files",
+        )
+
+    staged = set(result.stdout.strip().split("\n")) if result.stdout.strip() else set()
+
+    if not staged:
+        return success(
+            data={"checked": True, "drift": False},
+            reasoning="No staged files",
+        )
+
+    # Check pairs for the detected language (or all if unknown)
+    pairs_to_check = lockfile_pairs.get(lang, []) if lang else [
+        pair for pairs in lockfile_pairs.values() for pair in pairs
+    ]
+
+    warnings = []
+    for lockfile, manifests in pairs_to_check:
+        if lockfile not in staged:
+            continue
+
+        # Check if any manifest file is also staged
+        # Support glob patterns like "packages/*/package.json"
+        manifest_staged = False
+        for manifest in manifests:
+            if "*" in manifest:
+                # Glob pattern -- check if any matching file is staged
+                import fnmatch
+                manifest_staged = any(fnmatch.fnmatch(f, manifest) for f in staged)
+            else:
+                manifest_staged = manifest in staged
+            if manifest_staged:
+                break
+
+        if not manifest_staged:
+            warnings.append({
+                "lockfile": lockfile,
+                "expected_manifests": manifests,
+                "message": f"{lockfile} changed without a manifest file change"
+                " -- accidental install drift?",
+            })
+
+    return success(
+        data={
+            "checked": True,
+            "drift": len(warnings) > 0,
+            "warnings": warnings,
+        },
+        reasoning=f"{len(warnings)} lockfile drift warning(s)" if warnings
+        else "No lockfile drift detected",
+    )

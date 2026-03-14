@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `dev_check_lockfile()` command -- detects lockfile drift (lockfile staged without manifest change), supports TypeScript/Python/Rust ecosystems
+- `staged_only` parameter on `dev_check_size()` -- filters to only staged files for pre-commit hooks
+
+### Fixed
+
+- `quality_gate.py` now uses smart script name lookup for TypeScript projects (tries `type-check` before `typecheck`, `test:run` before `test`)
+
 ## [0.3.0] - 2026-03-14
 
 ### Added

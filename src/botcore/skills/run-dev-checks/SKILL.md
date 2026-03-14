@@ -50,7 +50,7 @@ Expert guidance for botcore's development command suite — language-aware linti
 | Request Type | Load Reference |
 |---|---|
 | dev_lint, dev_test, dev_build signatures, language dispatch | [references/core-commands.md](references/core-commands.md) |
-| dev_check_size, dev_check_coverage, dev_check_deps thresholds | [references/quality-checks.md](references/quality-checks.md) |
+| dev_check_size, dev_check_coverage, dev_check_deps, dev_check_lockfile thresholds | [references/quality-checks.md](references/quality-checks.md) |
 | dev_dead_code, dev_circular_imports, dev_unused_deps, dev_dep_graph | [references/analysis.md](references/analysis.md) |
 | Common error codes and resolutions | [references/troubleshooting.md](references/troubleshooting.md) |
 
@@ -105,6 +105,7 @@ They return structured data for agents to act on — the agent decides what to f
 | `dev_check_size()` | Python file line counts vs thresholds |
 | `dev_check_coverage()` | Test coverage vs threshold (runs pytest --cov) |
 | `dev_check_deps()` | Dependency versions vs PyPI latest |
+| `dev_check_lockfile()` | Lockfile drift (lockfile staged without manifest change) |
 
 ### Analysis Commands
 

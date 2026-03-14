@@ -92,6 +92,19 @@ def run_check(name: str, cmd: list[str], cwd: Path) -> dict:
         }
 
 
+def find_script(root: Path, candidates: list[str]) -> str:
+    """Find the first matching script name from package.json."""
+    try:
+        pkg = json.loads((root / "package.json").read_text())
+        scripts = pkg.get("scripts", {})
+        for name in candidates:
+            if name in scripts:
+                return name
+    except Exception:
+        pass
+    return candidates[0]  # Default to first candidate
+
+
 def get_checks(languages: list[str], root: Path) -> list[tuple[str, list[str]]]:
     """Build list of checks based on detected languages."""
     checks = []
@@ -106,9 +119,12 @@ def get_checks(languages: list[str], root: Path) -> list[tuple[str, list[str]]]:
         else:
             pm = "npm"
 
+        typecheck_script = find_script(root, ["type-check", "typecheck"])
+        test_script = find_script(root, ["test:run", "test"])
+
         checks.append(("lint:ts", [pm, "run", "lint"]))
-        checks.append(("typecheck:ts", [pm, "run", "typecheck"]))
-        checks.append(("test:ts", [pm, "test"]))
+        checks.append(("typecheck:ts", [pm, "run", typecheck_script]))
+        checks.append(("test:ts", [pm, "run", test_script]))
         checks.append(("build:ts", [pm, "run", "build"]))
 
     # Python checks
@@ -137,6 +153,11 @@ def get_checks(languages: list[str], root: Path) -> list[tuple[str, list[str]]]:
         "import asyncio; "
         "from botcore.commands.dev import dev_circular_imports; "
         "r = asyncio.run(dev_circular_imports()); "
+        "import sys; sys.exit(0 if r.success else 1)"
+    ]))
+    checks.append(("lockfile-drift", [sys.executable, "-c",
+        "import asyncio; from botcore.commands.dev.quality import dev_check_lockfile; "
+        "r = asyncio.run(dev_check_lockfile()); "
         "import sys; sys.exit(0 if r.success else 1)"
     ]))
 

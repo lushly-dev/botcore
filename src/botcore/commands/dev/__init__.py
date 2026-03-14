@@ -2,7 +2,7 @@
 
 Commands are split into modules:
 - core.py: lint, test, build, skill-lint (language-aware dispatch)
-- quality.py: check-size, check-coverage, check-deps
+- quality.py: check-size, check-coverage, check-deps, check-lockfile
 - analysis.py: dead-code, circular-imports, unused-deps, dep-graph
 - portability.py: check-paths (cross-platform path detection)
 """
@@ -24,6 +24,7 @@ from botcore.commands.dev.quality import (
     _parse_version,
     dev_check_coverage,
     dev_check_deps,
+    dev_check_lockfile,
     dev_check_size,
 )
 
@@ -37,6 +38,7 @@ __all__ = [
     "dev_check_size",
     "dev_check_coverage",
     "dev_check_deps",
+    "dev_check_lockfile",
     "_parse_version",
     # Analysis
     "dev_dead_code",
