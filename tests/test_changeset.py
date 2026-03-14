@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from afd.testing import assert_error, assert_success
 
 from botcore.commands.changeset import changeset_consume, changeset_create, changeset_status

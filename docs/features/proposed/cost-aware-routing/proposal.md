@@ -23,8 +23,8 @@ Add cost awareness to agent orchestration: track token usage per agent, enforce 
 
 ## Prerequisite Specs
 
-- [Agent Capability Declarations](../active/agent-capability-declarations/spec.md) — routing needs capability awareness
-- [Orchestrator State Serialization](../active/orchestrator-state-serialization/spec.md) — budget counters need persistence
+- [Agent Capability Declarations](../../active/agent-capability-declarations/spec.md) — routing needs capability awareness
+- [Orchestrator State Serialization](../../active/orchestrator-state-serialization/spec.md) — budget counters need persistence
 
 ## Scope
 

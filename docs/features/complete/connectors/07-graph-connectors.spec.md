@@ -1,3 +1,9 @@
+---
+status: complete
+author: botcore
+created: 2026-01-15
+---
+
 # Microsoft Graph Connector Specification
 
 > Part of [Typed Connectors Plan](./00-overview.plan.md)

@@ -16,11 +16,11 @@ Add typed connectors for Azure services (Azure DevOps, Azure Resource Manager, K
 ## Prerequisite Specs
 
 - Phase 1 connectors complete (done — 248 tests)
-- [Agent Capability Declarations](../active/agent-capability-declarations/spec.md) — agents must declare Azure access
+- [Agent Capability Declarations](../../active/agent-capability-declarations/spec.md) — agents must declare Azure access
 
 ## Scope
 
-Covered in existing spec: [06-azure-connectors.spec.md](../complete/connectors/06-azure-connectors.spec.md)
+Covered in existing spec: [06-azure-connectors.spec.md](../../complete/connectors/06-azure-connectors.spec.md)
 
 ## Estimated Effort
 

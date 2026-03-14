@@ -120,7 +120,7 @@ async def batch_execute(
     client: DirectClient,
     commands: list[tuple[str, dict]],
     stop_on_error: bool = False,
-) -> "BatchResult":
+) -> BatchResult:
     """Execute multiple commands as a batch.
 
     Args:

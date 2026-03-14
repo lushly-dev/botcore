@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from afd import SimpleRegistry, create_direct_client, success, error
+from afd import SimpleRegistry, create_direct_client, error, success
 
 from botcore.registry import MiddlewareRegistry, batch_execute
 

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import pytest
-
 from afd import SimpleRegistry, success
 from afd.server.middleware import default_middleware
 

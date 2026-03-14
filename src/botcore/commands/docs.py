@@ -43,7 +43,9 @@ Use `when` to conditionally execute a step:
 ```python
 result = await client.pipe([
     {"command": "docs-check-changelog", "as": "check"},
-    {"command": "changeset-create", "input": {"type": "added", "description": "..."}, "when": "$check.needs_update"},
+    {"command": "changeset-create",
+     "input": {"type": "added", "description": "..."},
+     "when": "$check.needs_update"},
 ])
 ```
 
