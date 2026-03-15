@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from afd import CommandResult, error, success
+from afd import CommandResult, Source, error, success
 
 # Gemini 3 series models
 SEARCH_MODELS = {
@@ -106,7 +106,10 @@ async def research_query(query: str, mode: str = "fast") -> CommandResult[dict]:
             },
             reasoning=f"Research completed via {model_name}",
             confidence=0.85 if sources else 0.5,
-            sources=sources,
+            sources=[
+                Source(type="url", id=url, title=url, url=url)
+                for url in sources
+            ],
         )
 
     except Exception as e:
