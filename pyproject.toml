@@ -29,6 +29,7 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.4.0",
+    "vulture>=2.11",
 ]
 cdp = [
     "playwright>=1.40.0",
