@@ -11,6 +11,18 @@ from click.testing import CliRunner
 from botcore.cli import cli
 
 
+async def _fake_plugin_command() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+class _CliFakePlugin:
+    def register(self, registry) -> None:
+        registry.add_commands([_fake_plugin_command])
+
+    def config_schema(self):
+        return None
+
+
 def test_version():
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])
@@ -24,6 +36,14 @@ def test_help():
     assert result.exit_code == 0
     assert "init" in result.output
     assert "serve" in result.output
+
+
+def test_help_with_plugin_commands_registered():
+    runner = CliRunner()
+    with patch("botcore.plugin.discover_plugins", return_value={"fake": _CliFakePlugin()}):
+        result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "init" in result.output
 
 
 def test_init_non_interactive(tmp_path):

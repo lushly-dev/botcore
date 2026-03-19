@@ -138,7 +138,7 @@ def cli(ctx: click.Context, json_mode: bool) -> None:
         plugin.register(plugin_reg)
     # Register plugin commands
     for cmd_fn in plugin_reg.commands:
-        registry.register(cmd_fn)
+        registry.register(cmd_fn.__name__, cmd_fn)
     # Wire plugin middleware
     if plugin_reg.middleware:
         set_plugin_middleware(plugin_reg.middleware)
