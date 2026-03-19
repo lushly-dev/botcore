@@ -223,6 +223,27 @@ def _pick_primary_thread(threads: list[dict[str, Any]]) -> dict[str, Any] | None
     return threads[0] if threads else None
 
 
+def _is_metric_span(row: dict[str, Any]) -> bool:
+    name = str(row.get("name") or "")
+    category = str(row.get("category") or "")
+    return name.startswith("PageLoadMetrics.") or "loading,interactions" in category
+
+
+def _is_browser_pipeline_slice(row: dict[str, Any]) -> bool:
+    name = str(row.get("name") or "")
+    category = str(row.get("category") or "")
+    thread_name = row.get("threadName")
+    process_name = row.get("processName")
+    if "cc" in category or "disabled-by-default-devtools.timeline.frame" in category:
+        return True
+    if name in {"PipelineReporter", "NeedsBeginFrames"}:
+        return True
+    return thread_name in {None, "[unknown thread]"} and process_name in {
+        None,
+        "[unknown process]",
+    }
+
+
 async def cdp_trace_query(
     path: str,
     sql: str,
@@ -406,6 +427,29 @@ async def cdp_trace_summary(
             top_slice_rows = _query_rows(tp, top_slices_sql)["rows"]
             long_task_rows = _query_rows(tp, long_tasks_sql)["rows"]
             long_task_count_rows = _query_rows(tp, long_tasks_count_sql)["rows"]
+            primary_thread = _pick_primary_thread(thread_rows)
+            primary_thread_top_rows: list[dict[str, Any]] = []
+            if primary_thread and primary_thread.get("utid") is not None:
+                primary_thread_utid = int(primary_thread["utid"])
+                primary_thread_top_sql = f"""
+                    SELECT
+                        s.name AS name,
+                        COALESCE(NULLIF(s.category, ''), '[uncategorized]') AS category,
+                        s.ts AS ts,
+                        s.dur AS dur,
+                        t.utid AS utid,
+                        COALESCE(t.name, '[unknown thread]') AS threadName,
+                        COALESCE(p.name, '[unknown process]') AS processName,
+                        p.pid AS pid
+                    FROM slice s
+                    JOIN thread_track tt ON s.track_id = tt.id
+                    JOIN thread t USING (utid)
+                    LEFT JOIN process p USING (upid)
+                    WHERE t.utid = {primary_thread_utid} AND s.dur > 0
+                    ORDER BY s.dur DESC
+                    LIMIT {top_slices_limit}
+                """
+                primary_thread_top_rows = _query_rows(tp, primary_thread_top_sql)["rows"]
     except RuntimeError as exc:
         return error(
             "CDP_TRACE_SUMMARY_DEPENDENCY_MISSING",
@@ -431,9 +475,19 @@ async def cdp_trace_summary(
         else None
     )
 
-    primary_thread = _pick_primary_thread(thread_rows)
     primary_thread_long_tasks = [
         row for row in long_task_rows if row.get("utid") == (primary_thread or {}).get("utid")
+    ]
+    metric_spans = [row for row in top_slice_rows if _is_metric_span(row)]
+    browser_pipeline_long_tasks = [
+        row for row in long_task_rows if _is_browser_pipeline_slice(row) and not _is_metric_span(row)
+    ]
+    other_long_tasks = [
+        row
+        for row in long_task_rows
+        if row not in primary_thread_long_tasks
+        and row not in browser_pipeline_long_tasks
+        and row not in metric_spans
     ]
 
     def _decorate_slice(row: dict[str, Any]) -> dict[str, Any]:
@@ -507,9 +561,22 @@ async def cdp_trace_summary(
             "topByDuration": [_decorate_slice(row) for row in top_slice_rows],
             "longTasks": [_decorate_slice(row) for row in long_task_rows],
             "longTaskCount": (long_task_count_rows[0].get("count") if long_task_count_rows else 0),
+            "mainThreadTopByDuration": [_decorate_slice(row) for row in primary_thread_top_rows],
             "primaryThreadLongTasks": [_decorate_slice(row) for row in primary_thread_long_tasks],
+            "browserPipelineLongTasks": [_decorate_slice(row) for row in browser_pipeline_long_tasks],
+            "metricSpans": [_decorate_slice(row) for row in metric_spans],
+            "otherLongTasks": [_decorate_slice(row) for row in other_long_tasks],
+        },
+        "signals": {
+            "mainThreadLongTaskCount": len(primary_thread_long_tasks),
+            "browserPipelineLongTaskCount": len(browser_pipeline_long_tasks),
+            "metricSpanCount": len(metric_spans),
+            "otherLongTaskCount": len(other_long_tasks),
+            "hasMainThreadJank": len(primary_thread_long_tasks) > 0,
+            "hasBrowserPipelinePressure": len(browser_pipeline_long_tasks) > 0,
         },
         "notes": [
+            "Treat main-thread long tasks as the strongest UI red flag; browser-pipeline slices and metric spans provide context but are not always app regressions.",
             "Use cdp_trace_query for deeper PerfettoSQL inspection when the canned summary is not enough.",
             "Chrome trace timestamps and durations are reported in nanoseconds and summarized here in milliseconds for readability.",
         ],

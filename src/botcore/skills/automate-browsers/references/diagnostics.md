@@ -125,6 +125,11 @@ Summarizes a captured trace with Perfetto-backed queries and returns a stable st
 - `categories` — dominant slice categories by total time
 - `slices.topByDuration` — top slices overall
 - `slices.longTasks` — top slices above the long-task threshold
+- `slices.mainThreadTopByDuration` — highest-cost work on the detected primary renderer thread
+- `slices.primaryThreadLongTasks` — main-thread long tasks, which are the strongest UI jank signal
+- `slices.browserPipelineLongTasks` — compositor / frame pipeline pressure that may not be app-code regressions
+- `slices.metricSpans` — metric spans such as `PageLoadMetrics.*`, useful context but not blocking work
+- `signals` — quick counts/booleans for main-thread jank vs. browser-pipeline pressure
 
 ## cdp_trace_query()
 

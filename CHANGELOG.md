@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-03-19
+
+### Improved
+
+- **trace summaries** -- Split Chrome trace summaries into clearer signal buckets so main-thread work, browser/compositor pressure, and metric spans are reported separately. Summaries now surface `mainThreadTopByDuration`, `primaryThreadLongTasks`, `browserPipelineLongTasks`, `metricSpans`, and a compact `signals` block to make “is this a real app red flag?” easier to answer quickly.
+
 ## [0.3.4] - 2026-03-19
 
 ### Added

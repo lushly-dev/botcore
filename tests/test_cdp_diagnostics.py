@@ -311,6 +311,18 @@ async def test_cdp_trace_summary_returns_stable_shape(monkeypatch, tmp_path: Pat
                 "pid": 123,
             }
         ],
+        "WHERE t.utid = 77 AND s.dur > 0": [
+            {
+                "name": "RenderWork",
+                "category": "devtools.timeline",
+                "ts": 1_060_000_000,
+                "dur": 24_000_000,
+                "utid": 77,
+                "threadName": "CrRendererMain",
+                "processName": "Renderer",
+                "pid": 123,
+            }
+        ],
         "SELECT COUNT(*) AS count FROM slice": [
             {"count": 1},
         ],
@@ -331,3 +343,7 @@ async def test_cdp_trace_summary_returns_stable_shape(monkeypatch, tmp_path: Pat
     assert result.data["slices"]["longTaskCount"] == 1
     assert result.data["slices"]["topByDuration"][0]["durMs"] == 120.0
     assert result.data["slices"]["primaryThreadLongTasks"][0]["utid"] == 77
+    assert result.data["slices"]["mainThreadTopByDuration"][0]["name"] == "RenderWork"
+    assert result.data["signals"]["mainThreadLongTaskCount"] == 1
+    assert result.data["signals"]["browserPipelineLongTaskCount"] == 0
+    assert result.data["signals"]["metricSpanCount"] == 0
