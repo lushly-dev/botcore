@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-03-19
+
+### Fixed
+
+- **cdp_snapshot** -- Replace the removed `page.accessibility` path with Playwright's current locator-based `aria_snapshot()` API. Accessibility snapshots now work again in the CDP toolchain, including subtree snapshots via `root_selector`, and return both a structured tree and the raw ARIA snapshot text.
+
 ## [0.3.2] - 2026-03-19
 
 ### Fixed

@@ -104,6 +104,7 @@ Takes an accessibility tree snapshot of the page or a subtree.
 
 **Return data:**
 - `snapshot` — Simplified accessibility tree showing roles, names, and hierarchy
+- `raw_snapshot` — Raw Playwright ARIA snapshot text
 - `root` — The root selector used (or "document")
 
 **Use cases:**

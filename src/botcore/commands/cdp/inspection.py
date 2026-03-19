@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from afd import CommandResult
+import yaml
 
 from botcore.commands.cdp.core import _with_session_page
 
@@ -175,36 +176,75 @@ async def cdp_query(selector: str, deep: bool = True) -> CommandResult[dict]:
 async def cdp_snapshot(root_selector: str | None = None) -> CommandResult[dict]:
     """Take an accessibility tree snapshot of the page."""
 
+    def _parse_snapshot_label(label: str) -> dict[str, Any]:
+        text = label.strip()
+        attrs: dict[str, str] = {}
+
+        while text.endswith("]") and " [" in text:
+            text, attr_block = text.rsplit(" [", 1)
+            attr_block = attr_block[:-1]
+            if "=" in attr_block:
+                key, value = attr_block.split("=", 1)
+                attrs[key.strip()] = value.strip().strip('"')
+
+        role = text
+        name = ""
+        if ' "' in text and text.endswith('"'):
+            role, name = text.split(' "', 1)
+            name = name[:-1]
+
+        result: dict[str, Any] = {
+            "role": role.strip(),
+            "name": name,
+        }
+        if attrs:
+            result["attributes"] = attrs
+        return result
+
+    def _to_snapshot_tree(node: Any) -> list[dict[str, Any]]:
+        if node is None:
+            return []
+        if isinstance(node, list):
+            result: list[dict[str, Any]] = []
+            for child in node:
+                result.extend(_to_snapshot_tree(child))
+            return result
+        if isinstance(node, str):
+            return [_parse_snapshot_label(node)]
+        if isinstance(node, dict):
+            result: list[dict[str, Any]] = []
+            for key, value in node.items():
+                entry = _parse_snapshot_label(str(key))
+                children = _to_snapshot_tree(value)
+                if children:
+                    entry["children"] = children
+                result.append(entry)
+            return result
+        return [{"role": "unknown", "name": str(node)}]
+
     async def _action(page: Any) -> dict:
         if root_selector:
-            element = await page.query_selector(root_selector)
-            if not element:
+            locator = page.locator(root_selector)
+            if await locator.count() == 0:
                 raise ValueError(f"Root element not found: {root_selector}")
-            snapshot = await page.accessibility.snapshot(root=element)
+            snapshot_text = await locator.first.aria_snapshot()
         else:
-            snapshot = await page.accessibility.snapshot()
+            snapshot_text = await page.locator("body").aria_snapshot()
 
-        def simplify(node: dict, depth: int = 0) -> dict | None:
-            if not node:
-                return None
-            result: dict[str, Any] = {
-                "role": node.get("role", ""),
-                "name": node.get("name", ""),
+        parsed = yaml.safe_load(snapshot_text) if snapshot_text else None
+        children = _to_snapshot_tree(parsed)
+        if root_selector and len(children) == 1:
+            snapshot: dict[str, Any] | None = children[0]
+        else:
+            snapshot = {
+                "role": "document" if root_selector is None else "group",
+                "name": "",
+                "children": children,
             }
-            if node.get("value"):
-                result["value"] = node["value"]
-            if node.get("description"):
-                result["description"] = node["description"]
-            if node.get("children"):
-                result["children"] = [
-                    simplify(c, depth + 1)
-                    for c in node["children"]
-                    if simplify(c, depth + 1)
-                ]
-            return result
 
         return {
-            "snapshot": simplify(snapshot) if snapshot else None,
+            "snapshot": snapshot,
+            "raw_snapshot": snapshot_text,
             "root": root_selector or "document",
         }
 
