@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-03-19
+
+### Fixed
+
+- **cli** -- Restore plugin command registration in the Click CLI startup path by registering discovered plugin commands with explicit command names. This fixes `botcore skill-lint` and other plugin-backed CLI flows that were crashing during startup with `SimpleRegistry.register()` argument errors.
+- **version** -- Sync `src/botcore/__init__.py` with the package version so runtime metadata now matches `pyproject.toml`.
+
 ## [0.3.1] - 2026-03-14
 
 ### Added
