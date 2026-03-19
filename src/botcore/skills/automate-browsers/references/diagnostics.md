@@ -61,6 +61,95 @@ cdp_console(grep="TypeError")            — search for TypeErrors
 cdp_console(clear=True)                  — return all and clear
 ```
 
+## cdp_trace_capture()
+
+```python
+async def cdp_trace_capture(
+    url: str | None = None,
+    path: str | None = None,
+    name: str | None = None,
+    wait_until: str = "load",
+    settle_ms: int = 0,
+    categories: str | None = None,
+    stream_format: str = "json",
+    stream_compression: str = "none",
+    timeout_ms: int = DEFAULT_TIMEOUT_MS,
+) -> CommandResult[dict]
+```
+
+Captures a real Chrome DevTools performance trace in a single browser connection. Optionally navigates first, waits for settle time, and then writes a trace artifact that Perfetto can query directly.
+
+**Parameters:**
+| Parameter | Default | Description |
+|---|---|---|
+| `url` | None | Optional URL to navigate to before stopping the trace |
+| `path` | None | Optional output path |
+| `name` | None | Optional trace name used for artifact naming |
+| `wait_until` | `"load"` | Navigation wait mode when `url` is provided |
+| `settle_ms` | `0` | Extra wait after navigation before stopping the trace |
+| `categories` | None | Optional comma-separated trace categories override |
+| `stream_format` | `"json"` | Trace stream format passed through to CDP |
+| `stream_compression` | `"none"` | Optional trace stream compression |
+| `timeout_ms` | `DEFAULT_TIMEOUT_MS` | Maximum wait for trace completion |
+
+**Return data:** `path`, `kind`, `url`, `waitUntil`, `settleMs`, `categories`, `streamFormat`, `streamCompression`
+
+**Tips:**
+- Use this for focused navigation/render investigations that fit in one scenario.
+- Traces are especially useful for layout, scripting, paint, and long-task investigation.
+- Keep traces scoped to a short scenario so artifacts stay readable.
+- Default output path is `{workspace}/.botcore/traces/{name}-{timestamp}.json`.
+
+## cdp_trace_summary()
+
+```python
+async def cdp_trace_summary(
+    path: str,
+    top_slices_limit: int = 10,
+    long_task_threshold_ms: float = 50.0,
+) -> CommandResult[dict]
+```
+
+Summarizes a captured trace with Perfetto-backed queries and returns a stable structure for automation.
+
+**Parameters:**
+| Parameter | Default | Description |
+|---|---|---|
+| `path` | required | Path to a `.json`, `.pftrace`, or other Perfetto-readable trace |
+| `top_slices_limit` | `10` | Number of top slices/categories/threads to keep in the summary |
+| `long_task_threshold_ms` | `50.0` | Threshold used for long-task reporting |
+
+**Return data includes:**
+- `bounds` — trace start/end/duration
+- `actors` — top processes, top threads, detected primary thread
+- `categories` — dominant slice categories by total time
+- `slices.topByDuration` — top slices overall
+- `slices.longTasks` — top slices above the long-task threshold
+
+## cdp_trace_query()
+
+```python
+async def cdp_trace_query(
+    path: str,
+    sql: str,
+    limit: int = 100,
+) -> CommandResult[dict]
+```
+
+Runs a PerfettoSQL query against a saved trace and returns a compact `columns + rows` payload.
+
+**Parameters:**
+| Parameter | Default | Description |
+|---|---|---|
+| `path` | required | Path to a trace file |
+| `sql` | required | PerfettoSQL query |
+| `limit` | `100` | Maximum rows returned to keep the payload manageable |
+
+**Tips:**
+- Prefer `cdp_trace_summary()` for stable automation and dashboards.
+- Use `cdp_trace_query()` when you need to drill into a specific thread, slice family, or custom app marker.
+- Perfetto timestamps and durations are nanoseconds; divide by `1_000_000` for milliseconds.
+
 ## cdp_get_console_message()
 
 ```python
@@ -152,8 +241,12 @@ cdp_eval("JSON.stringify(performance.getEntriesByType('resource'))")
 
 ```
 1. cdp_emulate(cpu_throttle=4.0)        — simulate slow CPU
-2. cdp_navigate(url, wait_until="load")
-3. cdp_eval("JSON.stringify(performance.timing)")
-4. cdp_eval("JSON.stringify(performance.getEntriesByType('resource'))")
+2. cdp_trace_capture(
+     url="https://example.test",
+     name="slow-path",
+     settle_ms=250
+   )                                    — capture a real Chrome trace
+3. cdp_trace_summary("/path/to/trace.json")
+4. cdp_trace_query("/path/to/trace.json", "select name, dur from slice order by dur desc limit 10")
 5. cdp_screenshot()                     — visual verification
 ```

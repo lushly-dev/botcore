@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-03-19
+
+### Added
+
+- **trace analysis** -- Add `cdp_trace_query` and `cdp_trace_summary` so Chrome DevTools traces can be queried and summarized through Perfetto instead of raw JSON parsing. The new workflow exposes a stable summary for automation plus direct PerfettoSQL for deeper investigation.
+
+### Fixed
+
+- **cdp tracing** -- Replace the earlier Playwright trace artifact path with real Chrome DevTools `Tracing.start/end` capture and save traces into a dedicated `.botcore/traces` directory. This produces Perfetto-readable trace files that FAST-AF and other botcore consumers can analyze directly.
+- **cdp extra** -- Include `perfetto` in the `cdp` extra so trace analysis works in standard BotCore browser installs instead of requiring a one-off local dependency.
+
 ## [0.3.3] - 2026-03-19
 
 ### Fixed

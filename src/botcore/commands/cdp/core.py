@@ -23,6 +23,7 @@ SESSION_DIRNAME = ".botcore"
 SESSION_FILENAME = "cdp-session.json"
 PROFILE_DIRNAME = "chrome-profile"
 SCREENSHOTS_DIRNAME = "screenshots"
+TRACES_DIRNAME = "traces"
 DEFAULT_TIMEOUT_MS = 30_000
 
 DEEP_QUERY_SINGLE_JS = """
@@ -97,6 +98,10 @@ def _default_profile_dir(root: Path) -> Path:
 
 def _default_screenshots_dir(root: Path) -> Path:
     return _ensure_session_dir(root) / SCREENSHOTS_DIRNAME
+
+
+def _default_traces_dir(root: Path) -> Path:
+    return _ensure_session_dir(root) / TRACES_DIRNAME
 
 
 def _load_session(root: Path) -> CdpSession | None:

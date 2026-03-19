@@ -24,6 +24,9 @@ from botcore.commands.cdp.diagnostics import (
     cdp_get_network,
     cdp_list_network,
     cdp_screenshot,
+    cdp_trace_capture,
+    cdp_trace_query,
+    cdp_trace_summary,
 )
 from botcore.commands.cdp.forms import (
     cdp_close_page,
@@ -95,6 +98,9 @@ __all__ = [
     "cdp_resize",
     # Diagnostics
     "cdp_screenshot",
+    "cdp_trace_capture",
+    "cdp_trace_query",
+    "cdp_trace_summary",
     "cdp_console",
     "cdp_get_console_message",
     "cdp_eval",
