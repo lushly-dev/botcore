@@ -8,6 +8,7 @@ Single-agent lifecycle management with LLM-backed task execution.
 | Command | Description |
 |---------|-------------|
 | `agent_create` | Create an agent from config (does not start it) |
+| `agent_delete` | Delete a stopped agent from the pool |
 | `agent_start` | Start an agent — creates an LLM session |
 | `agent_stop` | Stop an agent — destroys session, cancels tasks |
 | `agent_status` | Get agent health snapshot |
@@ -34,6 +35,7 @@ await agent_heartbeat(name="researcher")
 
 # 4. Clean up
 await agent_stop(name="researcher")
+await agent_delete(name="researcher")
 ```
 
 ## Configuration

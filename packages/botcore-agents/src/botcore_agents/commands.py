@@ -47,6 +47,11 @@ async def agent_create(name: str) -> CommandResult[dict]:
     return await _get_orch().create_agent(name)
 
 
+async def agent_delete(name: str) -> CommandResult[dict]:
+    """Delete a stopped agent from the configured pool."""
+    return await _get_orch().delete_agent(name)
+
+
 async def agent_start(name: str) -> CommandResult[dict]:
     """Start a created agent by initialising its LLM session."""
     return await _get_orch().start_agent(name)
@@ -99,6 +104,7 @@ async def state_load() -> CommandResult[dict]:
 
 AGENT_COMMANDS: list = [
     agent_create,
+    agent_delete,
     agent_start,
     agent_stop,
     agent_status,

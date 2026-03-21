@@ -107,6 +107,8 @@ async def spec_create(path: str, template: str = "proposal") -> CommandResult[di
     return success(
         data={"path": str(spec_path), "template": template, "title": title},
         reasoning=f"Created {template} at {spec_path}",
+        undo_command="spec_delete",
+        undo_args={"path": str(spec_path)},
     )
 
 
@@ -134,6 +136,40 @@ async def spec_status(path: str) -> CommandResult[dict]:
                     break
 
     return success(data={"path": str(spec_path), "status": status})
+
+
+async def spec_delete(path: str) -> CommandResult[dict]:
+    """Delete a spec file created on disk."""
+    spec_path = Path(path)
+
+    if not spec_path.is_absolute():
+        ws = find_workspace()
+        if ws:
+            spec_path = ws / spec_path
+
+    if not spec_path.exists():
+        return error(
+            "FILE_NOT_FOUND",
+            f"Spec not found: {path}",
+            suggestion="Check the path or use spec_create to create a new spec",
+        )
+
+    if spec_path.is_dir():
+        return error(
+            "NOT_A_FILE",
+            f"Expected a spec file but found a directory: {spec_path}",
+            suggestion="Pass the path to a specific markdown spec file",
+        )
+
+    content = spec_path.read_text(encoding="utf-8")
+    spec_path.unlink()
+
+    return success(
+        data={"path": str(spec_path), "deleted": True},
+        reasoning=f"Deleted spec at {spec_path}",
+        undo_command="spec_create",
+        undo_args={"path": str(spec_path), "template": "spec" if "proposal:" in content else "proposal"},
+    )
 
 
 async def spec_validate(path: str) -> CommandResult[dict]:

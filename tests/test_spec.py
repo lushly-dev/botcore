@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from afd.testing import assert_error, assert_success
 
-from botcore.commands.spec import spec_create, spec_status, spec_validate
+from botcore.commands.spec import spec_create, spec_delete, spec_status, spec_validate
 
 
 async def test_spec_create_proposal(tmp_path) -> None:
@@ -15,6 +15,8 @@ async def test_spec_create_proposal(tmp_path) -> None:
     data = assert_success(result)
     assert data["template"] == "proposal"
     assert "My Feature" in data["title"]
+    assert result.undo_command == "spec_delete"
+    assert result.undo_args == {"path": path}
 
     content = (tmp_path / "my-feature.md").read_text()
     assert "status: Draft" in content
@@ -29,6 +31,29 @@ async def test_spec_create_spec_template(tmp_path) -> None:
     assert_success(result)
     content = (tmp_path / "api-design.md").read_text()
     assert "## Implementation Plan" in content
+
+
+async def test_spec_delete_removes_file_and_supports_undo(tmp_path) -> None:
+    """spec_delete removes a file and returns recreate metadata."""
+    spec = tmp_path / "feature.md"
+    spec.write_text(
+        "---\ntitle: Feature\nstatus: Draft\nproposal: proposal.md\n---\n# Feature\n",
+        encoding="utf-8",
+    )
+
+    result = await spec_delete(str(spec))
+
+    data = assert_success(result)
+    assert data["deleted"] is True
+    assert spec.exists() is False
+    assert result.undo_command == "spec_create"
+    assert result.undo_args == {"path": str(spec), "template": "spec"}
+
+
+async def test_spec_delete_missing_file() -> None:
+    """spec_delete errors for missing file."""
+    result = await spec_delete("/nonexistent/path.md")
+    assert_error(result, "FILE_NOT_FOUND")
 
 
 async def test_spec_create_file_exists(tmp_path) -> None:

@@ -7,6 +7,7 @@ from afd.testing import assert_error, assert_success
 
 from botcore_agents.commands import (
     agent_create,
+    agent_delete,
     agent_heartbeat,
     agent_start,
     agent_status,
@@ -35,10 +36,32 @@ class TestAgentCreate:
         data = assert_success(result)
         assert data["name"] == "researcher"
         assert data["status"] == "stopped"
+        assert result.undo_command == "agent_delete"
+        assert result.undo_args == {"name": "researcher"}
 
     async def test_create_unconfigured_returns_error(self):
         result = await agent_create(name="unknown")
         assert_error(result, "AGENT_NOT_CONFIGURED")
+
+
+class TestAgentDelete:
+    async def test_delete_stopped_agent(self):
+        await agent_create(name="researcher")
+        result = await agent_delete(name="researcher")
+        data = assert_success(result)
+        assert data["deleted"] is True
+        assert result.undo_command == "agent_create"
+        assert result.undo_args == {"name": "researcher"}
+
+    async def test_delete_started_agent_requires_stop(self, mock_llm):
+        await agent_create(name="researcher")
+        await agent_start(name="researcher")
+        result = await agent_delete(name="researcher")
+        assert_error(result, "AGENT_MUST_BE_STOPPED")
+
+    async def test_delete_not_found(self):
+        result = await agent_delete(name="ghost")
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestAgentStart:
@@ -183,6 +206,11 @@ class TestHappyPathScenario:
         r = await agent_stop(name="researcher")
         stop_data = assert_success(r)
         assert stop_data["status"] == "stopped"
+
+        # Delete
+        r = await agent_delete(name="researcher")
+        delete_data = assert_success(r)
+        assert delete_data["deleted"] is True
 
 
 class TestMultiAgentIsolation:

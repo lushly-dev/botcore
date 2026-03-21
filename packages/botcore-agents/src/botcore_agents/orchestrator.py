@@ -139,6 +139,30 @@ class AgentOrchestrator:
         return success(
             data={"name": name, "status": "stopped"},
             reasoning=f"Agent {name!r} created with status=stopped",
+            undo_command="agent_delete",
+            undo_args={"name": name},
+        )
+
+    async def delete_agent(self, name: str) -> CommandResult[dict]:
+        """Delete a stopped agent from the pool."""
+        if name not in self._agents:
+            return error("AGENT_NOT_FOUND", f"Agent {name!r} does not exist")
+
+        state = self._agents[name]
+        if state.health.status != "stopped":
+            return error(
+                "AGENT_MUST_BE_STOPPED",
+                f"Agent {name!r} must be stopped before deletion",
+                suggestion="Use agent_stop before agent_delete",
+            )
+
+        del self._agents[name]
+
+        return success(
+            data={"name": name, "deleted": True},
+            reasoning=f"Agent {name!r} deleted from the pool",
+            undo_command="agent_create",
+            undo_args={"name": name},
         )
 
     async def start_agent(self, name: str) -> CommandResult[dict]:

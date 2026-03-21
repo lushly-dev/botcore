@@ -16,6 +16,8 @@ class TestCreateAgent:
         data = assert_success(result)
         assert data["name"] == "researcher"
         assert data["status"] == "stopped"
+        assert result.undo_command == "agent_delete"
+        assert result.undo_args == {"name": "researcher"}
 
     async def test_create_unconfigured_agent(self, orchestrator: AgentOrchestrator):
         result = await orchestrator.create_agent("unknown")
@@ -33,6 +35,28 @@ class TestCreateAgent:
         # Both slots used, third would need to be configured anyway
         result = await orchestrator.create_agent("nonexistent")
         assert_error(result, "AGENT_NOT_CONFIGURED")
+
+
+class TestDeleteAgent:
+    async def test_delete_stopped_agent(self, orchestrator: AgentOrchestrator):
+        await orchestrator.create_agent("researcher")
+        result = await orchestrator.delete_agent("researcher")
+        data = assert_success(result)
+        assert data["deleted"] is True
+        assert result.undo_command == "agent_create"
+        assert result.undo_args == {"name": "researcher"}
+
+    async def test_delete_started_agent_requires_stop(
+        self, orchestrator: AgentOrchestrator, mock_llm
+    ):
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        result = await orchestrator.delete_agent("researcher")
+        assert_error(result, "AGENT_MUST_BE_STOPPED")
+
+    async def test_delete_nonexistent_agent(self, orchestrator: AgentOrchestrator):
+        result = await orchestrator.delete_agent("ghost")
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestStartAgent:

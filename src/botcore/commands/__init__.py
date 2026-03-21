@@ -28,7 +28,7 @@ from botcore.commands.skill import (
     skill_status,
 )
 from botcore.commands.skill_lint import skill_lint_spec
-from botcore.commands.spec import spec_create, spec_status, spec_validate
+from botcore.commands.spec import spec_create, spec_delete, spec_status, spec_validate
 from botcore.commands.undo import undo_clear, undo_status
 
 __all__ = [
@@ -70,6 +70,7 @@ __all__ = [
     "research_query",
     # Spec
     "spec_create",
+    "spec_delete",
     "spec_status",
     "spec_validate",
     # Undo

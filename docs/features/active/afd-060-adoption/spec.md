@@ -26,7 +26,7 @@ Implementation status as of 2026-03-21:
 | P1 Testing Helpers | Complete | `afd.testing` helpers are now adopted across the core, package, teams, docs, dev, portability, analysis, diagnostics, and spec suites; remaining `result.success` references are limited to non-`CommandResult` pipeline/batch wrappers and an integration serializer helper |
 | P2 Middleware Stack Integration | Complete | `MiddlewareRegistry`, default middleware wiring, plugin middleware integration, and dedicated tests are in place |
 | P3 Telemetry Integration | Complete | Telemetry config and middleware wiring are implemented and covered by tests |
-| P4 Richer CommandResult Fields | In Progress | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use; undo metadata now exists for memory operations, but broader reversible-command adoption is still pending |
+| P4 Richer CommandResult Fields | In Progress | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use; undo metadata now exists for memory, spec lifecycle, and agent lifecycle operations, but broader reversible-command adoption is still pending |
 | P5 DirectClient Pipelines | In Progress | Pipeline support, docs, and tests exist, and `docs_preflight()` now uses `DirectClient.pipe()` in production code; broader adoption is still pending |
 | P6 Batch Execution | Complete | `batch_execute()` helper and tests are implemented |
 | P7 Streaming | Deferred | Still intentionally deferred pending a real transport/use-case |

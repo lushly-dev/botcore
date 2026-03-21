@@ -95,6 +95,9 @@ Run changelog and AGENTS.md checks together via a DirectClient pipeline.
 ## spec_create(name, template="proposal")
 Create a new spec file from template.
 
+## spec_delete(path)
+Delete a spec file.
+
 ## spec_status()
 List specs with metadata.
 
