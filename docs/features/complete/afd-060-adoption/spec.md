@@ -12,7 +12,7 @@ This spec organizes adoption into seven prioritized, independently-implementable
 
 | Field | Value |
 |---|---|
-| Status | Active |
+| Status | Complete (P7 streaming deferred) |
 | Author | AI-assisted |
 | Date | 2026-03-13 |
 | Priority | Cross-cutting (improves DX, observability, agent UX) |
@@ -26,8 +26,8 @@ Implementation status as of 2026-03-21:
 | P1 Testing Helpers | Complete | `afd.testing` helpers are now adopted across the core, package, teams, docs, dev, portability, analysis, diagnostics, and spec suites; remaining `result.success` references are limited to non-`CommandResult` pipeline/batch wrappers and an integration serializer helper |
 | P2 Middleware Stack Integration | Complete | `MiddlewareRegistry`, default middleware wiring, plugin middleware integration, and dedicated tests are in place |
 | P3 Telemetry Integration | Complete | Telemetry config and middleware wiring are implemented and covered by tests |
-| P4 Richer CommandResult Fields | In Progress | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use; undo metadata now exists for memory, spec lifecycle, and agent lifecycle operations, but broader reversible-command adoption is still pending |
-| P5 DirectClient Pipelines | In Progress | Pipeline support, docs, and tests exist, and `docs_preflight()` now uses `DirectClient.pipe()` in production code; broader adoption is still pending |
+| P4 Richer CommandResult Fields | Complete | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use, and undo metadata now exists across memory, spec lifecycle, agent lifecycle, changeset lifecycle, and skill ownership operations |
+| P5 DirectClient Pipelines | Complete | Pipeline support, docs, and tests exist, and `docs_preflight()` provides a real production `DirectClient.pipe()` consumer for multi-step release-readiness checks |
 | P6 Batch Execution | Complete | `batch_execute()` helper and tests are implemented |
 | P7 Streaming | Deferred | Still intentionally deferred pending a real transport/use-case |
 
@@ -290,11 +290,11 @@ Custom backends (e.g., Azure Monitor, file-based) implement this protocol and ar
 
 ## P4: Richer CommandResult Fields
 
-> Parallel with P1. Populates existing CommandResult fields that are currently always empty.
+> Parallel with P1. Populates existing CommandResult fields that previously went unused.
 
 ### Description
 
-AFD's `CommandResult` already has fields for `suggestions`, `confidence`, `sources`, `undo_command`, and `undo_args`. Botcore commands never populate them. This work item adds meaningful values where appropriate.
+AFD's `CommandResult` already has fields for `suggestions`, `confidence`, `sources`, `undo_command`, and `undo_args`. This work item adds meaningful values where appropriate and verifies them in production-facing commands.
 
 ### Integration Pattern
 
@@ -354,11 +354,11 @@ async def memory_set(key: str, value: str, scope: str) -> CommandResult[dict]:
 
 | Field | Commands | Value |
 |-------|----------|-------|
-| `suggestions` | `info_workspace`, `info_env`, `info_scripts` | Guides agent to related commands |
-| `confidence` | `research_query` | Signals result reliability to agents |
-| `sources` | `research_query` | Provenance for grounded answers |
-| `reasoning` | `research_query` | Explains search strategy |
-| `undo_command` + `undo_args` | `agent_create`, `memory_set` | Enables undo/rollback workflows |
+| `suggestions` | `info_workspace`, `info_env`, `info_scripts`, `docs_check_changelog`, `docs_check_agents`, `docs_preflight` | Guides agents toward related commands and likely next actions |
+| `confidence` | `research_query`, Teams task/status handlers | Signals result reliability to agents and chat surfaces |
+| `sources` | `research_query`, Teams team status handler | Provenance for grounded answers and operational summaries |
+| `reasoning` | `research_query` and many operational commands | Explains strategy and execution outcome |
+| `undo_command` + `undo_args` | `memory_set`, `memory_delete`, `spec_create`, `spec_delete`, `agent_create`, `agent_delete`, `changeset_create`, `changeset_delete`, `skill_adopt`, `skill_unadopt` | Enables undo/rollback workflows for real reversible actions |
 
 ### Files to Change
 
@@ -385,7 +385,7 @@ async def memory_set(key: str, value: str, scope: str) -> CommandResult[dict]:
 
 ### Description
 
-`DirectClient.pipe()` is already available — it executes a sequence of commands with variable resolution (`$prev`, `$prev.field`, `$alias`). Orchestrator multi-step flows should use this instead of manual `client.call()` chains.
+`DirectClient.pipe()` is already available — it executes a sequence of commands with variable resolution (`$prev`, `$prev.field`, `$alias`). Botcore now uses it in a real multi-step docs preflight flow instead of only in examples and tests.
 
 ### Integration Pattern
 
@@ -409,9 +409,9 @@ result = await client.pipe([
 
 | File | Change |
 |------|--------|
-| Orchestrator multi-step flows | Refactor to use `client.pipe()` |
-| `src/botcore/commands/docs.py` | Add pipeline docs topic |
-| `tests/test_pipeline.py` | **New** — test pipeline execution, variable resolution, error propagation |
+| `src/botcore/commands/docs.py` | Add pipeline docs topic and `docs_preflight()` production consumer |
+| `tests/test_pipeline.py` | Test pipeline execution, variable resolution, and error propagation |
+| `tests/test_docs.py` | Verify `docs_preflight()` pipeline behavior and error propagation |
 
 ### Value Delivered
 

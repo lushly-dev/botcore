@@ -29,15 +29,15 @@ Cross-cutting adoption of AFD 0.6.0 capabilities. Seven work items, independentl
 
 | Work Item | Priority | Depends On | Status |
 |-----------|----------|------------|--------|
-| [Testing Helpers](docs/features/active/afd-060-adoption/spec.md#p1-testing-helpers) | P1 | — | Active |
-| [Middleware Stack](docs/features/active/afd-060-adoption/spec.md#p2-middleware-stack-integration) | P2 | — | Active |
-| [Telemetry](docs/features/active/afd-060-adoption/spec.md#p3-telemetry-integration) | P3 | P2 | Active |
-| [Richer CommandResult Fields](docs/features/active/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Active |
-| [Pipelines](docs/features/active/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Active |
-| [Batch Execution](docs/features/active/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Active |
-| [Streaming](docs/features/active/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
+| [Testing Helpers](docs/features/complete/afd-060-adoption/spec.md#p1-testing-helpers) | P1 | — | Complete |
+| [Middleware Stack](docs/features/complete/afd-060-adoption/spec.md#p2-middleware-stack-integration) | P2 | — | Complete |
+| [Telemetry](docs/features/complete/afd-060-adoption/spec.md#p3-telemetry-integration) | P3 | P2 | Complete |
+| [Richer CommandResult Fields](docs/features/complete/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Complete |
+| [Pipelines](docs/features/complete/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Complete |
+| [Batch Execution](docs/features/complete/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Complete |
+| [Streaming](docs/features/complete/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
 
-See [full spec](docs/features/active/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
+See [full spec](docs/features/complete/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
 
 ## Phase 2 — Proposed
 

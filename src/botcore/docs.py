@@ -70,6 +70,9 @@ Run 15 quality rules (SK001-SK015) on skill files.
 ## skill_adopt(name, source="local")
 Claim an unmanaged skill by adding `source:` frontmatter.
 
+## skill_unadopt(name)
+Remove `source:` frontmatter from a skill.
+
 ## skill_index(write=True)
 Generate `_index.md` table of all installed skills.
 - `write`: Write file (default: True). False for preview.
@@ -115,6 +118,21 @@ Show environment info (Python version, platform, installed tools).
 
 ## info_scripts()
 List available scripts from pyproject.toml / package.json.
+""",
+    "changeset": """\
+# Changeset Commands
+
+## changeset_create(change_type, description)
+Create a changeset file for the next release.
+
+## changeset_delete(path)
+Delete a pending changeset file.
+
+## changeset_status()
+Show pending changeset files.
+
+## changeset_consume(version=None)
+Consume pending changesets into CHANGELOG.md.
 """,
     "undo": """\
 # Undo Commands

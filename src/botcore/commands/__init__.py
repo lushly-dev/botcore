@@ -1,7 +1,12 @@
 """Botcore command re-exports."""
 
 # Dev commands re-exported from subpackage
-from botcore.commands.changeset import changeset_consume, changeset_create, changeset_status
+from botcore.commands.changeset import (
+    changeset_consume,
+    changeset_create,
+    changeset_delete,
+    changeset_status,
+)
 from botcore.commands.dev import (
     dev_build,
     dev_check_coverage,
@@ -26,6 +31,7 @@ from botcore.commands.skill import (
     skill_list,
     skill_seed,
     skill_status,
+    skill_unadopt,
 )
 from botcore.commands.skill_lint import skill_lint_spec
 from botcore.commands.spec import spec_create, spec_delete, spec_status, spec_validate
@@ -56,9 +62,11 @@ __all__ = [
     "skill_lint",
     "skill_lint_spec",
     "skill_adopt",
+    "skill_unadopt",
     "skill_index",
     # Changeset
     "changeset_create",
+    "changeset_delete",
     "changeset_status",
     "changeset_consume",
     # Docs

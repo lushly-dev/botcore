@@ -114,7 +114,7 @@ def read_skill_manifest(skill_dir: Path) -> SkillManifest | None:
     return manifest
 
 
-def update_skill_source(skill_dir: Path, source: str) -> bool:
+def update_skill_source(skill_dir: Path, source: str | None) -> bool:
     """Add or update the source: field in a skill's frontmatter.
 
     Preserves the body content. Returns True if the file was modified.
