@@ -369,8 +369,7 @@ class TestRoleBasedPooling:
         # Spawn 3 more to hit max_agents=5
         for _ in range(3):
             result = await orchestrator.assign_task("Work", role="researcher")
-            assert result.success
-            spawned_name = result.data["agent"]
+            spawned_name = assert_success(result)["agent"]
             orchestrator._agents[spawned_name].active_tasks.extend(["tx", "ty"])
             orchestrator._agents[spawned_name].health.status = "busy"
 

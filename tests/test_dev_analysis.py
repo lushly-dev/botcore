@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_success
+
 from botcore.commands.dev.analysis import (
     dev_circular_imports,
     dev_dead_code,
@@ -27,8 +29,8 @@ async def test_dead_code_ts_tool_not_found(tmp_path) -> None:
         mock_tool.return_value = None
         result = await dev_dead_code(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True
 
 
 async def test_dead_code_ts_runs_knip(tmp_path) -> None:
@@ -42,8 +44,8 @@ async def test_dead_code_ts_runs_knip(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "No issues", "error": None}
         result = await dev_dead_code(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("tool") == "knip"
+    data = assert_success(result)
+    assert data.get("tool") == "knip"
     mock_tool.assert_called_once()
 
 
@@ -58,8 +60,8 @@ async def test_dead_code_rust_runs_cargo_udeps(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "", "error": None}
         result = await dev_dead_code(language="rust")
 
-    assert result.success is True
-    assert result.data.get("tool") == "cargo-udeps"
+    data = assert_success(result)
+    assert data.get("tool") == "cargo-udeps"
 
 
 async def test_circular_imports_ts_runs_madge(tmp_path) -> None:
@@ -73,8 +75,8 @@ async def test_circular_imports_ts_runs_madge(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "No circular", "error": None}
         result = await dev_circular_imports(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("tool") == "madge"
+    data = assert_success(result)
+    assert data.get("tool") == "madge"
 
 
 async def test_circular_imports_ts_tool_not_found(tmp_path) -> None:
@@ -88,8 +90,8 @@ async def test_circular_imports_ts_tool_not_found(tmp_path) -> None:
         mock_tool.return_value = None
         result = await dev_circular_imports(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True
 
 
 async def test_unused_deps_ts_runs_depcheck(tmp_path) -> None:
@@ -107,9 +109,9 @@ async def test_unused_deps_ts_runs_depcheck(tmp_path) -> None:
         }
         result = await dev_unused_deps(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("tool") == "depcheck"
-    assert "lodash" in result.data["potentially_unused"]
+    data = assert_success(result)
+    assert data.get("tool") == "depcheck"
+    assert "lodash" in data["potentially_unused"]
 
 
 async def test_dep_graph_ts_runs_madge(tmp_path) -> None:
@@ -127,9 +129,9 @@ async def test_dep_graph_ts_runs_madge(tmp_path) -> None:
         }
         result = await dev_dep_graph(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("tool") == "madge"
-    assert result.data["module_count"] == 1
+    data = assert_success(result)
+    assert data.get("tool") == "madge"
+    assert data["module_count"] == 1
 
 
 async def test_dep_graph_rust_tool_not_found(tmp_path) -> None:
@@ -143,5 +145,5 @@ async def test_dep_graph_rust_tool_not_found(tmp_path) -> None:
         mock_tool.return_value = None
         result = await dev_dep_graph(language="rust")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True

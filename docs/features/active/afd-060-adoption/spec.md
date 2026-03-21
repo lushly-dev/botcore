@@ -23,7 +23,7 @@ Implementation status as of 2026-03-21:
 
 | Work Item | Status | Notes |
 |---|---|---|
-| P1 Testing Helpers | In Progress | Adopted across core, docs, middleware, registry, memory, llm, agents, pipeline, state, dev, portability, and analysis suites; manual `CommandResult` assertions are down to 69 repo-wide, with the biggest remaining hotspots in teams, spec, quality, and diagnostics tests |
+| P1 Testing Helpers | Complete | `afd.testing` helpers are now adopted across the core, package, teams, docs, dev, portability, analysis, diagnostics, and spec suites; remaining `result.success` references are limited to non-`CommandResult` pipeline/batch wrappers and an integration serializer helper |
 | P2 Middleware Stack Integration | Complete | `MiddlewareRegistry`, default middleware wiring, plugin middleware integration, and dedicated tests are in place |
 | P3 Telemetry Integration | Complete | Telemetry config and middleware wiring are implemented and covered by tests |
 | P4 Richer CommandResult Fields | In Progress | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use; undo metadata now exists for memory operations, but broader reversible-command adoption is still pending |

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from afd.testing import assert_error
+
 from botcore_teams.auth import (
     create_unauthorized_error,
     extract_group_ids,
@@ -65,9 +67,7 @@ class TestExtractIdentity:
 class TestCreateUnauthorizedError:
     def test_returns_error_result(self) -> None:
         result = create_unauthorized_error()
-        assert result.success is False
-        assert result.error is not None
-        assert result.error.code == "UNAUTHORIZED"
+        assert_error(result, "UNAUTHORIZED")
         assert result.error.retryable is False
         assert result.error.suggestion is not None
 

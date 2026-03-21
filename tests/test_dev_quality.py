@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.quality import _parse_version, dev_check_deps, dev_check_size
 
 _MOD = "botcore.commands.dev.quality"
@@ -40,9 +42,9 @@ async def test_check_size_no_errors(tmp_path) -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
         result = await dev_check_size(path=str(src))
 
-    assert result.success is True
-    assert result.data["files_checked"] == 1
-    assert len(result.data["errors"]) == 0
+    data = assert_success(result)
+    assert data["files_checked"] == 1
+    assert len(data["errors"]) == 0
 
 
 async def test_check_size_warns(tmp_path) -> None:
@@ -54,8 +56,8 @@ async def test_check_size_warns(tmp_path) -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
         result = await dev_check_size(path=str(src), warn_threshold=500, error_threshold=1000)
 
-    assert result.success is True
-    assert len(result.data["warnings"]) == 1
+    data = assert_success(result)
+    assert len(data["warnings"]) == 1
 
 
 async def test_check_size_errors(tmp_path) -> None:
@@ -67,8 +69,7 @@ async def test_check_size_errors(tmp_path) -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
         result = await dev_check_size(path=str(src), error_threshold=1000)
 
-    assert result.success is False
-    assert result.error.code == "FILES_TOO_LARGE"
+    assert_error(result, "FILES_TOO_LARGE")
 
 
 async def test_check_size_uses_config_thresholds(tmp_path) -> None:
@@ -84,8 +85,8 @@ async def test_check_size_uses_config_thresholds(tmp_path) -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
         result = await dev_check_size(path=str(src))
 
-    assert result.success is True
-    assert len(result.data["warnings"]) == 1
+    data = assert_success(result)
+    assert len(data["warnings"]) == 1
 
 
 async def test_check_size_path_not_found(tmp_path) -> None:
@@ -93,8 +94,7 @@ async def test_check_size_path_not_found(tmp_path) -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
         result = await dev_check_size(path=str(tmp_path / "nonexistent"))
 
-    assert result.success is False
-    assert result.error.code == "PATH_NOT_FOUND"
+    assert_error(result, "PATH_NOT_FOUND")
 
 
 async def test_check_size_typescript_extensions(tmp_path) -> None:
@@ -110,9 +110,9 @@ async def test_check_size_typescript_extensions(tmp_path) -> None:
             path=str(src), language="typescript", warn_threshold=500, error_threshold=1000,
         )
 
-    assert result.success is True
-    assert result.data["files_checked"] == 2
-    assert len(result.data["warnings"]) == 1  # Only app.ts
+    data = assert_success(result)
+    assert data["files_checked"] == 2
+    assert len(data["warnings"]) == 1  # Only app.ts
 
 
 async def test_check_deps_npm_dispatch(tmp_path) -> None:
@@ -126,7 +126,7 @@ async def test_check_deps_npm_dispatch(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "{}", "error": None}
         result = await dev_check_deps(language="typescript")
 
-    assert result.success is True
+    assert_success(result)
     mock_tool.assert_called_once()
 
 
@@ -141,5 +141,4 @@ async def test_check_deps_npm_not_found(tmp_path) -> None:
         mock_tool.return_value = None
         result = await dev_check_deps(language="typescript")
 
-    assert result.success is False
-    assert result.error.code == "NPM_NOT_FOUND"
+    assert_error(result, "NPM_NOT_FOUND")

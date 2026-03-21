@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from afd.core.result import success
+from afd.testing import assert_error, assert_success
 
 from botcore_teams.commands import teams_handle_card_action, teams_handle_message
 
@@ -17,9 +18,9 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is True
-        assert result.data["agent"] == "researcher"
-        assert "research the latest Azure SDK changes" in result.data["description"]
+        data = assert_success(result)
+        assert data["agent"] == "researcher"
+        assert "research the latest Azure SDK changes" in data["description"]
 
     async def test_team_status_routing(self) -> None:
         result = await teams_handle_message(
@@ -28,8 +29,8 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is True
-        assert "agents" in result.data
+        data = assert_success(result)
+        assert "agents" in data
 
     async def test_task_status_routing(self) -> None:
         result = await teams_handle_message(
@@ -38,8 +39,8 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is True
-        assert "status" in result.data
+        data = assert_success(result)
+        assert "status" in data
 
     async def test_cancel_routing(self) -> None:
         result = await teams_handle_message(
@@ -48,8 +49,8 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is True
-        assert result.data["cancelled"] is True
+        data = assert_success(result)
+        assert data["cancelled"] is True
 
     async def test_list_tasks_routing(self) -> None:
         result = await teams_handle_message(
@@ -58,8 +59,8 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is True
-        assert "tasks" in result.data
+        data = assert_success(result)
+        assert "tasks" in data
 
     async def test_unknown_intent_error(self) -> None:
         result = await teams_handle_message(
@@ -68,8 +69,7 @@ class TestHandleMessage:
             user_name="Alice",
             conversation_id="c1",
         )
-        assert result.success is False
-        assert result.error.code == "UNKNOWN_INTENT"
+        assert_error(result, "UNKNOWN_INTENT")
 
 
 class TestHandleCardAction:
@@ -79,8 +79,8 @@ class TestHandleCardAction:
             {"original_text": "team status"},
             user_id="u1",
         )
-        assert result.success is True
-        assert "agents" in result.data
+        data = assert_success(result)
+        assert "agents" in data
 
     async def test_followup_action(self) -> None:
         result = await teams_handle_card_action(
@@ -88,18 +88,16 @@ class TestHandleCardAction:
             {"text": "list tasks"},
             user_id="u1",
         )
-        assert result.success is True
-        assert "tasks" in result.data
+        data = assert_success(result)
+        assert "tasks" in data
 
     async def test_retry_missing_text(self) -> None:
         result = await teams_handle_card_action("retry", {}, user_id="u1")
-        assert result.success is False
-        assert result.error.code == "MISSING_CONTEXT"
+        assert_error(result, "MISSING_CONTEXT")
 
     async def test_unknown_action(self) -> None:
         result = await teams_handle_card_action("bogus", {}, user_id="u1")
-        assert result.success is False
-        assert result.error.code == "UNKNOWN_ACTION"
+        assert_error(result, "UNKNOWN_ACTION")
 
 
 class TestRealDispatchPath:
@@ -118,6 +116,6 @@ class TestRealDispatchPath:
                 conversation_id="c1",
             )
 
-        assert result.success is True
-        assert result.data["task_id"] == "task-777"
+        data = assert_success(result)
+        assert data["task_id"] == "task-777"
         mock_client.call.assert_awaited_once()
