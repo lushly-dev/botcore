@@ -13,7 +13,7 @@ from botcore_llm.commands import (
     llm_session_list,
     set_config,
 )
-from botcore_llm.config import LlmConfig
+from botcore_llm.config import LlmConfig, LlmPermissionsConfig
 from botcore_llm.session import get_session_registry
 
 
@@ -54,6 +54,32 @@ class TestLlmSessionCreate:
             assert data["model"] == "claude-sonnet-4.5"
         finally:
             set_config(LlmConfig())  # reset
+
+    @pytest.mark.asyncio
+    async def test_uses_global_default_permissions_when_not_provided(
+        self, patch_client_manager, mock_copilot_session
+    ):
+        default_permissions = LlmPermissionsConfig(
+            allow_shell=True,
+            allow_filesystem=True,
+            allow_mcp=False,
+            allow_custom_tools=False,
+        )
+        set_config(LlmConfig(permissions=default_permissions))
+        try:
+            await llm_session_create(model="gpt-4.1")
+
+            registry = get_session_registry()
+            entry = registry.get(mock_copilot_session.session_id)
+            assert entry is not None
+            handler = entry.config["on_permission_request"]
+
+            assert handler({"kind": "shell"}, {})["kind"] == "approved"
+            assert handler({"kind": "read", "path": "/tmp/x"}, {})["kind"] == "approved"
+            assert handler({"kind": "mcp"}, {})["kind"] == "denied-by-rules"
+            assert handler({"kind": "custom-tool"}, {})["kind"] == "denied-by-rules"
+        finally:
+            set_config(LlmConfig())
 
 
 class TestLlmSessionDestroy:

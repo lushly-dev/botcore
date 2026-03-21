@@ -29,6 +29,11 @@ _APPROVED: PermissionRequestResult = {"kind": "approved"}
 _DENIED: PermissionRequestResult = {"kind": "denied-by-rules"}
 
 
+def _log_denial(agent_name: str, kind: str, detail: str = "") -> None:
+    suffix = f" ({detail})" if detail else ""
+    logger.info("Permission denied: %s (agent=%s)%s", kind, agent_name, suffix)
+
+
 def create_permission_handler(
     config: LlmPermissionsConfig,
     *,
@@ -59,54 +64,45 @@ def create_permission_handler(
 
         if kind == "shell":
             if not config.allow_shell:
-                logger.debug("Permission denied: shell (agent=%s)", agent_name)
+                _log_denial(agent_name, "shell")
                 return _DENIED
             if shell_allowlist is not None:
                 cmd = request.get("command", "")
                 if not _matches_shell_allowlist(cmd, shell_allowlist):
-                    logger.debug(
-                        "Permission denied: shell command %r not in allowlist (agent=%s)",
-                        cmd,
-                        agent_name,
-                    )
+                    _log_denial(agent_name, "shell", f"command={cmd!r} not in allowlist")
                     return _DENIED
             return _APPROVED
 
         if kind in ("write", "read"):
             if not config.allow_filesystem:
-                logger.debug("Permission denied: %s (agent=%s)", kind, agent_name)
+                _log_denial(agent_name, kind)
                 return _DENIED
             if filesystem_paths is not None:
                 path = request.get("path", "")
                 if not _path_allowed(path, filesystem_paths):
-                    logger.debug(
-                        "Permission denied: %s path %r not in allowed paths (agent=%s)",
-                        kind,
-                        path,
-                        agent_name,
-                    )
+                    _log_denial(agent_name, kind, f"path={path!r} not in allowed paths")
                     return _DENIED
             return _APPROVED
 
         if kind == "mcp":
             if config.allow_mcp:
                 return _APPROVED
-            logger.debug("Permission denied: mcp (agent=%s)", agent_name)
+            _log_denial(agent_name, "mcp")
             return _DENIED
 
         if kind == "custom-tool":
             if config.allow_custom_tools:
                 return _APPROVED
-            logger.debug("Permission denied: custom-tool (agent=%s)", agent_name)
+            _log_denial(agent_name, "custom-tool")
             return _DENIED
 
         if kind == "url":
             # URL fetch requests — deny by default (no config toggle yet)
-            logger.debug("Permission denied: url (agent=%s)", agent_name)
+            _log_denial(agent_name, "url")
             return _DENIED
 
         # Unknown kind — deny by default
-        logger.warning("Permission denied for unknown kind: %s (agent=%s)", kind, agent_name)
+        _log_denial(agent_name, "unknown", f"kind={kind}")
         return _DENIED
 
     return handler

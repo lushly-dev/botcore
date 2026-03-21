@@ -228,6 +228,32 @@ class TestAgentNameLogging:
         result = handler(_make_request("shell"), INV_CTX)
         assert result["kind"] == "approved"
 
+    def test_denial_logged_with_agent_name_and_action(self, caplog):
+        config = LlmPermissionsConfig()
+        handler = create_permission_handler(config, agent_name="researcher")
+
+        with caplog.at_level("INFO", logger="botcore_llm.permissions"):
+            result = handler(_make_request("shell", command="git status"), INV_CTX)
+
+        assert result["kind"] == "denied-by-rules"
+        assert "Permission denied: shell" in caplog.text
+        assert "agent=researcher" in caplog.text
+
+    def test_allowlist_denial_logs_command_detail(self, caplog):
+        from botcore_agents.config import AgentPermissionsConfig
+
+        config = AgentPermissionsConfig(
+            allow_shell=True,
+            shell_allowlist=["git *"],
+        )
+        handler = create_permission_handler(config, agent_name="coder")
+
+        with caplog.at_level("INFO", logger="botcore_llm.permissions"):
+            result = handler(_make_request("shell", command="rm -rf /"), INV_CTX)
+
+        assert result["kind"] == "denied-by-rules"
+        assert "command='rm -rf /' not in allowlist" in caplog.text
+
 
 # ---------------------------------------------------------------------------
 # Two-agent profile isolation
