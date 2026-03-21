@@ -7,6 +7,7 @@ from unittest.mock import patch
 import botcore_agents.orchestrator as orch_mod
 from afd.testing import assert_error, assert_success
 from botcore_agents.config import AgentPermissionsConfig, AgentsPluginConfig
+from botcore_agents.models import Task
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
 
 
@@ -188,6 +189,38 @@ class TestAssignTask:
     async def test_assign_no_target_returns_error(self, orchestrator: AgentOrchestrator):
         result = await orchestrator.assign_task("Do work")
         assert_error(result, "NO_TARGET")
+
+
+class TestResumeTask:
+    async def test_resume_pending_task(self, orchestrator: AgentOrchestrator, mock_llm):
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+
+        task = Task(description="Resume work", status="pending")
+        orchestrator._tasks[task.id] = task
+
+        result = await orchestrator.resume_task(task.id, agent="researcher")
+        data = assert_success(result)
+        assert data["task_id"] == task.id
+        assert data["status"] == "completed"
+        assert data["agent"] == "researcher"
+
+        restored_task = orchestrator._tasks[task.id]
+        assert restored_task.status == "completed"
+        assert restored_task.assigned_agent == "researcher"
+
+    async def test_resume_missing_task(self, orchestrator: AgentOrchestrator, mock_llm):
+        result = await orchestrator.resume_task("missing-task", agent="researcher")
+        assert_error(result, "TASK_NOT_FOUND")
+
+    async def test_resume_completed_task_rejected(
+        self, orchestrator: AgentOrchestrator, mock_llm
+    ):
+        task = Task(description="Already done", status="completed")
+        orchestrator._tasks[task.id] = task
+
+        result = await orchestrator.resume_task(task.id, agent="researcher")
+        assert_error(result, "TASK_NOT_RESUMABLE")
 
 
 class TestGetAgentStatus:

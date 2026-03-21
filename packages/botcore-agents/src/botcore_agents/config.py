@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Literal
 
 from botcore_llm.config import LlmPermissionsConfig
@@ -34,6 +35,25 @@ class AgentConfig(BaseModel):
     permissions: AgentPermissionsConfig = Field(default_factory=AgentPermissionsConfig)
 
 
+class AgentsStateConfig(BaseModel):
+    """State persistence settings for the orchestrator."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    backend: Literal["json"] = "json"
+    path: str = ".botcore/orchestrator-state.json"
+    retention_hours: int = Field(default=168, ge=1, le=24 * 365)
+
+    def resolve_path(self, workspace: Path | None = None) -> Path:
+        """Resolve the configured state path against a workspace or cwd."""
+        path = Path(self.path).expanduser()
+        if path.is_absolute():
+            return path
+        base = (workspace or Path.cwd()).resolve()
+        return (base / path).resolve()
+
+
 class AgentsPluginConfig(BaseModel):
     """Top-level agents plugin configuration.
 
@@ -45,6 +65,7 @@ class AgentsPluginConfig(BaseModel):
     agents: dict[str, AgentConfig] = Field(default_factory=dict)
     default_model: str = "gpt-4.1"
     max_agents: int = Field(default=10, ge=1, le=100)
+    state: AgentsStateConfig = Field(default_factory=AgentsStateConfig)
 
 
 def get_agents_config(plugin_config: dict[str, Any] | None = None) -> AgentsPluginConfig:

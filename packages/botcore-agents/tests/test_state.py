@@ -13,7 +13,12 @@ from pydantic import ValidationError
 from botcore_agents.config import AgentConfig, AgentsPluginConfig
 from botcore_agents.models import AgentHealth, AgentState, Task
 from botcore_agents.orchestrator import AgentOrchestrator
-from botcore_agents.state import JsonStateBackend, OrchestratorSnapshot
+from botcore_agents.state import (
+    AgentSnapshot,
+    JsonStateBackend,
+    OrchestratorSnapshot,
+    TaskSnapshot,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,8 +47,8 @@ def _minimal_snapshot() -> OrchestratorSnapshot:
     task = Task(description="test task", status="completed", assigned_agent="researcher")
     return OrchestratorSnapshot(
         config=config,
-        agents={"researcher": agent_state},
-        tasks={task.id: task},
+        agents={"researcher": AgentSnapshot.from_state(agent_state)},
+        tasks={task.id: TaskSnapshot.from_task(task)},
     )
 
 
@@ -67,6 +72,15 @@ class TestOrchestratorSnapshot:
         assert restored.version == snap.version
         assert restored.agents.keys() == snap.agents.keys()
         assert restored.tasks.keys() == snap.tasks.keys()
+
+    def test_snapshot_omits_runtime_only_agent_fields(self):
+        snap = _minimal_snapshot()
+        agent = snap.agents["researcher"]
+        dumped = agent.model_dump()
+        assert "config" in dumped
+        assert "session_id" not in dumped
+        assert "active_tasks" not in dumped
+        assert "started_at" not in dumped
 
     def test_extra_fields_forbidden(self):
         config = _minimal_config()
@@ -96,6 +110,17 @@ class TestJsonStateBackend:
         backend = JsonStateBackend(path)
         result = await backend.load()
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_clear_removes_saved_snapshot(self, tmp_path: Path):
+        path = tmp_path / "state.json"
+        backend = JsonStateBackend(path)
+        await backend.save(_minimal_snapshot())
+        assert path.exists()
+
+        await backend.clear()
+
+        assert not path.exists()
 
     @pytest.mark.asyncio
     async def test_save_load_roundtrip(self, tmp_path: Path):
@@ -130,6 +155,46 @@ class TestJsonStateBackend:
         path.write_text(snap.model_dump_json(indent=2))
         result = await backend.load()
         assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_load_prunes_old_terminal_tasks(self, tmp_path: Path):
+        path = tmp_path / "state.json"
+        backend = JsonStateBackend(path, retention_hours=24)
+        snap = _minimal_snapshot()
+
+        old_completed = Task(
+            description="old complete",
+            status="completed",
+            assigned_agent="researcher",
+            created_at=datetime.now(UTC) - timedelta(days=3),
+            completed_at=datetime.now(UTC) - timedelta(days=3),
+        )
+        recent_completed = Task(
+            description="recent complete",
+            status="completed",
+            assigned_agent="researcher",
+            completed_at=datetime.now(UTC) - timedelta(hours=2),
+        )
+        pending_task = Task(
+            description="pending",
+            status="pending",
+            assigned_agent="researcher",
+            created_at=datetime.now(UTC) - timedelta(days=10),
+        )
+
+        snap.tasks = {
+            old_completed.id: old_completed,
+            recent_completed.id: recent_completed,
+            pending_task.id: pending_task,
+        }
+
+        await backend.save(snap)
+        restored = await backend.load()
+
+        assert restored is not None
+        assert old_completed.id not in restored.tasks
+        assert recent_completed.id in restored.tasks
+        assert pending_task.id in restored.tasks
 
     @pytest.mark.asyncio
     async def test_save_creates_parent_directories(self, tmp_path: Path):
@@ -203,6 +268,7 @@ class TestOrchestratorSaveLoad:
         load_data = assert_success(load_result)
         assert load_data["restored"] is True
         assert load_data["agents"] == 1
+        assert "task_resume" in load_data["note"]
         assert "researcher" in orch2._agents
         assert task.id in orch2._tasks
 
@@ -235,12 +301,97 @@ class TestOrchestratorSaveLoad:
         assert state.started_at is None
 
     @pytest.mark.asyncio
+    async def test_load_normalizes_non_terminal_tasks(self, tmp_path: Path):
+        backend = JsonStateBackend(tmp_path / "state.json")
+        config = _minimal_config()
+        orch = AgentOrchestrator(config, backend=backend)
+
+        running = Task(
+            description="running task",
+            status="running",
+            assigned_agent="researcher",
+            started_at=datetime.now(UTC),
+            result="partial output",
+        )
+        assigned = Task(
+            description="assigned task",
+            status="assigned",
+            assigned_agent="researcher",
+            started_at=datetime.now(UTC),
+        )
+        completed = Task(
+            description="completed task",
+            status="completed",
+            assigned_agent="researcher",
+            completed_at=datetime.now(UTC),
+            result="done",
+        )
+        orch._tasks = {
+            running.id: running,
+            assigned.id: assigned,
+            completed.id: completed,
+        }
+
+        await orch.save_state()
+
+        orch2 = AgentOrchestrator(_minimal_config(), backend=backend)
+        await orch2.load_state()
+
+        restored_running = orch2._tasks[running.id]
+        assert restored_running.status == "pending"
+        assert restored_running.assigned_agent == ""
+        assert restored_running.started_at is None
+        assert restored_running.completed_at is None
+        assert restored_running.result == ""
+
+        restored_assigned = orch2._tasks[assigned.id]
+        assert restored_assigned.status == "pending"
+        assert restored_assigned.assigned_agent == ""
+        assert restored_assigned.started_at is None
+
+        restored_completed = orch2._tasks[completed.id]
+        assert restored_completed.status == "completed"
+        assert restored_completed.assigned_agent == "researcher"
+        assert restored_completed.result == "done"
+
+    @pytest.mark.asyncio
     async def test_load_no_saved_state(self, tmp_path: Path):
         backend = JsonStateBackend(tmp_path / "nope.json")
         orch = AgentOrchestrator(_minimal_config(), backend=backend)
         result = await orch.load_state()
         data = assert_success(result)
         assert data["restored"] is False
+        assert "No saved snapshot" in data["note"]
+
+    @pytest.mark.asyncio
+    async def test_loaded_pending_task_can_be_resumed(self, tmp_path: Path, mock_llm):
+        backend = JsonStateBackend(tmp_path / "state.json")
+        config = _minimal_config()
+        orch = AgentOrchestrator(config, backend=backend)
+
+        agent_cfg = config.agents["researcher"]
+        orch._agents["researcher"] = AgentState(
+            config=agent_cfg,
+            health=AgentHealth(name="researcher", status="idle"),
+            session_id="live-session",
+        )
+        pending = Task(description="resume after restore", status="pending")
+        orch._tasks[pending.id] = pending
+
+        await orch.save_state()
+
+        orch2 = AgentOrchestrator(_minimal_config(), backend=backend)
+        load_result = await orch2.load_state()
+        assert_success(load_result)
+
+        start_result = await orch2.start_agent("researcher")
+        assert_success(start_result)
+
+        resume_result = await orch2.resume_task(pending.id, agent="researcher")
+        resume_data = assert_success(resume_result)
+        assert resume_data["task_id"] == pending.id
+        assert resume_data["status"] == "completed"
+        assert orch2._tasks[pending.id].status == "completed"
 
     @pytest.mark.asyncio
     async def test_snapshot_deep_copies(self, tmp_path: Path):

@@ -13,10 +13,13 @@ from botcore_agents.commands import (
     agent_status,
     agent_stop,
     set_config,
+    state_load,
+    state_save,
     task_assign,
+    task_resume,
     task_status,
 )
-from botcore_agents.config import AgentsPluginConfig
+from botcore_agents.config import AgentsPluginConfig, AgentsStateConfig
 from botcore_agents.orchestrator import reset_orchestrator
 
 
@@ -165,6 +168,59 @@ class TestTaskStatus:
     async def test_task_status_not_found(self):
         result = await task_status(task_id="no-such-id")
         assert_error(result, "TASK_NOT_FOUND")
+
+
+class TestTaskResume:
+    async def test_resume_pending_task(self, mock_llm):
+        from botcore_agents.orchestrator import get_orchestrator
+        from botcore_agents.models import Task
+
+        await agent_create(name="researcher")
+        await agent_start(name="researcher")
+        task = Task(description="Resume me", status="pending")
+        get_orchestrator()._tasks[task.id] = task
+
+        result = await task_resume(task_id=task.id, agent="researcher")
+        data = assert_success(result)
+        assert data["task_id"] == task.id
+        assert data["status"] == "completed"
+        assert data["agent"] == "researcher"
+
+    async def test_resume_non_pending_task_returns_error(self, mock_llm):
+        from botcore_agents.orchestrator import get_orchestrator
+        from botcore_agents.models import Task
+
+        task = Task(description="done", status="completed")
+        get_orchestrator()._tasks[task.id] = task
+
+        result = await task_resume(task_id=task.id, agent="researcher")
+        assert_error(result, "TASK_NOT_RESUMABLE")
+
+
+class TestStateCommands:
+    async def test_state_save_and_load_use_configured_backend(self, tmp_path, sample_config):
+        sample_config.state = AgentsStateConfig(
+            enabled=True,
+            path=str(tmp_path / "orchestrator-state.json"),
+            retention_hours=24,
+        )
+        set_config(sample_config)
+
+        await agent_create(name="researcher")
+        save_result = await state_save()
+        save_data = assert_success(save_result)
+        assert save_data["saved"] is True
+        assert (tmp_path / "orchestrator-state.json").exists()
+
+        reset_orchestrator()
+        load_result = await state_load()
+        load_data = assert_success(load_result)
+        assert load_data["restored"] is True
+
+    async def test_state_commands_without_backend_return_no_backend(self, sample_config):
+        set_config(sample_config)
+        result = await state_save()
+        assert_error(result, "NO_BACKEND")
 
 
 # ---------------------------------------------------------------------------

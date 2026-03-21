@@ -9,6 +9,7 @@ from botcore_agents.config import (
     AgentConfig,
     AgentPermissionsConfig,
     AgentsPluginConfig,
+    AgentsStateConfig,
     get_agents_config,
 )
 
@@ -118,6 +119,8 @@ class TestAgentsPluginConfig:
         assert cfg.agents == {}
         assert cfg.default_model == "gpt-4.1"
         assert cfg.max_agents == 10
+        assert cfg.state.enabled is False
+        assert cfg.state.path == ".botcore/orchestrator-state.json"
 
     def test_with_agents(self):
         cfg = AgentsPluginConfig(
@@ -141,6 +144,24 @@ class TestAgentsPluginConfig:
     def test_extra_fields_forbidden(self):
         with pytest.raises(ValidationError):
             AgentsPluginConfig(unknown_field="value")
+
+
+class TestAgentsStateConfig:
+    def test_defaults(self):
+        cfg = AgentsStateConfig()
+        assert cfg.enabled is False
+        assert cfg.backend == "json"
+        assert cfg.path == ".botcore/orchestrator-state.json"
+        assert cfg.retention_hours == 168
+
+    def test_resolve_path_absolute(self, tmp_path):
+        path = tmp_path / "state.json"
+        cfg = AgentsStateConfig(enabled=True, path=str(path))
+        assert cfg.resolve_path() == path
+
+    def test_resolve_path_relative(self, tmp_path):
+        cfg = AgentsStateConfig(enabled=True, path=".botcore/state.json")
+        assert cfg.resolve_path(tmp_path) == (tmp_path / ".botcore" / "state.json").resolve()
 
 
 class TestGetAgentsConfig:
