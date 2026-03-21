@@ -102,7 +102,51 @@ async def changeset_create(
             "path": str(filepath.relative_to(ws)),
             "type": change_type,
             "description": description,
-        }
+        },
+        undo_command="changeset_delete",
+        undo_args={"path": str(filepath.relative_to(ws))},
+    )
+
+
+async def changeset_delete(path: str) -> CommandResult[dict]:
+    """Delete a pending changeset file."""
+    ws = find_workspace()
+    if not ws:
+        return error(
+            "NO_WORKSPACE",
+            "Could not find workspace root",
+            suggestion="Run from within a Git repository",
+        )
+
+    changeset_path = Path(path)
+    if not changeset_path.is_absolute():
+        changeset_path = ws / changeset_path
+
+    if not changeset_path.exists():
+        return error(
+            "FILE_NOT_FOUND",
+            f"Changeset not found: {path}",
+            suggestion="Check the path or run changeset_status to list pending files",
+        )
+
+    if changeset_path.is_dir():
+        return error(
+            "NOT_A_FILE",
+            f"Expected a changeset file but found a directory: {changeset_path}",
+            suggestion="Pass the path to a specific changeset markdown file",
+        )
+
+    change_type, description = _parse_changeset(changeset_path)
+    changeset_path.unlink()
+
+    return success(
+        data={"path": str(changeset_path.relative_to(ws)), "deleted": True},
+        reasoning=f"Deleted changeset {changeset_path.name}",
+        undo_command="changeset_create",
+        undo_args={
+            "change_type": change_type or "added",
+            "description": description,
+        },
     )
 
 

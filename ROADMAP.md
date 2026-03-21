@@ -19,9 +19,9 @@ Architectural interfaces that must exist before expanding agent or connector fea
 
 | Spec | Why Foundation | Status |
 |------|----------------|--------|
-| [Agent Capability Declarations](docs/features/active/agent-capability-declarations/spec.md) | Without this, every agent gets every connector. Per-agent `connectors` field on AgentConfig. | Active |
+| [Agent Capability Declarations](docs/features/complete/agent-capability-declarations/spec.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
 | [Per-Agent Permission Profiles](docs/features/active/per-agent-permissions/spec.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Active |
-| [Orchestrator State Serialization](docs/features/active/orchestrator-state-serialization/spec.md) | Without this, can't add persistence or crash recovery later. `save_state()` / `load_state()` interface with JSON backend. | Active |
+| [Orchestrator State Serialization](docs/features/complete/orchestrator-state-serialization/spec.md) | Shipped. Orchestrator state now supports versioned snapshots, restore-safe recovery, resumable pending tasks, and opt-in autosave. | Complete |
 
 ## AFD 0.6.0 Adoption
 
@@ -29,15 +29,15 @@ Cross-cutting adoption of AFD 0.6.0 capabilities. Seven work items, independentl
 
 | Work Item | Priority | Depends On | Status |
 |-----------|----------|------------|--------|
-| [Testing Helpers](docs/features/active/afd-060-adoption/spec.md#p1-testing-helpers) | P1 | — | Active |
-| [Middleware Stack](docs/features/active/afd-060-adoption/spec.md#p2-middleware-stack-integration) | P2 | — | Active |
-| [Telemetry](docs/features/active/afd-060-adoption/spec.md#p3-telemetry-integration) | P3 | P2 | Active |
-| [Richer CommandResult Fields](docs/features/active/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Active |
-| [Pipelines](docs/features/active/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Active |
-| [Batch Execution](docs/features/active/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Active |
-| [Streaming](docs/features/active/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
+| [Testing Helpers](docs/features/complete/afd-060-adoption/spec.md#p1-testing-helpers) | P1 | — | Complete |
+| [Middleware Stack](docs/features/complete/afd-060-adoption/spec.md#p2-middleware-stack-integration) | P2 | — | Complete |
+| [Telemetry](docs/features/complete/afd-060-adoption/spec.md#p3-telemetry-integration) | P3 | P2 | Complete |
+| [Richer CommandResult Fields](docs/features/complete/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Complete |
+| [Pipelines](docs/features/complete/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Complete |
+| [Batch Execution](docs/features/complete/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Complete |
+| [Streaming](docs/features/complete/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
 
-See [full spec](docs/features/active/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
+See [full spec](docs/features/complete/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
 
 ## Phase 2 — Proposed
 

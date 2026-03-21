@@ -1,7 +1,12 @@
 """Botcore command re-exports."""
 
 # Dev commands re-exported from subpackage
-from botcore.commands.changeset import changeset_consume, changeset_create, changeset_status
+from botcore.commands.changeset import (
+    changeset_consume,
+    changeset_create,
+    changeset_delete,
+    changeset_status,
+)
 from botcore.commands.dev import (
     dev_build,
     dev_check_coverage,
@@ -16,7 +21,7 @@ from botcore.commands.dev import (
     dev_test,
     dev_unused_deps,
 )
-from botcore.commands.docs import docs_check_agents, docs_check_changelog, docs_lint
+from botcore.commands.docs import docs_check_agents, docs_check_changelog, docs_lint, docs_preflight
 from botcore.commands.info import info_env, info_scripts, info_workspace
 from botcore.commands.research import research_query
 from botcore.commands.skill import (
@@ -26,9 +31,10 @@ from botcore.commands.skill import (
     skill_list,
     skill_seed,
     skill_status,
+    skill_unadopt,
 )
 from botcore.commands.skill_lint import skill_lint_spec
-from botcore.commands.spec import spec_create, spec_status, spec_validate
+from botcore.commands.spec import spec_create, spec_delete, spec_status, spec_validate
 from botcore.commands.undo import undo_clear, undo_status
 
 __all__ = [
@@ -56,19 +62,23 @@ __all__ = [
     "skill_lint",
     "skill_lint_spec",
     "skill_adopt",
+    "skill_unadopt",
     "skill_index",
     # Changeset
     "changeset_create",
+    "changeset_delete",
     "changeset_status",
     "changeset_consume",
     # Docs
     "docs_lint",
     "docs_check_changelog",
     "docs_check_agents",
+    "docs_preflight",
     # Research
     "research_query",
     # Spec
     "spec_create",
+    "spec_delete",
     "spec_status",
     "spec_validate",
     # Undo

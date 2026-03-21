@@ -377,7 +377,7 @@ registry.register(
 
 ## Relationship to Other Specs
 
-- **Agent Capability Declarations** — `skills` (via `config.skills`) controls which tools are bridged into the LLM session; `permissions` controls which system-level actions the session is allowed to perform. This spec is independent of capability declarations — it only touches the permission gate layer, not tool visibility.
+- **Agent Capability Declarations** — tool visibility is controlled by the agent's resolved capability set (`skills` plus connector access resolved from `connectors` / `connector_commands`); `permissions` controls which system-level actions the session is allowed to perform. This spec is independent of capability declarations — it only touches the permission gate layer, not tool visibility.
 - **Orchestrator State Serialization** — `AgentPermissionsConfig` serializes naturally (Pydantic model). No special handling needed.
 
 ## Migration

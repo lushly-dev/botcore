@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.portability import _matches_glob, dev_check_paths
 
 # ── _matches_glob ────────────────────────────────────────────────────────
@@ -42,8 +44,8 @@ async def test_check_paths_no_issues(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
-    assert len(result.data["errors"]) == 0
+    data = assert_success(result)
+    assert len(data["errors"]) == 0
 
 
 async def test_check_paths_detects_windows_drive(tmp_path) -> None:
@@ -58,8 +60,7 @@ async def test_check_paths_detects_windows_drive(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is False
-    assert result.error.code == "HARDCODED_PATHS_FOUND"
+    assert_error(result, "HARDCODED_PATHS_FOUND")
 
 
 async def test_check_paths_detects_unix_home(tmp_path) -> None:
@@ -74,8 +75,7 @@ async def test_check_paths_detects_unix_home(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is False
-    assert result.error.code == "HARDCODED_PATHS_FOUND"
+    assert_error(result, "HARDCODED_PATHS_FOUND")
 
 
 async def test_check_paths_detects_mac_users(tmp_path) -> None:
@@ -90,8 +90,7 @@ async def test_check_paths_detects_mac_users(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is False
-    assert result.error.code == "HARDCODED_PATHS_FOUND"
+    assert_error(result, "HARDCODED_PATHS_FOUND")
 
 
 async def test_check_paths_detects_localhost_warning(tmp_path) -> None:
@@ -106,8 +105,8 @@ async def test_check_paths_detects_localhost_warning(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
-    assert len(result.data["warnings"]) >= 1
+    data = assert_success(result)
+    assert len(data["warnings"]) >= 1
 
 
 async def test_check_paths_excludes_warnings_when_disabled(tmp_path) -> None:
@@ -122,8 +121,8 @@ async def test_check_paths_excludes_warnings_when_disabled(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src), include_warnings=False)
 
-    assert result.success is True
-    assert len(result.data["warnings"]) == 0
+    data = assert_success(result)
+    assert len(data["warnings"]) == 0
 
 
 async def test_check_paths_skips_comments(tmp_path) -> None:
@@ -138,8 +137,8 @@ async def test_check_paths_skips_comments(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
-    assert len(result.data["errors"]) == 0
+    data = assert_success(result)
+    assert len(data["errors"]) == 0
 
 
 async def test_check_paths_skips_regex_patterns(tmp_path) -> None:
@@ -156,8 +155,8 @@ async def test_check_paths_skips_regex_patterns(tmp_path) -> None:
     ):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
-    assert len(result.data["errors"]) == 0
+    data = assert_success(result)
+    assert len(data["errors"]) == 0
 
 
 async def test_check_paths_skips_non_code_extensions(tmp_path) -> None:
@@ -169,8 +168,8 @@ async def test_check_paths_skips_non_code_extensions(tmp_path) -> None:
     with patch("botcore.commands.dev.portability.find_workspace", return_value=tmp_path):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
-    assert result.data["files_checked"] == 0
+    data = assert_success(result)
+    assert data["files_checked"] == 0
 
 
 async def test_check_paths_path_not_found(tmp_path) -> None:
@@ -178,8 +177,7 @@ async def test_check_paths_path_not_found(tmp_path) -> None:
     with patch("botcore.commands.dev.portability.find_workspace", return_value=tmp_path):
         result = await dev_check_paths(path=str(tmp_path / "nonexistent"))
 
-    assert result.success is False
-    assert result.error.code == "PATH_NOT_FOUND"
+    assert_error(result, "PATH_NOT_FOUND")
 
 
 async def test_check_paths_respects_exclude_patterns(tmp_path) -> None:
@@ -192,6 +190,6 @@ async def test_check_paths_respects_exclude_patterns(tmp_path) -> None:
     with patch("botcore.commands.dev.portability.find_workspace", return_value=tmp_path):
         result = await dev_check_paths(path=str(src))
 
-    assert result.success is True
+    data = assert_success(result)
     # node_modules should be excluded
-    assert result.data["files_checked"] == 0
+    assert data["files_checked"] == 0

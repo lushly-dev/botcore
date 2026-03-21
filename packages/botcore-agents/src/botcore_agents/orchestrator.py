@@ -89,6 +89,20 @@ class AgentOrchestrator:
     def tasks(self) -> dict[str, Task]:
         return dict(self._tasks)
 
+    def _autosave_enabled(self) -> bool:
+        return self._backend is not None and self._config.state.autosave
+
+    async def _autosave_if_configured(self, reason: str) -> None:
+        """Persist a best-effort snapshot after durable lifecycle changes."""
+        if not self._autosave_enabled():
+            return
+
+        try:
+            await self._backend.save(self._build_snapshot())
+            logger.debug("Autosaved orchestrator state after %s", reason)
+        except Exception as exc:
+            logger.warning("Autosave failed after %s: %s", reason, exc)
+
     def _resolve_tools(self, config: AgentConfig) -> list[str]:
         """Build the combined tools list from skills + connector commands."""
         tools = list(config.skills)
@@ -135,10 +149,36 @@ class AgentOrchestrator:
         health = AgentHealth(name=name, status="stopped")
         state = AgentState(config=agent_config, health=health)
         self._agents[name] = state
+        await self._autosave_if_configured(f"agent_create:{name}")
 
         return success(
             data={"name": name, "status": "stopped"},
             reasoning=f"Agent {name!r} created with status=stopped",
+            undo_command="agent_delete",
+            undo_args={"name": name},
+        )
+
+    async def delete_agent(self, name: str) -> CommandResult[dict]:
+        """Delete a stopped agent from the pool."""
+        if name not in self._agents:
+            return error("AGENT_NOT_FOUND", f"Agent {name!r} does not exist")
+
+        state = self._agents[name]
+        if state.health.status != "stopped":
+            return error(
+                "AGENT_MUST_BE_STOPPED",
+                f"Agent {name!r} must be stopped before deletion",
+                suggestion="Use agent_stop before agent_delete",
+            )
+
+        del self._agents[name]
+        await self._autosave_if_configured(f"agent_delete:{name}")
+
+        return success(
+            data={"name": name, "deleted": True},
+            reasoning=f"Agent {name!r} deleted from the pool",
+            undo_command="agent_create",
+            undo_args={"name": name},
         )
 
     async def start_agent(self, name: str) -> CommandResult[dict]:
@@ -176,6 +216,7 @@ class AgentOrchestrator:
         state.started_at = now
         state.health.status = "idle"
         state.health.last_heartbeat = now
+        await self._autosave_if_configured(f"agent_start:{name}")
 
         return success(
             data={
@@ -216,6 +257,7 @@ class AgentOrchestrator:
         state.health.status = "stopped"
         state.health.current_task = ""
         state.started_at = None
+        await self._autosave_if_configured(f"agent_stop:{name}")
 
         return success(
             data={
@@ -317,94 +359,39 @@ class AgentOrchestrator:
         orchestrator pick an idle instance (or spawn a new one from the role's
         config template).
         """
-        if not agent and not role:
-            return error(
-                "NO_TARGET",
-                "Provide either 'agent' or 'role' to assign the task",
-                suggestion="Pass agent='name' or role='pm'",
-            )
+        resolved_agent = await self._resolve_execution_target(agent=agent, role=role)
+        if not resolved_agent.success:
+            return resolved_agent
 
-        # Role-based routing: find an idle agent or spawn a new instance
-        if role and not agent:
-            resolved = await self._resolve_agent_for_role(role)
-            if not resolved.success:
-                return resolved
-            agent = resolved.data["name"]
-
-        if agent not in self._agents:
-            return error("AGENT_NOT_FOUND", f"Agent {agent!r} does not exist")
-
-        state = self._agents[agent]
-        if state.health.status == "stopped":
-            return error(
-                "AGENT_NOT_STARTED",
-                f"Agent {agent!r} is not started",
-            )
-
-        if len(state.active_tasks) >= state.config.max_concurrent_tasks:
-            return error(
-                "AGENT_AT_CAPACITY",
-                f"Agent {agent!r} is at capacity "
-                f"({state.config.max_concurrent_tasks} concurrent tasks)",
-            )
-
-        # Create task
-        task = Task(
-            description=description,
-            assigned_agent=agent,
-            status="running",
-            priority=priority,
-            started_at=datetime.now(UTC),
-        )
+        task = Task(description=description, priority=priority)
         self._tasks[task.id] = task
-        state.active_tasks.append(task.id)
-        state.health.status = "busy"
-        state.health.current_task = task.id
+        return await self._execute_task(task, resolved_agent.data["name"])
 
-        # Execute via LLM
-        try:
-            chat_result = await llm_chat(
-                session_id=state.session_id,
-                message=description,
-            )
+    async def resume_task(
+        self,
+        task_id: str,
+        agent: str = "",
+        role: str = "",
+    ) -> CommandResult[dict]:
+        """Resume a pending task by executing it with a running agent."""
+        task = self._tasks.get(task_id)
+        if task is None:
+            return error("TASK_NOT_FOUND", f"No task with id {task_id!r}")
 
-            if chat_result.success:
-                task.status = "completed"
-                task.result = chat_result.data.get("content", "")
-                state.health.tasks_completed += 1
-            else:
-                task.status = "failed"
-                task.result = chat_result.error.message
-                state.health.tasks_failed += 1
-        except Exception as exc:
-            task.status = "failed"
-            task.result = str(exc)
-            state.health.tasks_failed += 1
-            logger.warning("Task %s execution error: %s", task.id, exc)
-
-        task.completed_at = datetime.now(UTC)
-
-        # Clean up active task tracking
-        if task.id in state.active_tasks:
-            state.active_tasks.remove(task.id)
-        state.health.current_task = ""
-        state.health.status = "idle" if not state.active_tasks else "busy"
-
-        if task.status == "failed":
+        if task.status not in {"pending", "assigned"}:
             return error(
-                "TASK_EXECUTION_ERROR",
-                f"Task failed: {task.result}",
+                "TASK_NOT_RESUMABLE",
+                f"Task {task_id!r} is {task.status} and cannot be resumed",
+                suggestion="Resume only pending or assigned tasks",
             )
 
-        return success(
-            data={
-                "task_id": task.id,
-                "status": task.status,
-                "result": task.result,
-                "agent": agent,
-            },
-            reasoning=f"Task {task.id} completed by agent {agent!r}",
-        )
+        resolved_agent = await self._resolve_execution_target(agent=agent, role=role)
+        if not resolved_agent.success:
+            return resolved_agent
+
+        task.result = ""
+        task.completed_at = None
+        return await self._execute_task(task, resolved_agent.data["name"])
 
     def get_agent_status(self, name: str) -> CommandResult[dict]:
         """Return health snapshot for an agent."""
@@ -461,21 +448,124 @@ class AgentOrchestrator:
 
     # -- State serialization ------------------------------------------------
 
+    async def _resolve_execution_target(
+        self,
+        *,
+        agent: str,
+        role: str,
+    ) -> CommandResult[dict]:
+        if not agent and not role:
+            return error(
+                "NO_TARGET",
+                "Provide either 'agent' or 'role' to assign the task",
+                suggestion="Pass agent='name' or role='pm'",
+            )
+
+        if role and not agent:
+            resolved = await self._resolve_agent_for_role(role)
+            if not resolved.success:
+                return resolved
+            agent = resolved.data["name"]
+
+        if agent not in self._agents:
+            return error("AGENT_NOT_FOUND", f"Agent {agent!r} does not exist")
+
+        state = self._agents[agent]
+        if state.health.status == "stopped":
+            return error(
+                "AGENT_NOT_STARTED",
+                f"Agent {agent!r} is not started",
+            )
+
+        if len(state.active_tasks) >= state.config.max_concurrent_tasks:
+            return error(
+                "AGENT_AT_CAPACITY",
+                f"Agent {agent!r} is at capacity "
+                f"({state.config.max_concurrent_tasks} concurrent tasks)",
+            )
+
+        return success(
+            data={"name": agent},
+            reasoning=f"Agent {agent!r} selected for task execution",
+        )
+
+    async def _execute_task(self, task: Task, agent: str) -> CommandResult[dict]:
+        state = self._agents[agent]
+        now = datetime.now(UTC)
+
+        task.assigned_agent = agent
+        task.status = "running"
+        task.started_at = now
+        task.completed_at = None
+
+        if task.id not in self._tasks:
+            self._tasks[task.id] = task
+        if task.id not in state.active_tasks:
+            state.active_tasks.append(task.id)
+        state.health.status = "busy"
+        state.health.current_task = task.id
+        await self._autosave_if_configured(f"task_started:{task.id}")
+
+        try:
+            chat_result = await llm_chat(
+                session_id=state.session_id,
+                message=task.description,
+            )
+
+            if chat_result.success:
+                task.status = "completed"
+                task.result = chat_result.data.get("content", "")
+                state.health.tasks_completed += 1
+            else:
+                task.status = "failed"
+                task.result = chat_result.error.message
+                state.health.tasks_failed += 1
+        except Exception as exc:
+            task.status = "failed"
+            task.result = str(exc)
+            state.health.tasks_failed += 1
+            logger.warning("Task %s execution error: %s", task.id, exc)
+
+        task.completed_at = datetime.now(UTC)
+
+        if task.id in state.active_tasks:
+            state.active_tasks.remove(task.id)
+        state.health.current_task = ""
+        state.health.status = "idle" if not state.active_tasks else "busy"
+        await self._autosave_if_configured(f"task_finished:{task.id}")
+
+        if task.status == "failed":
+            return error(
+                "TASK_EXECUTION_ERROR",
+                f"Task failed: {task.result}",
+            )
+
+        return success(
+            data={
+                "task_id": task.id,
+                "status": task.status,
+                "result": task.result,
+                "agent": agent,
+            },
+            reasoning=f"Task {task.id} completed by agent {agent!r}",
+        )
+
     def _build_snapshot(self) -> OrchestratorSnapshot:
         """Create a snapshot of the current orchestrator state.
 
         Deep-copies agents and tasks.  Session IDs are cleared in the copy
         because sessions are not portable across processes.
         """
-        from .state import OrchestratorSnapshot
+        from .state import AgentSnapshot, OrchestratorSnapshot, TaskSnapshot
 
-        agents: dict[str, AgentState] = {}
-        for name, state in self._agents.items():
-            copied = state.model_copy(deep=True)
-            copied.session_id = ""
-            agents[name] = copied
-
-        tasks = {tid: task.model_copy(deep=True) for tid, task in self._tasks.items()}
+        agents = {
+            name: AgentSnapshot.from_state(state)
+            for name, state in self._agents.items()
+        }
+        tasks = {
+            tid: TaskSnapshot.from_task(task)
+            for tid, task in self._tasks.items()
+        }
 
         return OrchestratorSnapshot(
             config=self._config.model_copy(deep=True),
@@ -492,19 +582,14 @@ class AgentOrchestrator:
         """
         logger.info("Replacing orchestrator config from snapshot (version=%s)", snapshot.version)
         self._config = snapshot.config.model_copy(deep=True)
-        self._tasks = {tid: t.model_copy(deep=True) for tid, t in snapshot.tasks.items()}
-
-        agents: dict[str, AgentState] = {}
-        for name, state in snapshot.agents.items():
-            copied = state.model_copy(deep=True)
-            copied.health.status = "stopped"
-            copied.health.current_task = ""
-            copied.session_id = ""
-            copied.active_tasks = []
-            copied.started_at = None
-            agents[name] = copied
-
-        self._agents = agents
+        self._tasks = {
+            tid: task_snapshot.to_task()
+            for tid, task_snapshot in snapshot.tasks.items()
+        }
+        self._agents = {
+            name: agent_snapshot.to_state()
+            for name, agent_snapshot in snapshot.agents.items()
+        }
 
     async def save_state(self) -> CommandResult[dict]:
         """Persist current state via the configured backend."""
@@ -542,7 +627,10 @@ class AgentOrchestrator:
             snapshot = await self._backend.load()
             if snapshot is None:
                 return success(
-                    data={"restored": False},
+                    data={
+                        "restored": False,
+                        "note": "No saved snapshot found (missing or stale)",
+                    },
                     reasoning="No saved state found (missing or stale)",
                 )
             self._restore_from_snapshot(snapshot)
@@ -552,14 +640,16 @@ class AgentOrchestrator:
                     "agents": len(self._agents),
                     "tasks": len(self._tasks),
                     "timestamp": snapshot.timestamp.isoformat(),
+                    "note": (
+                        "Agents restore as stopped and incomplete tasks restore as pending; "
+                        "start an agent and use task_resume to continue work"
+                    ),
                 },
                 reasoning="Orchestrator state restored from snapshot",
             )
         except Exception as exc:
             logger.warning("State load failed: %s", exc)
             return error("STATE_LOAD_ERROR", f"Failed to load state: {exc}")
-
-    # TODO: auto-save on state changes is deferred to a future iteration.
 
 
 # ---------------------------------------------------------------------------
@@ -582,7 +672,7 @@ def get_orchestrator(
     global _orchestrator
     if _orchestrator is None:
         _orchestrator = AgentOrchestrator(config or AgentsPluginConfig(), backend=backend)
-    elif backend is not None:
+    elif backend is not None and _orchestrator._backend is not backend:
         logger.warning(
             "get_orchestrator() called with backend= but singleton already exists; "
             "updating backend on existing instance"

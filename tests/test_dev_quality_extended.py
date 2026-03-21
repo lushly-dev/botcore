@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.quality import (
     _check_cargo_deps,
     _check_npm_deps,
@@ -49,8 +51,7 @@ async def test_check_coverage_no_workspace() -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=None):
         result = await dev_check_coverage()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_check_coverage_python_success(tmp_path) -> None:
@@ -65,9 +66,9 @@ async def test_check_coverage_python_success(tmp_path) -> None:
     ):
         result = await dev_check_coverage(language="python")
 
-    assert result.success is True
-    assert result.data["coverage"] == 85.5
-    assert result.data["status"] == "passing"
+    data = assert_success(result)
+    assert data["coverage"] == 85.5
+    assert data["status"] == "passing"
 
 
 async def test_check_coverage_python_below_threshold(tmp_path) -> None:
@@ -82,8 +83,7 @@ async def test_check_coverage_python_below_threshold(tmp_path) -> None:
     ):
         result = await dev_check_coverage(language="python")
 
-    assert result.success is False
-    assert result.error.code == "COVERAGE_TOO_LOW"
+    assert_error(result, "COVERAGE_TOO_LOW")
 
 
 async def test_check_coverage_python_no_data(tmp_path) -> None:
@@ -96,8 +96,7 @@ async def test_check_coverage_python_no_data(tmp_path) -> None:
     ):
         result = await dev_check_coverage(language="python")
 
-    assert result.success is False
-    assert result.error.code == "NO_COVERAGE_DATA"
+    assert_error(result, "NO_COVERAGE_DATA")
 
 
 async def test_check_coverage_typescript(tmp_path) -> None:
@@ -114,8 +113,7 @@ async def test_check_coverage_typescript(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "", "error": None}
         result = await dev_check_coverage(language="typescript")
 
-    assert result.success is False  # coverage=0 < 80 default
-    assert result.error.code == "COVERAGE_TOO_LOW"
+    assert_error(result, "COVERAGE_TOO_LOW")  # coverage=0 < 80 default
 
 
 async def test_check_coverage_typescript_not_available(tmp_path) -> None:
@@ -129,8 +127,7 @@ async def test_check_coverage_typescript_not_available(tmp_path) -> None:
         mock.return_value = None
         result = await dev_check_coverage(language="typescript")
 
-    assert result.success is False
-    assert result.error.code == "NO_COVERAGE_DATA"
+    assert_error(result, "NO_COVERAGE_DATA")
 
 
 async def test_check_coverage_rust_not_available(tmp_path) -> None:
@@ -144,8 +141,7 @@ async def test_check_coverage_rust_not_available(tmp_path) -> None:
         mock.return_value = None
         result = await dev_check_coverage(language="rust")
 
-    assert result.success is False
-    assert result.error.code == "NO_COVERAGE_DATA"
+    assert_error(result, "NO_COVERAGE_DATA")
 
 
 async def test_check_coverage_warning_zone(tmp_path) -> None:
@@ -162,8 +158,8 @@ async def test_check_coverage_warning_zone(tmp_path) -> None:
     ):
         result = await dev_check_coverage(language="python")
 
-    assert result.success is True
-    assert result.data["status"] == "warning"
+    data = assert_success(result)
+    assert data["status"] == "warning"
 
 
 # ── _check_npm_deps ──────────────────────────────────────────────────────
@@ -181,8 +177,8 @@ async def test_check_npm_deps_with_outdated(tmp_path) -> None:
         }
         result = await _check_npm_deps(tmp_path)
 
-    assert result.success is True
-    assert "lodash" in result.data["outdated"]
+    data = assert_success(result)
+    assert "lodash" in data["outdated"]
 
 
 async def test_check_npm_deps_all_current(tmp_path) -> None:
@@ -193,8 +189,8 @@ async def test_check_npm_deps_all_current(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "{}", "error": None}
         result = await _check_npm_deps(tmp_path)
 
-    assert result.success is True
-    assert result.data["outdated"] == []
+    data = assert_success(result)
+    assert data["outdated"] == []
 
 
 async def test_check_npm_deps_invalid_json(tmp_path) -> None:
@@ -205,8 +201,8 @@ async def test_check_npm_deps_invalid_json(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": "not json", "error": None}
         result = await _check_npm_deps(tmp_path)
 
-    assert result.success is True
-    assert result.data["outdated"] == []
+    data = assert_success(result)
+    assert data["outdated"] == []
 
 
 # ── _check_cargo_deps ────────────────────────────────────────────────────
@@ -225,8 +221,8 @@ async def test_check_cargo_deps_outdated(tmp_path) -> None:
         mock_tool.return_value = {"success": True, "output": cargo_output, "error": None}
         result = await _check_cargo_deps(tmp_path)
 
-    assert result.success is True
-    assert "serde" in result.data["outdated"]
+    data = assert_success(result)
+    assert "serde" in data["outdated"]
 
 
 async def test_check_cargo_deps_not_found(tmp_path) -> None:
@@ -237,8 +233,7 @@ async def test_check_cargo_deps_not_found(tmp_path) -> None:
         mock_tool.return_value = None
         result = await _check_cargo_deps(tmp_path)
 
-    assert result.success is False
-    assert result.error.code == "CARGO_OUTDATED_NOT_FOUND"
+    assert_error(result, "CARGO_OUTDATED_NOT_FOUND")
 
 
 # ── dev_check_deps (integration) ────────────────────────────────────────
@@ -249,8 +244,7 @@ async def test_check_deps_no_workspace() -> None:
     with patch("botcore.commands.dev.quality.find_workspace", return_value=None):
         result = await dev_check_deps()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_check_deps_rust_dispatch(tmp_path) -> None:
@@ -264,4 +258,4 @@ async def test_check_deps_rust_dispatch(tmp_path) -> None:
         mock.return_value = {"success": True, "output": '{"dependencies": []}', "error": None}
         result = await dev_check_deps(language="rust")
 
-    assert result.success is True
+    assert_success(result)

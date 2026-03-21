@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from afd.testing import assert_error, assert_success
 
 from botcore_llm.commands import (
     llm_chat,
@@ -30,9 +31,9 @@ class TestLlmSessionCreate:
     async def test_returns_session_id(self, patch_client_manager, mock_copilot_session):
         result = await llm_session_create(model="gpt-4.1")
 
-        assert result.success
-        assert result.data["session_id"] == mock_copilot_session.session_id
-        assert result.data["model"] == "gpt-4.1"
+        data = assert_success(result)
+        assert data["session_id"] == mock_copilot_session.session_id
+        assert data["model"] == "gpt-4.1"
 
     @pytest.mark.asyncio
     async def test_registers_in_session_registry(self, patch_client_manager, mock_copilot_session):
@@ -49,8 +50,8 @@ class TestLlmSessionCreate:
         try:
             result = await llm_session_create()
 
-            assert result.success
-            assert result.data["model"] == "claude-sonnet-4.5"
+            data = assert_success(result)
+            assert data["model"] == "claude-sonnet-4.5"
         finally:
             set_config(LlmConfig())  # reset
 
@@ -62,8 +63,8 @@ class TestLlmSessionDestroy:
 
         result = await llm_session_destroy(mock_copilot_session.session_id)
 
-        assert result.success
-        assert result.data["status"] == "destroyed"
+        data = assert_success(result)
+        assert data["status"] == "destroyed"
         mock_copilot_session.destroy.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -78,8 +79,7 @@ class TestLlmSessionDestroy:
     async def test_nonexistent_session_returns_error(self, patch_client_manager):
         result = await llm_session_destroy("no-such-session")
 
-        assert not result.success
-        assert result.error.code == "SESSION_NOT_FOUND"
+        assert_error(result, "SESSION_NOT_FOUND")
 
 
 class TestLlmSessionList:
@@ -89,16 +89,15 @@ class TestLlmSessionList:
 
         result = await llm_session_list()
 
-        assert result.success
-        assert len(result.data) == 1
-        assert result.data[0]["session_id"] == mock_copilot_session.session_id
+        data = assert_success(result)
+        assert len(data) == 1
+        assert data[0]["session_id"] == mock_copilot_session.session_id
 
     @pytest.mark.asyncio
     async def test_empty_when_no_sessions(self, patch_client_manager):
         result = await llm_session_list()
 
-        assert result.success
-        assert result.data == []
+        assert_success(result) == []
 
 
 class TestLlmModelList:
@@ -106,10 +105,10 @@ class TestLlmModelList:
     async def test_returns_model_info(self, patch_client_manager, mock_copilot_client):
         result = await llm_model_list()
 
-        assert result.success
-        assert len(result.data) == 1
-        assert result.data[0]["id"] == "gpt-4.1"
-        assert result.data[0]["supports_vision"] is True
+        data = assert_success(result)
+        assert len(data) == 1
+        assert data[0]["id"] == "gpt-4.1"
+        assert data[0]["supports_vision"] is True
 
 
 class TestLlmChat:
@@ -122,16 +121,15 @@ class TestLlmChat:
             message="What is 2+2?",
         )
 
-        assert result.success
-        assert result.data["content"] == "Hello from the assistant"
-        assert result.data["session_id"] == mock_copilot_session.session_id
+        data = assert_success(result)
+        assert data["content"] == "Hello from the assistant"
+        assert data["session_id"] == mock_copilot_session.session_id
 
     @pytest.mark.asyncio
     async def test_invalid_session_returns_error(self, patch_client_manager):
         result = await llm_chat(session_id="bad-id", message="hi")
 
-        assert not result.success
-        assert result.error.code == "SESSION_NOT_FOUND"
+        assert_error(result, "SESSION_NOT_FOUND")
 
     @pytest.mark.asyncio
     async def test_passes_attachments(self, patch_client_manager, mock_copilot_session):

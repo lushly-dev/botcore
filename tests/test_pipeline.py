@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from afd import SimpleRegistry, create_direct_client, error, success
+from afd.testing import assert_error, assert_success
 
 from botcore.registry import MiddlewareRegistry
 
@@ -47,7 +48,8 @@ async def test_simple_two_step_pipeline():
     ])
 
     assert result.success is True
-    assert result.final.data["result"] == "HELLO, ALICE!"
+    data = assert_success(result.final)
+    assert data["result"] == "HELLO, ALICE!"
 
 
 async def test_pipeline_with_alias():
@@ -59,7 +61,8 @@ async def test_pipeline_with_alias():
     ])
 
     assert result.success is True
-    assert result.final.data["length"] == len("Hello, Bob!")
+    data = assert_success(result.final)
+    assert data["length"] == len("Hello, Bob!")
 
 
 async def test_pipeline_failure_propagation():
@@ -72,8 +75,8 @@ async def test_pipeline_failure_propagation():
 
     assert result.success is False
     # First step succeeded, second failed
-    assert result.steps[0].result.success is True
-    assert result.steps[1].result.success is False
+    assert_success(result.steps[0].result)
+    assert_error(result.steps[1].result, "DELIBERATE_FAIL")
 
 
 async def test_pipeline_with_when_true():
@@ -85,7 +88,8 @@ async def test_pipeline_with_when_true():
     ])
 
     assert result.success is True
-    assert result.final.data["result"] == "HELLO, ALICE!"
+    data = assert_success(result.final)
+    assert data["result"] == "HELLO, ALICE!"
 
 
 async def test_single_step_pipeline():
@@ -96,7 +100,8 @@ async def test_single_step_pipeline():
     ])
 
     assert result.success is True
-    assert result.final.data["greeting"] == "Hello, Solo!"
+    data = assert_success(result.final)
+    assert data["greeting"] == "Hello, Solo!"
 
 
 async def test_pipeline_three_steps():
@@ -110,4 +115,5 @@ async def test_pipeline_three_steps():
 
     assert result.success is True
     assert len(result.steps) == 3
-    assert result.final.data["greeting"] == "Hello, Done!"
+    data = assert_success(result.final)
+    assert data["greeting"] == "Hello, Done!"

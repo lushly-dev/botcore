@@ -14,9 +14,9 @@ The agent orchestrator currently processes tasks synchronously — task assignme
 
 ## Prerequisite Specs
 
-- [Agent Capability Declarations](../../active/agent-capability-declarations/spec.md) — agents need scoped tool access before running concurrently
+- [Agent Capability Declarations](../../complete/agent-capability-declarations/spec.md) — agents need scoped tool access before running concurrently
 - [Per-Agent Permission Profiles](../../active/per-agent-permissions/spec.md) — concurrent agents need independent permission enforcement
-- [Orchestrator State Serialization](../../active/orchestrator-state-serialization/spec.md) — background tasks need crash recovery
+- [Orchestrator State Serialization](../../complete/orchestrator-state-serialization/spec.md) — background tasks need crash recovery
 
 ## Key Design Decisions
 

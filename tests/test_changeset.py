@@ -7,7 +7,12 @@ from unittest.mock import patch
 import pytest
 from afd.testing import assert_error, assert_success
 
-from botcore.commands.changeset import changeset_consume, changeset_create, changeset_status
+from botcore.commands.changeset import (
+    changeset_consume,
+    changeset_create,
+    changeset_delete,
+    changeset_status,
+)
 
 
 @pytest.fixture()
@@ -40,6 +45,8 @@ async def test_create_success(workspace):
     data = assert_success(result)
     assert data["type"] == "added"
     assert ".changeset/" in data["path"]
+    assert result.undo_command == "changeset_delete"
+    assert result.undo_args == {"path": data["path"]}
 
     # Verify file exists and has correct content
     cs_dir = workspace / ".changeset"
@@ -81,6 +88,32 @@ async def test_create_creates_directory(workspace):
 
     assert_success(result)
     assert cs_dir.exists()
+
+
+async def test_delete_success(workspace):
+    cs_dir = workspace / ".changeset"
+    cs_dir.mkdir()
+    changeset = cs_dir / "a.md"
+    changeset.write_text("---\ntype: fixed\n---\n\n**bug** -- fix crash\n", encoding="utf-8")
+
+    with _patch_ws(workspace):
+        result = await changeset_delete(".changeset/a.md")
+
+    data = assert_success(result)
+    assert data["deleted"] is True
+    assert changeset.exists() is False
+    assert result.undo_command == "changeset_create"
+    assert result.undo_args == {
+        "change_type": "fixed",
+        "description": "**bug** -- fix crash",
+    }
+
+
+async def test_delete_missing_file(workspace):
+    with _patch_ws(workspace):
+        result = await changeset_delete(".changeset/missing.md")
+
+    assert_error(result, "FILE_NOT_FOUND")
 
 
 # ── changeset_status ─────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from afd.testing import assert_error, assert_success
 
 from botcore.commands.cdp import diagnostics
 from botcore.commands.cdp.core import CdpSession, ConsoleEntry
@@ -149,18 +150,17 @@ async def test_cdp_trace_capture_writes_default_trace_path(monkeypatch, tmp_path
         settle_ms=25,
     )
 
-    assert result.success is True
+    data = assert_success(result)
     assert cdp_session.started_with == {
         "categories": diagnostics.DEFAULT_TRACE_CATEGORIES,
         "transferMode": "ReturnAsStream",
         "streamFormat": "json",
         "streamCompression": "none",
     }
-    assert result.data is not None
-    assert result.data["kind"] == "chrome-devtools-trace"
-    assert result.data["path"].endswith(".json")
-    assert "reference-kit" in result.data["path"]
-    assert Path(result.data["path"]).read_text(encoding="utf-8") == '{"traceEvents":[]}'
+    assert data["kind"] == "chrome-devtools-trace"
+    assert data["path"].endswith(".json")
+    assert "reference-kit" in data["path"]
+    assert Path(data["path"]).read_text(encoding="utf-8") == '{"traceEvents":[]}'
     assert cdp_session.closed_stream == "trace-stream"
     assert page.goto_calls == [
         {
@@ -179,9 +179,7 @@ async def test_cdp_trace_capture_errors_without_session(monkeypatch, tmp_path: P
 
     result = await diagnostics.cdp_trace_capture()
 
-    assert result.success is False
-    assert result.error is not None
-    assert result.error.code == "CDP_SESSION_NOT_FOUND"
+    assert_error(result, "CDP_SESSION_NOT_FOUND")
 
 
 @pytest.mark.asyncio
@@ -212,7 +210,7 @@ async def test_cdp_console_clear_persists_empty_log(monkeypatch, tmp_path: Path)
 
     result = await diagnostics.cdp_console(clear=True)
 
-    assert result.success is True
+    assert_success(result)
     assert session.console_log == []
     assert saved["root"] == tmp_path
     assert saved["session"] is session
@@ -242,12 +240,11 @@ async def test_cdp_trace_query_returns_compact_rows(monkeypatch, tmp_path: Path)
         limit=1,
     )
 
-    assert result.success is True
-    assert result.data is not None
-    assert result.data["path"] == str(trace_path.resolve())
-    assert result.data["columns"] == ["name", "dur"]
-    assert result.data["rows"] == [{"name": "LongTask", "dur": 120_000_000}]
-    assert result.data["truncated"] is True
+    data = assert_success(result)
+    assert data["path"] == str(trace_path.resolve())
+    assert data["columns"] == ["name", "dur"]
+    assert data["rows"] == [{"name": "LongTask", "dur": 120_000_000}]
+    assert data["truncated"] is True
 
 
 @pytest.mark.asyncio
@@ -336,14 +333,13 @@ async def test_cdp_trace_summary_returns_stable_shape(monkeypatch, tmp_path: Pat
 
     result = await diagnostics.cdp_trace_summary(path=str(trace_path))
 
-    assert result.success is True
-    assert result.data is not None
-    assert result.data["bounds"]["durationMs"] == 250.0
-    assert result.data["actors"]["primaryThread"]["threadName"] == "CrRendererMain"
-    assert result.data["slices"]["longTaskCount"] == 1
-    assert result.data["slices"]["topByDuration"][0]["durMs"] == 120.0
-    assert result.data["slices"]["primaryThreadLongTasks"][0]["utid"] == 77
-    assert result.data["slices"]["mainThreadTopByDuration"][0]["name"] == "RenderWork"
-    assert result.data["signals"]["mainThreadLongTaskCount"] == 1
-    assert result.data["signals"]["browserPipelineLongTaskCount"] == 0
-    assert result.data["signals"]["metricSpanCount"] == 0
+    data = assert_success(result)
+    assert data["bounds"]["durationMs"] == 250.0
+    assert data["actors"]["primaryThread"]["threadName"] == "CrRendererMain"
+    assert data["slices"]["longTaskCount"] == 1
+    assert data["slices"]["topByDuration"][0]["durMs"] == 120.0
+    assert data["slices"]["primaryThreadLongTasks"][0]["utid"] == 77
+    assert data["slices"]["mainThreadTopByDuration"][0]["name"] == "RenderWork"
+    assert data["signals"]["mainThreadLongTaskCount"] == 1
+    assert data["signals"]["browserPipelineLongTaskCount"] == 0
+    assert data["signals"]["metricSpanCount"] == 0

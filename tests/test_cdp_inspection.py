@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from afd import error, success
+from afd.testing import assert_success
 
 from botcore.commands.cdp import inspection
 
@@ -41,20 +43,20 @@ async def test_cdp_snapshot_uses_body_aria_snapshot(monkeypatch) -> None:
     fake_page = _FakePage({"body": _FakeLocator(snapshot_text)})
 
     async def _fake_with_session_page(action, timeout_ms=30000):
-        return type("Result", (), {"success": True, "data": await action(fake_page)})()
+        return success(data=await action(fake_page))
 
     monkeypatch.setattr(inspection, "_with_session_page", _fake_with_session_page)
 
     result = await inspection.cdp_snapshot()
 
-    assert result.success is True
-    assert result.data["root"] == "document"
-    assert result.data["raw_snapshot"] == snapshot_text
-    assert result.data["snapshot"]["role"] == "document"
-    assert result.data["snapshot"]["children"][0]["role"] == "main"
-    assert result.data["snapshot"]["children"][0]["children"][0]["role"] == "heading"
-    assert result.data["snapshot"]["children"][0]["children"][0]["name"] == "Garden"
-    assert result.data["snapshot"]["children"][0]["children"][0]["attributes"]["level"] == "1"
+    data = assert_success(result)
+    assert data["root"] == "document"
+    assert data["raw_snapshot"] == snapshot_text
+    assert data["snapshot"]["role"] == "document"
+    assert data["snapshot"]["children"][0]["role"] == "main"
+    assert data["snapshot"]["children"][0]["children"][0]["role"] == "heading"
+    assert data["snapshot"]["children"][0]["children"][0]["name"] == "Garden"
+    assert data["snapshot"]["children"][0]["children"][0]["attributes"]["level"] == "1"
 
 
 @pytest.mark.asyncio
@@ -67,17 +69,17 @@ async def test_cdp_snapshot_uses_root_selector_subtree(monkeypatch) -> None:
     fake_page = _FakePage({"#login": _FakeLocator(snapshot_text)})
 
     async def _fake_with_session_page(action, timeout_ms=30000):
-        return type("Result", (), {"success": True, "data": await action(fake_page)})()
+        return success(data=await action(fake_page))
 
     monkeypatch.setattr(inspection, "_with_session_page", _fake_with_session_page)
 
     result = await inspection.cdp_snapshot(root_selector="#login")
 
-    assert result.success is True
-    assert result.data["root"] == "#login"
-    assert result.data["snapshot"]["role"] == "form"
-    assert result.data["snapshot"]["name"] == "Login"
-    assert result.data["snapshot"]["children"][0]["role"] == "textbox"
+    data = assert_success(result)
+    assert data["root"] == "#login"
+    assert data["snapshot"]["role"] == "form"
+    assert data["snapshot"]["name"] == "Login"
+    assert data["snapshot"]["children"][0]["role"] == "textbox"
 
 
 @pytest.mark.asyncio
@@ -87,13 +89,13 @@ async def test_cdp_snapshot_errors_when_root_selector_missing(monkeypatch) -> No
     async def _fake_with_session_page(action, timeout_ms=30000):
         try:
             data = await action(fake_page)
-            return type("Result", (), {"success": True, "data": data})()
+            return success(data=data)
         except Exception as exc:  # pragma: no cover - mirrors command wrapper
-            return type("Result", (), {"success": False, "error": exc})()
+            return error("ROOT_NOT_FOUND", str(exc))
 
     monkeypatch.setattr(inspection, "_with_session_page", _fake_with_session_page)
 
     result = await inspection.cdp_snapshot(root_selector="#missing")
 
-    assert result.success is False
-    assert "Root element not found" in str(result.error)
+    assert result.error is not None
+    assert "Root element not found" in result.error.message

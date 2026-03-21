@@ -7,6 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.analysis import dev_circular_imports, dev_dep_graph
 from botcore.commands.dev.quality import _collect_staged_deps
 from botcore.commands.research import _extract_sources
@@ -152,8 +154,7 @@ async def test_lint_skill_path_not_found(tmp_path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
         result = await skill_lint(path="nonexistent")
 
-    assert result.success is False
-    assert result.error.code == "SKILL_NOT_FOUND"
+    assert_error(result, "SKILL_NOT_FOUND")
 
 
 # ── dev/quality.py — _collect_staged_deps ────────────────────────────────
@@ -221,8 +222,7 @@ async def test_circular_imports_python_finds_cycles(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_circular_imports(path=str(src), language="python")
 
-    assert result.success is False
-    assert result.error.code == "CIRCULAR_IMPORTS"
+    assert_error(result, "CIRCULAR_IMPORTS")
     assert "circular import" in result.error.message.lower()
 
 
@@ -238,9 +238,9 @@ async def test_dep_graph_python_with_imports(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_dep_graph(path=str(src), language="python")
 
-    assert result.success is True
-    assert result.data["module_count"] >= 2
-    assert result.data["edges"] >= 1
+    data = assert_success(result)
+    assert data["module_count"] >= 2
+    assert data["edges"] >= 1
 
 
 # ── research.py — _extract_sources ───────────────────────────────────────

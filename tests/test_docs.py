@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from afd import error, success
 from afd.testing import assert_error, assert_success
 
 from botcore.commands.docs import (
@@ -11,6 +13,7 @@ from botcore.commands.docs import (
     _slugify_heading,
     docs_check_changelog,
     docs_lint,
+    docs_preflight,
 )
 
 
@@ -79,3 +82,55 @@ async def test_docs_check_changelog_no_file(tmp_path) -> None:
 
     data = assert_success(result)
     assert data["has_changelog"] is False
+
+
+async def test_docs_preflight_combines_pipeline_results() -> None:
+    """docs_preflight returns combined readiness data from the pipeline."""
+    pipeline_result = SimpleNamespace(
+        success=True,
+        steps=[object(), object()],
+        outputs={
+            "changelog": {"needs_update": True, "has_changelog": True},
+            "agents": {"needs_update": False, "has_agents_md": True},
+        },
+        final=success(data={"has_agents_md": True, "needs_update": False}),
+    )
+
+    client = SimpleNamespace(pipe=None)
+
+    async def _pipe(steps):
+        return pipeline_result
+
+    client.pipe = _pipe
+
+    with patch("botcore.commands.docs.get_client", return_value=client):
+        result = await docs_preflight()
+
+    data = assert_success(result)
+    assert data["needs_update"] is True
+    assert data["checks"]["changelog"]["needs_update"] is True
+    assert data["checks"]["agents"]["needs_update"] is False
+    assert data["step_count"] == 2
+    assert result.suggestions == ["Run changeset_create to record the staged source changes"]
+
+
+async def test_docs_preflight_propagates_pipeline_error() -> None:
+    """docs_preflight returns the underlying command error on pipeline failure."""
+    pipeline_result = SimpleNamespace(
+        success=False,
+        steps=[object()],
+        outputs={},
+        final=error("NO_WORKSPACE", "Could not find workspace root"),
+    )
+
+    client = SimpleNamespace(pipe=None)
+
+    async def _pipe(steps):
+        return pipeline_result
+
+    client.pipe = _pipe
+
+    with patch("botcore.commands.docs.get_client", return_value=client):
+        result = await docs_preflight()
+
+    assert_error(result, "NO_WORKSPACE")

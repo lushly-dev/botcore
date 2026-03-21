@@ -8,6 +8,7 @@ from pathlib import Path
 
 from afd import CommandResult, error, success
 
+from botcore.registry import get_client
 from botcore.utils.workspace import find_workspace
 
 PIPELINE_DOCS = """# Pipelines
@@ -408,4 +409,52 @@ async def docs_check_agents() -> CommandResult[dict]:
     return success(
         data={"has_agents_md": True, "needs_update": False},
         reasoning="AGENTS.md is up to date or no structural changes",
+    )
+
+
+async def docs_preflight() -> CommandResult[dict]:
+    """Run docs release-readiness checks via an AFD DirectClient pipeline."""
+    client = get_client(source="docs_preflight")
+    pipeline = await client.pipe([
+        {"command": "docs_check_changelog", "input": {}, "as": "changelog"},
+        {"command": "docs_check_agents", "input": {}, "as": "agents"},
+    ])
+
+    final = pipeline.final
+    if not pipeline.success or final is None:
+        if final is not None and not final.success and final.error is not None:
+            return error(
+                final.error.code,
+                final.error.message,
+                suggestion=final.error.suggestion,
+                retryable=final.error.retryable,
+                details=final.error.details,
+            )
+        return error(
+            "DOCS_PREFLIGHT_FAILED",
+            "Docs preflight pipeline did not complete successfully",
+            suggestion="Inspect the docs check commands individually",
+        )
+
+    changelog = pipeline.outputs.get("changelog", {})
+    agents = pipeline.outputs.get("agents", {})
+    needs_update = bool(changelog.get("needs_update")) or bool(agents.get("needs_update"))
+
+    suggestions: list[str] = []
+    if changelog.get("needs_update"):
+        suggestions.append("Run changeset_create to record the staged source changes")
+    if agents.get("needs_update"):
+        suggestions.append("Update AGENTS.md to reflect the staged structural changes")
+
+    return success(
+        data={
+            "needs_update": needs_update,
+            "checks": {
+                "changelog": changelog,
+                "agents": agents,
+            },
+            "step_count": len(pipeline.steps),
+        },
+        reasoning="Ran docs preflight checks via DirectClient pipeline",
+        suggestions=suggestions or None,
     )

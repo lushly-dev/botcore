@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.core import dev_build, dev_lint, dev_test
 from botcore.commands.info import info_scripts
 from botcore.commands.undo import undo_status
@@ -32,9 +34,9 @@ async def test_undo_status_spec_sync(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["last_action"] == "spec.sync"
-    assert any("gh issue close" in cmd for cmd in result.data["rollback_commands"])
+    data = assert_success(result)
+    assert data["last_action"] == "spec.sync"
+    assert any("gh issue close" in cmd for cmd in data["rollback_commands"])
 
 
 async def test_undo_status_work_complete(tmp_path) -> None:
@@ -48,10 +50,10 @@ async def test_undo_status_work_complete(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["last_action"] == "work.complete"
-    assert any("gh issue reopen" in cmd for cmd in result.data["rollback_commands"])
-    assert any("remove-label" in cmd for cmd in result.data["rollback_commands"])
+    data = assert_success(result)
+    assert data["last_action"] == "work.complete"
+    assert any("gh issue reopen" in cmd for cmd in data["rollback_commands"])
+    assert any("remove-label" in cmd for cmd in data["rollback_commands"])
 
 
 async def test_undo_status_unknown_action(tmp_path) -> None:
@@ -64,9 +66,9 @@ async def test_undo_status_unknown_action(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["has_history"] is True
-    assert result.data["rollback_commands"] == []
+    data = assert_success(result)
+    assert data["has_history"] is True
+    assert data["rollback_commands"] == []
 
 
 async def test_undo_status_corrupted_history(tmp_path) -> None:
@@ -77,8 +79,8 @@ async def test_undo_status_corrupted_history(tmp_path) -> None:
     with patch("botcore.commands.undo.HISTORY_FILE", history_file):
         result = await undo_status()
 
-    assert result.success is True
-    assert result.data["has_history"] is False
+    data = assert_success(result)
+    assert data["has_history"] is False
 
 
 # ── workspace — detect_language ──────────────────────────────────────────
@@ -313,7 +315,7 @@ async def test_dev_lint_clippy(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint(language="rust")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_cmd.call_args[0][0]
     assert "cargo" in args
     assert "clippy" in args
@@ -328,7 +330,7 @@ async def test_dev_lint_clippy_fix(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint(language="rust", fix=True)
 
-    assert result.success is True
+    assert_success(result)
     args = mock_cmd.call_args[0][0]
     assert "--fix" in args
     assert "--allow-dirty" in args
@@ -345,7 +347,7 @@ async def test_dev_test_vitest(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "3 passed", "error": None}
         result = await dev_test(language="typescript")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_cmd.call_args[0][0]
     assert "vitest" in args
 
@@ -361,7 +363,7 @@ async def test_dev_test_with_coverage(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "passed", "error": None}
         result = await dev_test(language="python", coverage=True)
 
-    assert result.success is True
+    assert_success(result)
     args = mock_run.call_args[0][1]
     assert "--cov" in args
 
@@ -377,7 +379,7 @@ async def test_dev_test_with_package(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "passed", "error": None}
         result = await dev_test(language="python", package="core")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_run.call_args[0][1]
     assert "packages/core" in args
 
@@ -393,8 +395,7 @@ async def test_dev_test_failure(tmp_path) -> None:
         mock_run.return_value = {"success": False, "output": "FAILED", "error": "1 failed"}
         result = await dev_test(language="python")
 
-    assert result.success is False
-    assert result.error.code == "TEST_FAILED"
+    assert_error(result, "TEST_FAILED")
 
 
 async def test_dev_build_typescript(tmp_path) -> None:
@@ -408,7 +409,7 @@ async def test_dev_build_typescript(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_build(language="typescript")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_cmd.call_args[0][0]
     assert "turbo" in args
     assert "build" in args
@@ -423,7 +424,7 @@ async def test_dev_build_typescript_with_package(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_build(language="typescript", package="@test/core")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_cmd.call_args[0][0]
     assert "--filter" in args
     assert "@test/core" in args
@@ -438,8 +439,7 @@ async def test_dev_build_failure(tmp_path) -> None:
         mock_cmd.return_value = {"success": False, "output": "", "error": "Build failed"}
         result = await dev_build(language="rust")
 
-    assert result.success is False
-    assert result.error.code == "BUILD_FAILED"
+    assert_error(result, "BUILD_FAILED")
 
 
 async def test_dev_build_python_with_package(tmp_path) -> None:
@@ -451,7 +451,7 @@ async def test_dev_build_python_with_package(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "Built", "error": None}
         result = await dev_build(language="python", package="mylib")
 
-    assert result.success is True
+    assert_success(result)
     assert mock_run.call_args[0][0] == "hatch"
 
 
@@ -463,8 +463,7 @@ async def test_dev_lint_no_language(tmp_path) -> None:
     ):
         result = await dev_lint()
 
-    assert result.success is False
-    assert result.error.code == "NO_LINTER"
+    assert_error(result, "NO_LINTER")
 
 
 async def test_dev_test_no_language(tmp_path) -> None:
@@ -475,8 +474,7 @@ async def test_dev_test_no_language(tmp_path) -> None:
     ):
         result = await dev_test()
 
-    assert result.success is False
-    assert result.error.code == "NO_TEST_RUNNER"
+    assert_error(result, "NO_TEST_RUNNER")
 
 
 async def test_dev_build_no_language(tmp_path) -> None:
@@ -487,8 +485,7 @@ async def test_dev_build_no_language(tmp_path) -> None:
     ):
         result = await dev_build()
 
-    assert result.success is False
-    assert result.error.code == "NO_LANGUAGE"
+    assert_error(result, "NO_LANGUAGE")
 
 
 # ── info — info_scripts with pyproject.toml ──────────────────────────────
@@ -506,6 +503,6 @@ async def test_info_scripts_with_pyproject_scripts(tmp_path) -> None:
     with patch("botcore.commands.info.find_workspace", return_value=tmp_path):
         result = await info_scripts()
 
-    assert result.success is True
-    assert "cli-tool" in result.data
-    assert "mycli" in result.data["cli-tool"]
+    data = assert_success(result)
+    assert "cli-tool" in data
+    assert "mycli" in data["cli-tool"]

@@ -11,7 +11,7 @@ Commands are split into modules:
 - index.py: Generate _index.md
 """
 
-from botcore.commands.skill.adopt import skill_adopt
+from botcore.commands.skill.adopt import skill_adopt, skill_unadopt
 from botcore.commands.skill.index import skill_index
 from botcore.commands.skill.lint import skill_lint
 from botcore.commands.skill.list import skill_list
@@ -24,5 +24,6 @@ __all__ = [
     "skill_status",
     "skill_lint",
     "skill_adopt",
+    "skill_unadopt",
     "skill_index",
 ]

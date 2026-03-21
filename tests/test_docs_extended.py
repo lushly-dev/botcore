@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.docs import (
     _extract_frontmatter,
     _has_frontmatter,
@@ -91,8 +93,7 @@ async def test_docs_lint_broken_anchor(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is False
-    assert result.error.code == "BROKEN_LINKS"
+    assert_error(result, "BROKEN_LINKS")
 
 
 async def test_docs_lint_valid_anchor(tmp_path) -> None:
@@ -104,7 +105,7 @@ async def test_docs_lint_valid_anchor(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
+    assert_success(result)
 
 
 async def test_docs_lint_cross_file_anchor(tmp_path) -> None:
@@ -117,7 +118,7 @@ async def test_docs_lint_cross_file_anchor(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
+    assert_success(result)
 
 
 async def test_docs_lint_spec_missing_frontmatter(tmp_path) -> None:
@@ -129,9 +130,9 @@ async def test_docs_lint_spec_missing_frontmatter(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True  # warnings don't fail
-    assert len(result.data["issues"]) >= 1
-    assert any(i["rule"] == "missing-frontmatter" for i in result.data["issues"])
+    data = assert_success(result)  # warnings don't fail
+    assert len(data["issues"]) >= 1
+    assert any(i["rule"] == "missing-frontmatter" for i in data["issues"])
 
 
 async def test_docs_lint_spec_incomplete_frontmatter(tmp_path) -> None:
@@ -145,8 +146,8 @@ async def test_docs_lint_spec_incomplete_frontmatter(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
-    assert any(i["rule"] == "missing-frontmatter-fields" for i in result.data["issues"])
+    data = assert_success(result)
+    assert any(i["rule"] == "missing-frontmatter-fields" for i in data["issues"])
 
 
 async def test_docs_lint_proposal_with_full_frontmatter(tmp_path) -> None:
@@ -160,8 +161,8 @@ async def test_docs_lint_proposal_with_full_frontmatter(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
-    assert result.data["issues"] == []
+    data = assert_success(result)
+    assert data["issues"] == []
 
 
 async def test_docs_lint_custom_path(tmp_path) -> None:
@@ -173,8 +174,8 @@ async def test_docs_lint_custom_path(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint(path=str(custom))
 
-    assert result.success is True
-    assert result.data["files_checked"] == 1
+    data = assert_success(result)
+    assert data["files_checked"] == 1
 
 
 async def test_docs_lint_external_links_ignored(tmp_path) -> None:
@@ -186,7 +187,7 @@ async def test_docs_lint_external_links_ignored(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_lint()
 
-    assert result.success is True
+    assert_success(result)
 
 
 # ── docs_check_changelog ────────────────────────────────────────────────
@@ -205,9 +206,9 @@ async def test_docs_check_changelog_needs_update(tmp_path) -> None:
             )
             result = await docs_check_changelog()
 
-    assert result.success is True
-    assert result.data["needs_update"] is True
-    assert len(result.data["staged_src_files"]) == 2
+    data = assert_success(result)
+    assert data["needs_update"] is True
+    assert len(data["staged_src_files"]) == 2
 
 
 async def test_docs_check_changelog_already_updated(tmp_path) -> None:
@@ -223,8 +224,8 @@ async def test_docs_check_changelog_already_updated(tmp_path) -> None:
             )
             result = await docs_check_changelog()
 
-    assert result.success is True
-    assert result.data["needs_update"] is False
+    data = assert_success(result)
+    assert data["needs_update"] is False
 
 
 async def test_docs_check_changelog_no_src_changes(tmp_path) -> None:
@@ -238,8 +239,8 @@ async def test_docs_check_changelog_no_src_changes(tmp_path) -> None:
             )
             result = await docs_check_changelog()
 
-    assert result.success is True
-    assert result.data["needs_update"] is False
+    data = assert_success(result)
+    assert data["needs_update"] is False
 
 
 # ── docs_check_agents ────────────────────────────────────────────────────
@@ -250,8 +251,7 @@ async def test_docs_check_agents_no_workspace() -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=None):
         result = await docs_check_agents()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_docs_check_agents_no_file(tmp_path) -> None:
@@ -259,8 +259,8 @@ async def test_docs_check_agents_no_file(tmp_path) -> None:
     with patch("botcore.commands.docs.find_workspace", return_value=tmp_path):
         result = await docs_check_agents()
 
-    assert result.success is True
-    assert result.data["has_agents_md"] is False
+    data = assert_success(result)
+    assert data["has_agents_md"] is False
 
 
 async def test_docs_check_agents_needs_update(tmp_path) -> None:
@@ -276,9 +276,9 @@ async def test_docs_check_agents_needs_update(tmp_path) -> None:
             )
             result = await docs_check_agents()
 
-    assert result.success is True
-    assert result.data["needs_update"] is True
-    assert len(result.data["structural_changes"]) >= 1
+    data = assert_success(result)
+    assert data["needs_update"] is True
+    assert len(data["structural_changes"]) >= 1
 
 
 async def test_docs_check_agents_up_to_date(tmp_path) -> None:
@@ -294,8 +294,8 @@ async def test_docs_check_agents_up_to_date(tmp_path) -> None:
             )
             result = await docs_check_agents()
 
-    assert result.success is True
-    assert result.data["needs_update"] is False
+    data = assert_success(result)
+    assert data["needs_update"] is False
 
 
 async def test_docs_check_agents_no_structural_changes(tmp_path) -> None:
@@ -309,5 +309,5 @@ async def test_docs_check_agents_no_structural_changes(tmp_path) -> None:
             )
             result = await docs_check_agents()
 
-    assert result.success is True
-    assert result.data["needs_update"] is False
+    data = assert_success(result)
+    assert data["needs_update"] is False

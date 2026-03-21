@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from afd import SimpleRegistry, success
+from afd.testing import assert_success
 
 from botcore.registry import get_client, registry, reset_client
 
@@ -41,6 +42,6 @@ async def test_client_calls_registered_command() -> None:
     reset_client()
     client = get_client()
     result = await client.call("test.ping")
-    assert result.success is True
-    assert result.data["pong"] is True
+    data = assert_success(result)
+    assert data["pong"] is True
     reset_client()

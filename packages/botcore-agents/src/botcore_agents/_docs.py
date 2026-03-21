@@ -8,11 +8,13 @@ Single-agent lifecycle management with LLM-backed task execution.
 | Command | Description |
 |---------|-------------|
 | `agent_create` | Create an agent from config (does not start it) |
+| `agent_delete` | Delete a stopped agent from the pool |
 | `agent_start` | Start an agent — creates an LLM session |
 | `agent_stop` | Stop an agent — destroys session, cancels tasks |
 | `agent_status` | Get agent health snapshot |
 | `agent_heartbeat` | Update heartbeat timestamp, return health |
 | `task_assign` | Assign a task to a running agent (sync execution) |
+| `task_resume` | Resume a pending restored task with a running agent |
 | `task_status` | Get task details by ID |
 | `state_save` | Persist orchestrator state to configured backend |
 | `state_load` | Restore orchestrator state from configured backend |
@@ -34,6 +36,7 @@ await agent_heartbeat(name="researcher")
 
 # 4. Clean up
 await agent_stop(name="researcher")
+await agent_delete(name="researcher")
 ```
 
 ## Configuration
@@ -42,6 +45,12 @@ await agent_stop(name="researcher")
 [tool.botcore.plugins.agents]
 default_model = "gpt-4.1"
 max_agents = 10
+
+[tool.botcore.plugins.agents.state]
+enabled = true
+path = ".botcore/orchestrator-state.json"
+retention_hours = 168
+autosave = true
 
 [tool.botcore.plugins.agents.agents.researcher]
 name = "researcher"

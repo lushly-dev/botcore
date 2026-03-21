@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from afd import SimpleRegistry, success
+from afd.testing import assert_success
 from afd.server.middleware import default_middleware
 
 from botcore.registry import MiddlewareRegistry, get_client, reset_client
@@ -46,7 +47,8 @@ async def test_middleware_wraps_execute():
     mw_reg.add_middleware(spy_middleware)
     result = await mw_reg.execute("test-echo", {"message": "world"})
 
-    assert result.success is True
+    data = assert_success(result)
+    assert data["message"] == "world"
     assert seen["name"] == "test-echo"
     assert seen["args"] == {"message": "world"}
 
@@ -83,8 +85,8 @@ async def test_no_middleware_passthrough():
     mw_reg = MiddlewareRegistry(reg)
 
     result = await mw_reg.execute("test-echo", {"message": "direct"})
-    assert result.success is True
-    assert result.data["message"] == "direct"
+    data = assert_success(result)
+    assert data["message"] == "direct"
 
 
 async def test_default_middleware_adds_trace_id():
@@ -99,7 +101,7 @@ async def test_default_middleware_adds_trace_id():
 
     ctx = CommandContext()
     result = await mw_reg.execute("test-echo", None, ctx)
-    assert result.success is True
+    assert_success(result)
 
 
 # ── MiddlewareRegistry delegation ─────────────────────────────────────────
@@ -166,7 +168,7 @@ async def test_plugin_middleware_applied():
     try:
         client = get_client()
         result = await client.call("test-plugin-mw")
-        assert result.success is True
+        assert_success(result)
         assert called["count"] == 1
     finally:
         set_plugin_middleware([])
@@ -189,7 +191,7 @@ async def test_telemetry_middleware_records_events(capsys):
 
     ctx = CommandContext()
     result = await mw_reg.execute("test-echo", None, ctx)
-    assert result.success is True
+    assert_success(result)
 
 
 async def test_telemetry_json_format(capsys):
@@ -206,7 +208,7 @@ async def test_telemetry_json_format(capsys):
 
     ctx = CommandContext()
     result = await mw_reg.execute("test-echo", None, ctx)
-    assert result.success is True
+    assert_success(result)
 
 
 async def test_telemetry_disabled_by_default():
@@ -238,4 +240,4 @@ async def test_telemetry_enabled_via_config():
     reset_client()
     client = get_client(config=config)
     result = await client.call("test-telemetry-cmd")
-    assert result.success is True
+    assert_success(result)

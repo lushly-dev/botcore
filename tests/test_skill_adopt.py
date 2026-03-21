@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from afd.testing import assert_error, assert_success
 
-from botcore.commands.skill.adopt import skill_adopt
+from botcore.commands.skill.adopt import skill_adopt, skill_unadopt
 
 
 def _make_skill(base: Path, name: str, version: str = "1.0.0", source: str | None = None) -> Path:
@@ -62,6 +62,8 @@ async def test_adopt_adds_source(tmp_path: Path) -> None:
     data = assert_success(result)
     assert data["changed"] is True
     assert data["source"] == "local"
+    assert result.undo_command == "skill_unadopt"
+    assert result.undo_args == {"name": "my-skill"}
 
     # Verify file was updated
     content = (skills_dir / "my-skill" / "SKILL.md").read_text(encoding="utf-8")
@@ -93,3 +95,35 @@ async def test_adopt_conflict(tmp_path: Path) -> None:
         result = await skill_adopt("my-skill", source="custom")
 
     assert_error(result, "SOURCE_CONFLICT")
+
+
+async def test_unadopt_removes_source(tmp_path: Path) -> None:
+    """skill_unadopt removes source metadata and returns inverse undo."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+    _make_skill(skills_dir, "my-skill", "1.0.0", source="local")
+
+    with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
+        result = await skill_unadopt("my-skill")
+
+    data = assert_success(result)
+    assert data["removed_source"] == "local"
+    assert result.undo_command == "skill_adopt"
+    assert result.undo_args == {"name": "my-skill", "source": "local"}
+
+    content = (skills_dir / "my-skill" / "SKILL.md").read_text(encoding="utf-8")
+    assert "source:" not in content
+
+
+async def test_unadopt_requires_existing_source(tmp_path: Path) -> None:
+    """skill_unadopt errors when the skill has no source."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+    _make_skill(skills_dir, "my-skill", "1.0.0")
+
+    with patch("botcore.commands.skill.adopt.find_workspace", return_value=ws):
+        result = await skill_unadopt("my-skill")
+
+    assert_error(result, "SOURCE_NOT_SET")
