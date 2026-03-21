@@ -16,7 +16,7 @@ from botcore.commands.dev import (
     dev_test,
     dev_unused_deps,
 )
-from botcore.commands.docs import docs_check_agents, docs_check_changelog, docs_lint
+from botcore.commands.docs import docs_check_agents, docs_check_changelog, docs_lint, docs_preflight
 from botcore.commands.info import info_env, info_scripts, info_workspace
 from botcore.commands.research import research_query
 from botcore.commands.skill import (
@@ -65,6 +65,7 @@ __all__ = [
     "docs_lint",
     "docs_check_changelog",
     "docs_check_agents",
+    "docs_preflight",
     # Research
     "research_query",
     # Spec

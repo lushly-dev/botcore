@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from afd.testing import assert_error, assert_success
 from pydantic import ValidationError
 
 from botcore_agents.config import AgentConfig, AgentsPluginConfig
@@ -165,15 +166,13 @@ class TestOrchestratorSaveLoad:
     async def test_save_no_backend_returns_error(self):
         orch = AgentOrchestrator(_minimal_config())
         result = await orch.save_state()
-        assert not result.success
-        assert result.error.code == "NO_BACKEND"
+        assert_error(result, "NO_BACKEND")
 
     @pytest.mark.asyncio
     async def test_load_no_backend_returns_error(self):
         orch = AgentOrchestrator(_minimal_config())
         result = await orch.load_state()
-        assert not result.success
-        assert result.error.code == "NO_BACKEND"
+        assert_error(result, "NO_BACKEND")
 
     @pytest.mark.asyncio
     async def test_full_roundtrip(self, tmp_path: Path):
@@ -193,17 +192,17 @@ class TestOrchestratorSaveLoad:
 
         # Save
         save_result = await orch.save_state()
-        assert save_result.success
-        assert save_result.data["saved"] is True
-        assert save_result.data["agents"] == 1
-        assert save_result.data["tasks"] == 1
+        save_data = assert_success(save_result)
+        assert save_data["saved"] is True
+        assert save_data["agents"] == 1
+        assert save_data["tasks"] == 1
 
         # Create a fresh orchestrator, load into it
         orch2 = AgentOrchestrator(_minimal_config(), backend=backend)
         load_result = await orch2.load_state()
-        assert load_result.success
-        assert load_result.data["restored"] is True
-        assert load_result.data["agents"] == 1
+        load_data = assert_success(load_result)
+        assert load_data["restored"] is True
+        assert load_data["agents"] == 1
         assert "researcher" in orch2._agents
         assert task.id in orch2._tasks
 
@@ -240,8 +239,8 @@ class TestOrchestratorSaveLoad:
         backend = JsonStateBackend(tmp_path / "nope.json")
         orch = AgentOrchestrator(_minimal_config(), backend=backend)
         result = await orch.load_state()
-        assert result.success
-        assert result.data["restored"] is False
+        data = assert_success(result)
+        assert data["restored"] is False
 
     @pytest.mark.asyncio
     async def test_snapshot_deep_copies(self, tmp_path: Path):
@@ -270,8 +269,7 @@ class TestOrchestratorSaveLoad:
         mock_backend.save.side_effect = OSError("boom")
         orch = AgentOrchestrator(_minimal_config(), backend=mock_backend)
         result = await orch.save_state()
-        assert not result.success
-        assert result.error.code == "STATE_SAVE_ERROR"
+        assert_error(result, "STATE_SAVE_ERROR")
 
     @pytest.mark.asyncio
     async def test_backend_load_exception(self):
@@ -279,5 +277,4 @@ class TestOrchestratorSaveLoad:
         mock_backend.load.side_effect = OSError("boom")
         orch = AgentOrchestrator(_minimal_config(), backend=mock_backend)
         result = await orch.load_state()
-        assert not result.success
-        assert result.error.code == "STATE_LOAD_ERROR"
+        assert_error(result, "STATE_LOAD_ERROR")

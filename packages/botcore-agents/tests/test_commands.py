@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from afd.testing import assert_error, assert_success
 
 from botcore_agents.commands import (
     agent_create,
@@ -31,27 +32,25 @@ def _inject_config(sample_config: AgentsPluginConfig):
 class TestAgentCreate:
     async def test_create_returns_success(self):
         result = await agent_create(name="researcher")
-        assert result.success
-        assert result.data["name"] == "researcher"
-        assert result.data["status"] == "stopped"
+        data = assert_success(result)
+        assert data["name"] == "researcher"
+        assert data["status"] == "stopped"
 
     async def test_create_unconfigured_returns_error(self):
         result = await agent_create(name="unknown")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_CONFIGURED"
+        assert_error(result, "AGENT_NOT_CONFIGURED")
 
 
 class TestAgentStart:
     async def test_start_returns_session(self, mock_llm):
         await agent_create(name="researcher")
         result = await agent_start(name="researcher")
-        assert result.success
-        assert result.data["session_id"] == "session-agent-001"
+        data = assert_success(result)
+        assert data["session_id"] == "session-agent-001"
 
     async def test_start_not_found(self, mock_llm):
         result = await agent_start(name="ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestAgentStop:
@@ -59,14 +58,13 @@ class TestAgentStop:
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await agent_stop(name="researcher")
-        assert result.success
-        assert result.data["status"] == "stopped"
+        data = assert_success(result)
+        assert data["status"] == "stopped"
 
     async def test_stop_not_started(self, mock_llm):
         await agent_create(name="researcher")
         result = await agent_stop(name="researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_STARTED"
+        assert_error(result, "AGENT_NOT_STARTED")
 
 
 class TestAgentStatus:
@@ -74,14 +72,13 @@ class TestAgentStatus:
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await agent_status(name="researcher")
-        assert result.success
-        assert result.data["name"] == "researcher"
-        assert result.data["status"] == "idle"
+        data = assert_success(result)
+        assert data["name"] == "researcher"
+        assert data["status"] == "idle"
 
     async def test_status_not_found(self):
         result = await agent_status(name="ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestAgentHeartbeat:
@@ -89,14 +86,13 @@ class TestAgentHeartbeat:
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await agent_heartbeat(name="researcher")
-        assert result.success
-        assert result.data["last_heartbeat"] is not None
+        data = assert_success(result)
+        assert data["last_heartbeat"] is not None
 
     async def test_heartbeat_not_started(self):
         await agent_create(name="researcher")
         result = await agent_heartbeat(name="researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_STARTED"
+        assert_error(result, "AGENT_NOT_STARTED")
 
 
 class TestTaskAssign:
@@ -104,35 +100,33 @@ class TestTaskAssign:
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await task_assign(description="Find bugs", agent="researcher")
-        assert result.success
-        assert result.data["status"] == "completed"
-        assert result.data["result"] == "Task completed successfully"
+        data = assert_success(result)
+        assert data["status"] == "completed"
+        assert data["result"] == "Task completed successfully"
 
     async def test_assign_custom_priority(self, mock_llm):
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await task_assign(description="Urgent", agent="researcher", priority=1)
-        assert result.success
-        task_id = result.data["task_id"]
+        data = assert_success(result)
+        task_id = data["task_id"]
         task_result = await task_status(task_id=task_id)
         assert task_result.data["priority"] == 1
 
     async def test_assign_not_found(self, mock_llm):
         result = await task_assign(description="Work", agent="ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
     async def test_assign_by_role(self, mock_llm):
         await agent_create(name="researcher")
         await agent_start(name="researcher")
         result = await task_assign(description="Research task", role="researcher")
-        assert result.success
-        assert result.data["agent"] == "researcher"
+        data = assert_success(result)
+        assert data["agent"] == "researcher"
 
     async def test_assign_no_target(self):
         result = await task_assign(description="Work")
-        assert not result.success
-        assert result.error.code == "NO_TARGET"
+        assert_error(result, "NO_TARGET")
 
 
 class TestTaskStatus:
@@ -142,13 +136,12 @@ class TestTaskStatus:
         assign_result = await task_assign(description="Work", agent="researcher")
         task_id = assign_result.data["task_id"]
         result = await task_status(task_id=task_id)
-        assert result.success
-        assert result.data["description"] == "Work"
+        data = assert_success(result)
+        assert data["description"] == "Work"
 
     async def test_task_status_not_found(self):
         result = await task_status(task_id="no-such-id")
-        assert not result.success
-        assert result.error.code == "TASK_NOT_FOUND"
+        assert_error(result, "TASK_NOT_FOUND")
 
 
 # ---------------------------------------------------------------------------
@@ -162,35 +155,34 @@ class TestHappyPathScenario:
     async def test_full_lifecycle(self, mock_llm):
         # Create
         r = await agent_create(name="researcher")
-        assert r.success
+        assert_success(r)
 
         # Start
         r = await agent_start(name="researcher")
-        assert r.success
-        session_id = r.data["session_id"]
+        session_id = assert_success(r)["session_id"]
         assert session_id
 
         # Assign task
         r = await task_assign(description="Analyse codebase", agent="researcher")
-        assert r.success
-        assert r.data["status"] == "completed"
-        task_id = r.data["task_id"]
+        assign_data = assert_success(r)
+        assert assign_data["status"] == "completed"
+        task_id = assign_data["task_id"]
 
         # Check task status
         r = await task_status(task_id=task_id)
-        assert r.success
-        assert r.data["status"] == "completed"
-        assert r.data["assigned_agent"] == "researcher"
+        task_data = assert_success(r)
+        assert task_data["status"] == "completed"
+        assert task_data["assigned_agent"] == "researcher"
 
         # Check agent health
         r = await agent_status(name="researcher")
-        assert r.success
-        assert r.data["tasks_completed"] == 1
+        status_data = assert_success(r)
+        assert status_data["tasks_completed"] == 1
 
         # Stop
         r = await agent_stop(name="researcher")
-        assert r.success
-        assert r.data["status"] == "stopped"
+        stop_data = assert_success(r)
+        assert stop_data["status"] == "stopped"
 
 
 class TestMultiAgentIsolation:
@@ -229,9 +221,9 @@ class TestMultiAgentIsolation:
         # Assign to each
         t1 = await task_assign(description="Research", agent="researcher")
         t2 = await task_assign(description="Code", agent="coder")
-        assert t1.success
-        assert t2.success
-        assert t1.data["task_id"] != t2.data["task_id"]
+        t1_data = assert_success(t1)
+        t2_data = assert_success(t2)
+        assert t1_data["task_id"] != t2_data["task_id"]
 
 
 class TestErrorCascading:
@@ -252,8 +244,8 @@ class TestErrorCascading:
         orch._agents["researcher"].active_tasks.append(task.id)
 
         result = await agent_stop(name="researcher")
-        assert result.success
-        assert task.id in result.data["cancelled_tasks"]
+        data = assert_success(result)
+        assert task.id in data["cancelled_tasks"]
 
         # Verify task is cancelled
         task_result = await task_status(task_id=task.id)
@@ -275,5 +267,4 @@ class TestCapacityLimit:
         orch._agents["coder"].active_tasks.append("fake-task")
 
         result = await task_assign(description="More work", agent="coder")
-        assert not result.success
-        assert result.error.code == "AGENT_AT_CAPACITY"
+        assert_error(result, "AGENT_AT_CAPACITY")

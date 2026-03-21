@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from afd.testing import assert_error, assert_success
+
 from botcore_memory.access import check_scope_access, current_agent, resolve_scope_id
 from botcore_memory.commands import memory_get, memory_search, memory_set
 
@@ -69,14 +71,12 @@ class TestAccessControlIntegration:
 
         set_agent("agent-b")
         result = await memory_get(key="secret", scope="agent", scope_id="agent-a")
-        assert result.success is False
-        assert result.error.code == "MEMORY_ACCESS_DENIED"
+        assert_error(result, "MEMORY_ACCESS_DENIED")
 
     async def test_agent_cannot_write_other_agent_memory(self, set_agent):
         set_agent("agent-b")
         result = await memory_set(key="hack", value="bad", scope="agent", scope_id="agent-a")
-        assert result.success is False
-        assert result.error.code == "MEMORY_ACCESS_DENIED"
+        assert_error(result, "MEMORY_ACCESS_DENIED")
 
     async def test_agent_search_cannot_leak_other_agent_memory(self, set_agent):
         """Search with scope=agent must not return other agents' entries."""
@@ -86,8 +86,7 @@ class TestAccessControlIntegration:
         set_agent("agent-b")
         # Search without scope_id — should auto-resolve to agent-b, not search all
         result = await memory_search(query="classified", scope="agent")
-        assert result.success is True
-        assert len(result.data) == 0
+        assert_success(result) == []
 
     async def test_agent_search_with_explicit_other_scope_id_denied(self, set_agent):
         set_agent("agent-a")
@@ -97,8 +96,7 @@ class TestAccessControlIntegration:
         result = await memory_search(
             query="data", scope="agent", scope_id="agent-a",
         )
-        assert result.success is False
-        assert result.error.code == "MEMORY_ACCESS_DENIED"
+        assert_error(result, "MEMORY_ACCESS_DENIED")
 
     async def test_team_scope_shared_access(self, set_agent):
         set_agent("agent-a")
@@ -106,5 +104,5 @@ class TestAccessControlIntegration:
 
         set_agent("agent-b")
         result = await memory_get(key="shared-info", scope="team", scope_id="team-1")
-        assert result.success is True
-        assert result.data["value"] == "hello"
+        data = assert_success(result)
+        assert data["value"] == "hello"

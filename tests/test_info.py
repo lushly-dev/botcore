@@ -20,6 +20,8 @@ async def test_info_workspace_found(tmp_workspace: Path) -> None:
     data = assert_success(result)
     assert data["workspace_root"] == str(tmp_workspace)
     assert isinstance(data["packages"], list)
+    assert result.suggestions is not None
+    assert "Use info_scripts to see available package scripts" in result.suggestions
 
 
 async def test_info_workspace_not_found() -> None:
@@ -38,6 +40,7 @@ async def test_info_env() -> None:
     assert sys.version in data["python_version"]
     assert data["platform"] == sys.platform
     assert data["cwd"] == os.getcwd()
+    assert result.suggestions == ["Use info_workspace for project structure"]
 
 
 async def test_info_scripts(tmp_workspace_with_packages: Path) -> None:
@@ -56,6 +59,7 @@ async def test_info_scripts(tmp_workspace_with_packages: Path) -> None:
     assert "core" in data
     assert "build" in data["core"]
     assert "test" in data["core"]
+    assert result.suggestions == ["Run scripts with dev_test or dev_lint commands"]
 
 
 async def test_info_scripts_no_workspace() -> None:

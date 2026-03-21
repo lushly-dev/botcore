@@ -17,6 +17,20 @@ This spec organizes adoption into seven prioritized, independently-implementable
 | Date | 2026-03-13 |
 | Priority | Cross-cutting (improves DX, observability, agent UX) |
 
+## Progress Snapshot
+
+Implementation status as of 2026-03-21:
+
+| Work Item | Status | Notes |
+|---|---|---|
+| P1 Testing Helpers | In Progress | Adopted across core, docs, middleware, registry, memory, llm, agents, pipeline, state, dev, portability, and analysis suites; manual `CommandResult` assertions are down to 69 repo-wide, with the biggest remaining hotspots in teams, spec, quality, and diagnostics tests |
+| P2 Middleware Stack Integration | Complete | `MiddlewareRegistry`, default middleware wiring, plugin middleware integration, and dedicated tests are in place |
+| P3 Telemetry Integration | Complete | Telemetry config and middleware wiring are implemented and covered by tests |
+| P4 Richer CommandResult Fields | In Progress | `suggestions`, `confidence`, `sources`, and `reasoning` are in active use; undo metadata now exists for memory operations, but broader reversible-command adoption is still pending |
+| P5 DirectClient Pipelines | In Progress | Pipeline support, docs, and tests exist, and `docs_preflight()` now uses `DirectClient.pipe()` in production code; broader adoption is still pending |
+| P6 Batch Execution | Complete | `batch_execute()` helper and tests are implemented |
+| P7 Streaming | Deferred | Still intentionally deferred pending a real transport/use-case |
+
 ## Problem
 
 Botcore's AFD integration surface is minimal:

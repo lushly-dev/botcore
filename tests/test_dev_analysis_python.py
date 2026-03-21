@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.analysis import (
     _find_cycles,
     _scan_imports,
@@ -111,10 +113,10 @@ async def test_dead_code_python_vulture(tmp_path) -> None:
         )
         result = await dev_dead_code(language="python")
 
-    assert result.success is True
-    assert result.data["count"] == 1
-    assert "unused function" in result.data["issues"][0]["message"]
-    assert result.data["summary"]["unused_functions"] == 1
+    data = assert_success(result)
+    assert data["count"] == 1
+    assert "unused function" in data["issues"][0]["message"]
+    assert data["summary"]["unused_functions"] == 1
 
 
 async def test_dead_code_python_no_issues(tmp_path) -> None:
@@ -131,8 +133,8 @@ async def test_dead_code_python_no_issues(tmp_path) -> None:
         )
         result = await dev_dead_code(language="python")
 
-    assert result.success is True
-    assert result.data["count"] == 0
+    data = assert_success(result)
+    assert data["count"] == 0
 
 
 async def test_dead_code_rust_tool_not_found(tmp_path) -> None:
@@ -144,8 +146,8 @@ async def test_dead_code_rust_tool_not_found(tmp_path) -> None:
         mock.return_value = None
         result = await dev_dead_code(language="rust")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True
 
 
 # ── dev_circular_imports (Python path) ───────────────────────────────────
@@ -162,8 +164,8 @@ async def test_circular_imports_python_no_cycles(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_circular_imports(path=str(src), language="python")
 
-    assert result.success is True
-    assert result.data["cycle_count"] == 0
+    data = assert_success(result)
+    assert data["cycle_count"] == 0
 
 
 async def test_circular_imports_python_path_not_found(tmp_path) -> None:
@@ -171,8 +173,7 @@ async def test_circular_imports_python_path_not_found(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_circular_imports(path=str(tmp_path / "nonexistent"), language="python")
 
-    assert result.success is False
-    assert result.error.code == "PATH_NOT_FOUND"
+    assert_error(result, "PATH_NOT_FOUND")
 
 
 # ── dev_unused_deps (Python path) ────────────────────────────────────────
@@ -190,9 +191,9 @@ async def test_unused_deps_python(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_unused_deps(language="python")
 
-    assert result.success is True
-    assert "unused_lib" in result.data["potentially_unused"]
-    assert "requests" not in result.data["potentially_unused"]
+    data = assert_success(result)
+    assert "unused_lib" in data["potentially_unused"]
+    assert "requests" not in data["potentially_unused"]
 
 
 async def test_unused_deps_python_all_used(tmp_path) -> None:
@@ -207,8 +208,8 @@ async def test_unused_deps_python_all_used(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_unused_deps(language="python")
 
-    assert result.success is True
-    assert len(result.data["potentially_unused"]) == 0
+    data = assert_success(result)
+    assert len(data["potentially_unused"]) == 0
 
 
 async def test_unused_deps_no_workspace() -> None:
@@ -216,8 +217,7 @@ async def test_unused_deps_no_workspace() -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=None):
         result = await dev_unused_deps(language="python")
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_unused_deps_no_pyproject(tmp_path) -> None:
@@ -225,8 +225,7 @@ async def test_unused_deps_no_pyproject(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_unused_deps(language="python")
 
-    assert result.success is False
-    assert result.error.code == "NO_PYPROJECT"
+    assert_error(result, "NO_PYPROJECT")
 
 
 async def test_unused_deps_rust_not_found(tmp_path) -> None:
@@ -238,8 +237,8 @@ async def test_unused_deps_rust_not_found(tmp_path) -> None:
         mock.return_value = None
         result = await dev_unused_deps(language="rust")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True
 
 
 async def test_unused_deps_ts_not_found(tmp_path) -> None:
@@ -251,8 +250,8 @@ async def test_unused_deps_ts_not_found(tmp_path) -> None:
         mock.return_value = None
         result = await dev_unused_deps(language="typescript")
 
-    assert result.success is True
-    assert result.data.get("skipped") is True
+    data = assert_success(result)
+    assert data.get("skipped") is True
 
 
 # ── dev_dep_graph (Python path) ──────────────────────────────────────────
@@ -269,9 +268,9 @@ async def test_dep_graph_python(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_dep_graph(path=str(src), language="python")
 
-    assert result.success is True
-    assert result.data["module_count"] >= 2
-    assert "core" in result.data["modules"] or any("core" in m for m in result.data["modules"])
+    data = assert_success(result)
+    assert data["module_count"] >= 2
+    assert "core" in data["modules"] or any("core" in m for m in data["modules"])
 
 
 async def test_dep_graph_dot_output(tmp_path) -> None:
@@ -284,9 +283,9 @@ async def test_dep_graph_dot_output(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_dep_graph(path=str(src), output="dot", language="python")
 
-    assert result.success is True
-    assert "dot" in result.data
-    assert "digraph" in result.data["dot"]
+    data = assert_success(result)
+    assert "dot" in data
+    assert "digraph" in data["dot"]
 
 
 async def test_dep_graph_path_not_found(tmp_path) -> None:
@@ -294,8 +293,7 @@ async def test_dep_graph_path_not_found(tmp_path) -> None:
     with patch("botcore.commands.dev.analysis.find_workspace", return_value=tmp_path):
         result = await dev_dep_graph(path=str(tmp_path / "nonexistent"), language="python")
 
-    assert result.success is False
-    assert result.error.code == "PATH_NOT_FOUND"
+    assert_error(result, "PATH_NOT_FOUND")
 
 
 async def test_dep_graph_rust_found(tmp_path) -> None:
@@ -307,5 +305,5 @@ async def test_dep_graph_rust_found(tmp_path) -> None:
         mock.return_value = {"success": True, "output": "crate structure", "error": None}
         result = await dev_dep_graph(language="rust")
 
-    assert result.success is True
-    assert result.data.get("tool") == "cargo-modules"
+    data = assert_success(result)
+    assert data.get("tool") == "cargo-modules"

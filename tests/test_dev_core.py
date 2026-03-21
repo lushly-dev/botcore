@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+from afd.testing import assert_error, assert_success
+
 from botcore.commands.dev.core import dev_build, dev_lint, dev_skill_lint, dev_test
 
 
@@ -19,7 +21,7 @@ async def test_dev_lint_python(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "All good", "error": None}
         result = await dev_lint()
 
-    assert result.success is True
+    assert_success(result)
     mock_run.assert_called_once()
     args = mock_run.call_args
     assert args[0][0] == "ruff"
@@ -37,7 +39,7 @@ async def test_dev_lint_typescript(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint()
 
-    assert result.success is True
+    assert_success(result)
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
     assert "biome" in args
@@ -55,7 +57,7 @@ async def test_dev_lint_fix_flag(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint(fix=True)
 
-    assert result.success is True
+    assert_success(result)
     ruff_args = mock_run.call_args[0][1]
     assert "--fix" in ruff_args
 
@@ -72,8 +74,7 @@ async def test_dev_lint_failure(tmp_path) -> None:
         mock_run.return_value = {"success": False, "output": "E501", "error": "E501 line too long"}
         result = await dev_lint()
 
-    assert result.success is False
-    assert result.error.code == "LINT_FAILED"
+    assert_error(result, "LINT_FAILED")
 
 
 async def test_dev_test_python(tmp_path) -> None:
@@ -88,7 +89,7 @@ async def test_dev_test_python(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "3 passed", "error": None}
         result = await dev_test()
 
-    assert result.success is True
+    assert_success(result)
     assert mock_run.call_args[0][0] == "pytest"
 
 
@@ -100,8 +101,7 @@ async def test_dev_build_requires_package_for_python(tmp_path) -> None:
     with patch("botcore.commands.dev.core.find_workspace", return_value=tmp_path):
         result = await dev_build()
 
-    assert result.success is False
-    assert result.error.code == "PACKAGE_REQUIRED"
+    assert_error(result, "PACKAGE_REQUIRED")
 
 
 async def test_dev_lint_with_language_override(tmp_path) -> None:
@@ -115,7 +115,7 @@ async def test_dev_lint_with_language_override(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint(language="python")
 
-    assert result.success is True
+    assert_success(result)
     mock_run.assert_called_once()
     assert mock_run.call_args[0][0] == "ruff"
 
@@ -131,7 +131,7 @@ async def test_dev_test_with_language_override(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "", "error": None}
         result = await dev_test(language="rust")
 
-    assert result.success is True
+    assert_success(result)
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
     assert "cargo" in args
@@ -149,7 +149,7 @@ async def test_dev_build_with_language_override(tmp_path) -> None:
         mock_run.return_value = {"success": True, "output": "", "error": None}
         result = await dev_build(language="rust")
 
-    assert result.success is True
+    assert_success(result)
     args = mock_run.call_args[0][0]
     assert "cargo" in args
     assert "build" in args
@@ -177,11 +177,11 @@ async def test_dev_lint_runs_all_languages(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint()
 
-    assert result.success is True
-    assert "languages" in result.data
-    assert "python" in result.data["languages"]
-    assert "typescript" in result.data["languages"]
-    assert result.data["summary"]["passed"] == 2
+    data = assert_success(result)
+    assert "languages" in data
+    assert "python" in data["languages"]
+    assert "typescript" in data["languages"]
+    assert data["summary"]["passed"] == 2
 
 
 async def test_dev_lint_all_fails_if_any_fail(tmp_path) -> None:
@@ -203,8 +203,7 @@ async def test_dev_lint_all_fails_if_any_fail(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint()
 
-    assert result.success is False
-    assert result.error.code == "LINT_FAILED"
+    assert_error(result, "LINT_FAILED")
 
 
 async def test_dev_lint_all_success(tmp_path) -> None:
@@ -226,9 +225,9 @@ async def test_dev_lint_all_success(tmp_path) -> None:
         mock_cmd.return_value = {"success": True, "output": "", "error": None}
         result = await dev_lint()
 
-    assert result.success is True
-    assert result.data["summary"]["passed"] == 2
-    assert result.data["summary"]["failed"] == 0
+    data = assert_success(result)
+    assert data["summary"]["passed"] == 2
+    assert data["summary"]["failed"] == 0
 
 
 async def test_dev_skill_lint_no_workspace() -> None:
@@ -236,8 +235,7 @@ async def test_dev_skill_lint_no_workspace() -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=None):
         result = await dev_skill_lint()
 
-    assert result.success is False
-    assert result.error.code == "NO_WORKSPACE"
+    assert_error(result, "NO_WORKSPACE")
 
 
 async def test_dev_skill_lint_no_skills_dir(tmp_path) -> None:
@@ -248,8 +246,7 @@ async def test_dev_skill_lint_no_skills_dir(tmp_path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=tmp_path):
         result = await dev_skill_lint()
 
-    assert result.success is False
-    assert result.error.code == "NO_SKILLS_DIR"
+    assert_error(result, "NO_SKILLS_DIR")
 
 
 async def test_dev_skill_lint_passes(tmp_path) -> None:
@@ -268,6 +265,6 @@ async def test_dev_skill_lint_passes(tmp_path) -> None:
     with patch("botcore.commands.skill.lint.find_workspace", return_value=tmp_path):
         result = await dev_skill_lint()
 
-    assert result.success is True
-    assert result.data["passed"] == 1
-    assert result.data["errors"] == 0
+    data = assert_success(result)
+    assert data["passed"] == 1
+    assert data["errors"] == 0

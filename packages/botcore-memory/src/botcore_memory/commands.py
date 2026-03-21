@@ -90,6 +90,9 @@ async def memory_set(
     if access_err := check_scope_access(caller, scope, resolved_scope_id, "write"):
         return error(access_err.code, access_err.message, suggestion=access_err.suggestion)
 
+    store = get_store()
+    previous = await store.get(scope, resolved_scope_id, key)
+
     entry = MemoryEntry(
         scope=scope,
         scope_id=resolved_scope_id,
@@ -99,7 +102,6 @@ async def memory_set(
         created_by=caller,
     )
 
-    store = get_store()
     try:
         stored = await store.set(entry, max_entries_per_scope=_config.max_entries_per_scope)
     except MemoryScopeFullError:
@@ -112,7 +114,28 @@ async def memory_set(
             suggestion="Delete old entries or raise max_entries_per_scope in config",
         )
 
-    return success(data=stored.to_dict())
+    if previous:
+        undo_command = "memory_set"
+        undo_args = {
+            "key": previous.key,
+            "value": previous.value,
+            "scope": previous.scope,
+            "scope_id": previous.scope_id,
+            "tags": previous.tags,
+        }
+    else:
+        undo_command = "memory_delete"
+        undo_args = {
+            "key": stored.key,
+            "scope": stored.scope,
+            "scope_id": stored.scope_id,
+        }
+
+    return success(
+        data=stored.to_dict(),
+        undo_command=undo_command,
+        undo_args=undo_args,
+    )
 
 
 async def memory_get(
@@ -216,17 +239,32 @@ async def memory_delete(
         return error(access_err.code, access_err.message, suggestion=access_err.suggestion)
 
     store = get_store()
-    deleted = await store.delete(scope, resolved_scope_id, key)
+    existing = await store.get(scope, resolved_scope_id, key)
 
-    if not deleted:
+    if not existing:
         return error(
             "MEMORY_NOT_FOUND",
             f"No memory entry found for key '{key}' in {scope}/{resolved_scope_id}",
         )
 
-    return success(data={
-        "deleted": True, "key": key, "scope": scope, "scope_id": resolved_scope_id,
-    })
+    await store.delete(scope, resolved_scope_id, key)
+
+    return success(
+        data={
+            "deleted": True,
+            "key": key,
+            "scope": scope,
+            "scope_id": resolved_scope_id,
+        },
+        undo_command="memory_set",
+        undo_args={
+            "key": existing.key,
+            "value": existing.value,
+            "scope": existing.scope,
+            "scope_id": existing.scope_id,
+            "tags": existing.tags,
+        },
+    )
 
 
 async def memory_list(

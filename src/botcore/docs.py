@@ -85,6 +85,9 @@ Verify CHANGELOG.md structure and freshness.
 
 ## docs_check_agents()
 Validate AGENTS.md exists and has content.
+
+## docs_preflight()
+Run changelog and AGENTS.md checks together via a DirectClient pipeline.
 """,
     "spec": """\
 # Spec Commands

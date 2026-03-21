@@ -19,7 +19,7 @@ Architectural interfaces that must exist before expanding agent or connector fea
 
 | Spec | Why Foundation | Status |
 |------|----------------|--------|
-| [Agent Capability Declarations](docs/features/active/agent-capability-declarations/spec.md) | Without this, every agent gets every connector. Per-agent `connectors` field on AgentConfig. | Active |
+| [Agent Capability Declarations](docs/features/complete/agent-capability-declarations/spec.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
 | [Per-Agent Permission Profiles](docs/features/active/per-agent-permissions/spec.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Active |
 | [Orchestrator State Serialization](docs/features/active/orchestrator-state-serialization/spec.md) | Without this, can't add persistence or crash recovery later. `save_state()` / `load_state()` interface with JSON backend. | Active |
 

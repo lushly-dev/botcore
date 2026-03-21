@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import botcore_agents.orchestrator as orch_mod
+from afd.testing import assert_error, assert_success
 from botcore_agents.config import AgentPermissionsConfig, AgentsPluginConfig
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
 
@@ -12,20 +13,18 @@ from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, res
 class TestCreateAgent:
     async def test_create_configured_agent(self, orchestrator: AgentOrchestrator):
         result = await orchestrator.create_agent("researcher")
-        assert result.success
-        assert result.data["name"] == "researcher"
-        assert result.data["status"] == "stopped"
+        data = assert_success(result)
+        assert data["name"] == "researcher"
+        assert data["status"] == "stopped"
 
     async def test_create_unconfigured_agent(self, orchestrator: AgentOrchestrator):
         result = await orchestrator.create_agent("unknown")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_CONFIGURED"
+        assert_error(result, "AGENT_NOT_CONFIGURED")
 
     async def test_create_duplicate_agent(self, orchestrator: AgentOrchestrator):
         await orchestrator.create_agent("researcher")
         result = await orchestrator.create_agent("researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_ALREADY_EXISTS"
+        assert_error(result, "AGENT_ALREADY_EXISTS")
 
     async def test_create_respects_max_agents(self, orchestrator: AgentOrchestrator):
         # Config has max_agents=5, but only 2 agent configs
@@ -33,29 +32,26 @@ class TestCreateAgent:
         await orchestrator.create_agent("coder")
         # Both slots used, third would need to be configured anyway
         result = await orchestrator.create_agent("nonexistent")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_CONFIGURED"
+        assert_error(result, "AGENT_NOT_CONFIGURED")
 
 
 class TestStartAgent:
     async def test_start_agent_happy_path(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         result = await orchestrator.start_agent("researcher")
-        assert result.success
-        assert result.data["status"] == "idle"
-        assert result.data["session_id"] == "session-agent-001"
+        data = assert_success(result)
+        assert data["status"] == "idle"
+        assert data["session_id"] == "session-agent-001"
 
     async def test_start_nonexistent_agent(self, orchestrator: AgentOrchestrator, mock_llm):
         result = await orchestrator.start_agent("ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
     async def test_double_start(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.start_agent("researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_ALREADY_STARTED"
+        assert_error(result, "AGENT_ALREADY_STARTED")
 
     async def test_start_uses_config_model(self, orchestrator: AgentOrchestrator, mock_llm):
         from botcore_agents.config import AgentPermissionsConfig
@@ -93,20 +89,18 @@ class TestStopAgent:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.stop_agent("researcher")
-        assert result.success
-        assert result.data["status"] == "stopped"
+        data = assert_success(result)
+        assert data["status"] == "stopped"
         mock_llm["session_destroy"].assert_awaited_once()
 
     async def test_stop_nonexistent(self, orchestrator: AgentOrchestrator, mock_llm):
         result = await orchestrator.stop_agent("ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
     async def test_stop_already_stopped(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         result = await orchestrator.stop_agent("researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_STARTED"
+        assert_error(result, "AGENT_NOT_STARTED")
 
 
 class TestAssignTask:
@@ -114,21 +108,19 @@ class TestAssignTask:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.assign_task("Find bugs", agent="researcher")
-        assert result.success
-        assert result.data["status"] == "completed"
-        assert result.data["result"] == "Task completed successfully"
-        assert result.data["agent"] == "researcher"
+        data = assert_success(result)
+        assert data["status"] == "completed"
+        assert data["result"] == "Task completed successfully"
+        assert data["agent"] == "researcher"
 
     async def test_assign_to_stopped_agent(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         result = await orchestrator.assign_task("Do work", agent="researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_STARTED"
+        assert_error(result, "AGENT_NOT_STARTED")
 
     async def test_assign_to_nonexistent_agent(self, orchestrator: AgentOrchestrator, mock_llm):
         result = await orchestrator.assign_task("Do work", agent="ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
     async def test_assign_at_capacity(self, orchestrator: AgentOrchestrator, mock_llm):
         """Coder has max_concurrent_tasks=1; simulate already busy."""
@@ -140,15 +132,13 @@ class TestAssignTask:
         state.active_tasks.append("fake-task-id")
 
         result = await orchestrator.assign_task("More work", agent="coder")
-        assert not result.success
-        assert result.error.code == "AGENT_AT_CAPACITY"
+        assert_error(result, "AGENT_AT_CAPACITY")
 
     async def test_assign_respects_priority(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.assign_task("Urgent", agent="researcher", priority=1)
-        assert result.success
-        task_id = result.data["task_id"]
+        task_id = assert_success(result)["task_id"]
         task_result = orchestrator.get_task(task_id)
         assert task_result.data["priority"] == 1
 
@@ -169,34 +159,31 @@ class TestAssignTask:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.assign_task("Bad task", agent="researcher")
-        assert not result.success
-        assert result.error.code == "TASK_EXECUTION_ERROR"
+        assert_error(result, "TASK_EXECUTION_ERROR")
 
     async def test_assign_no_target_returns_error(self, orchestrator: AgentOrchestrator):
         result = await orchestrator.assign_task("Do work")
-        assert not result.success
-        assert result.error.code == "NO_TARGET"
+        assert_error(result, "NO_TARGET")
 
 
 class TestGetAgentStatus:
     async def test_status_stopped(self, orchestrator: AgentOrchestrator):
         await orchestrator.create_agent("researcher")
         result = orchestrator.get_agent_status("researcher")
-        assert result.success
-        assert result.data["status"] == "stopped"
+        data = assert_success(result)
+        assert data["status"] == "stopped"
 
     async def test_status_idle(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = orchestrator.get_agent_status("researcher")
-        assert result.success
-        assert result.data["status"] == "idle"
-        assert result.data["uptime_seconds"] >= 0
+        data = assert_success(result)
+        assert data["status"] == "idle"
+        assert data["uptime_seconds"] >= 0
 
     async def test_status_nonexistent(self, orchestrator: AgentOrchestrator):
         result = orchestrator.get_agent_status("ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestGetTask:
@@ -207,14 +194,13 @@ class TestGetTask:
         task_id = assign_result.data["task_id"]
 
         result = orchestrator.get_task(task_id)
-        assert result.success
-        assert result.data["description"] == "Work"
-        assert result.data["status"] == "completed"
+        data = assert_success(result)
+        assert data["description"] == "Work"
+        assert data["status"] == "completed"
 
     def test_get_nonexistent_task(self, orchestrator: AgentOrchestrator):
         result = orchestrator.get_task("no-such-id")
-        assert not result.success
-        assert result.error.code == "TASK_NOT_FOUND"
+        assert_error(result, "TASK_NOT_FOUND")
 
 
 class TestHeartbeat:
@@ -222,19 +208,17 @@ class TestHeartbeat:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = orchestrator.heartbeat("researcher")
-        assert result.success
-        assert result.data["last_heartbeat"] is not None
+        data = assert_success(result)
+        assert data["last_heartbeat"] is not None
 
     async def test_heartbeat_stopped_agent(self, orchestrator: AgentOrchestrator):
         await orchestrator.create_agent("researcher")
         result = orchestrator.heartbeat("researcher")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_STARTED"
+        assert_error(result, "AGENT_NOT_STARTED")
 
     def test_heartbeat_nonexistent(self, orchestrator: AgentOrchestrator):
         result = orchestrator.heartbeat("ghost")
-        assert not result.success
-        assert result.error.code == "AGENT_NOT_FOUND"
+        assert_error(result, "AGENT_NOT_FOUND")
 
 
 class TestSingleton:
@@ -264,8 +248,8 @@ class TestRoleBasedPooling:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.assign_task("Find bugs", role="researcher")
-        assert result.success
-        assert result.data["agent"] == "researcher"
+        data = assert_success(result)
+        assert data["agent"] == "researcher"
 
     async def test_assign_by_role_spawns_when_busy(self, orchestrator: AgentOrchestrator, mock_llm):
         """If the existing role agent is busy, spawn a new instance."""
@@ -297,9 +281,9 @@ class TestRoleBasedPooling:
         state.health.status = "busy"
 
         result = await orchestrator.assign_task("Second task", role="researcher")
-        assert result.success
+        data = assert_success(result)
         # Should have spawned researcher-1
-        assert result.data["agent"] == "researcher-1"
+        assert data["agent"] == "researcher-1"
         assert "researcher-1" in orchestrator.agents
 
     async def test_assign_by_role_spawns_sequential_names(
@@ -344,14 +328,13 @@ class TestRoleBasedPooling:
 
         # Spawn researcher-2
         r2 = await orchestrator.assign_task("Task B", role="researcher")
-        assert r2.success
-        assert r2.data["agent"] == "researcher-2"
+        r2_data = assert_success(r2)
+        assert r2_data["agent"] == "researcher-2"
 
     async def test_assign_by_role_unconfigured(self, orchestrator: AgentOrchestrator, mock_llm):
         """Role with no matching config returns error."""
         result = await orchestrator.assign_task("Work", role="unknown")
-        assert not result.success
-        assert result.error.code == "ROLE_NOT_CONFIGURED"
+        assert_error(result, "ROLE_NOT_CONFIGURED")
 
     async def test_assign_by_role_pool_full(self, orchestrator: AgentOrchestrator, mock_llm):
         """When pool hits max_agents and all role agents are busy, return error."""
@@ -393,8 +376,7 @@ class TestRoleBasedPooling:
 
         # Pool is now full (5 agents), all researchers busy → should fail
         result = await orchestrator.assign_task("One more", role="researcher")
-        assert not result.success
-        assert result.error.code == "MAX_AGENTS_REACHED"
+        assert_error(result, "MAX_AGENTS_REACHED")
 
     async def test_spawned_agent_inherits_config(self, orchestrator: AgentOrchestrator, mock_llm):
         """Spawned instances get the same model, skills, and prompt as the template."""
@@ -439,8 +421,8 @@ class TestRoleBasedPooling:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         result = await orchestrator.assign_task("Work", agent="researcher", role="coder")
-        assert result.success
-        assert result.data["agent"] == "researcher"
+        data = assert_success(result)
+        assert data["agent"] == "researcher"
 
 
 # Fake namespace for capability declaration tests
