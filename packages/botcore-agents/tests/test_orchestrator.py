@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import botcore_agents.orchestrator as orch_mod
 from afd.testing import assert_error, assert_success
@@ -276,6 +276,82 @@ class TestHeartbeat:
     def test_heartbeat_nonexistent(self, orchestrator: AgentOrchestrator):
         result = orchestrator.heartbeat("ghost")
         assert_error(result, "AGENT_NOT_FOUND")
+
+
+class TestAutosave:
+    async def test_create_agent_autosaves_when_enabled(
+        self, sample_config: AgentsPluginConfig
+    ):
+        sample_config.state.enabled = True
+        sample_config.state.autosave = True
+        backend = AsyncMock()
+        orchestrator = AgentOrchestrator(sample_config, backend=backend)
+
+        result = await orchestrator.create_agent("researcher")
+
+        assert_success(result)
+        backend.save.assert_awaited_once()
+
+    async def test_create_agent_does_not_autosave_when_disabled(
+        self, sample_config: AgentsPluginConfig
+    ):
+        sample_config.state.enabled = True
+        sample_config.state.autosave = False
+        backend = AsyncMock()
+        orchestrator = AgentOrchestrator(sample_config, backend=backend)
+
+        result = await orchestrator.create_agent("researcher")
+
+        assert_success(result)
+        backend.save.assert_not_awaited()
+
+    async def test_autosave_failures_do_not_break_commands(
+        self, sample_config: AgentsPluginConfig
+    ):
+        sample_config.state.enabled = True
+        sample_config.state.autosave = True
+        backend = AsyncMock()
+        backend.save.side_effect = OSError("disk full")
+        orchestrator = AgentOrchestrator(sample_config, backend=backend)
+
+        result = await orchestrator.create_agent("researcher")
+
+        assert_success(result)
+        backend.save.assert_awaited_once()
+
+    async def test_assign_task_autosaves_before_and_after_execution(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.state.enabled = True
+        sample_config.state.autosave = True
+        backend = AsyncMock()
+        orchestrator = AgentOrchestrator(sample_config, backend=backend)
+
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        backend.save.reset_mock()
+
+        result = await orchestrator.assign_task("Do work", agent="researcher")
+
+        assert_success(result)
+        assert backend.save.await_count == 2
+
+    async def test_heartbeat_does_not_trigger_autosave(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.state.enabled = True
+        sample_config.state.autosave = True
+        backend = AsyncMock()
+        orchestrator = AgentOrchestrator(sample_config, backend=backend)
+
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        backend.save.reset_mock()
+
+        result = orchestrator.heartbeat("researcher")
+
+        assert_success(result)
+        backend.save.assert_not_awaited()
 
 
 class TestSingleton:

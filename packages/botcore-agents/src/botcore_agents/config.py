@@ -44,6 +44,7 @@ class AgentsStateConfig(BaseModel):
     backend: Literal["json"] = "json"
     path: str = ".botcore/orchestrator-state.json"
     retention_hours: int = Field(default=168, ge=1, le=24 * 365)
+    autosave: bool = False
 
     def resolve_path(self, workspace: Path | None = None) -> Path:
         """Resolve the configured state path against a workspace or cwd."""

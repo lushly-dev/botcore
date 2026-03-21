@@ -21,7 +21,7 @@ Architectural interfaces that must exist before expanding agent or connector fea
 |------|----------------|--------|
 | [Agent Capability Declarations](docs/features/complete/agent-capability-declarations/spec.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
 | [Per-Agent Permission Profiles](docs/features/active/per-agent-permissions/spec.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Active |
-| [Orchestrator State Serialization](docs/features/active/orchestrator-state-serialization/spec.md) | Without this, can't add persistence or crash recovery later. `save_state()` / `load_state()` interface with JSON backend. | Active |
+| [Orchestrator State Serialization](docs/features/complete/orchestrator-state-serialization/spec.md) | Shipped. Orchestrator state now supports versioned snapshots, restore-safe recovery, resumable pending tasks, and opt-in autosave. | Complete |
 
 ## AFD 0.6.0 Adoption
 

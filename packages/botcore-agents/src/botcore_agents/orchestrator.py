@@ -89,6 +89,20 @@ class AgentOrchestrator:
     def tasks(self) -> dict[str, Task]:
         return dict(self._tasks)
 
+    def _autosave_enabled(self) -> bool:
+        return self._backend is not None and self._config.state.autosave
+
+    async def _autosave_if_configured(self, reason: str) -> None:
+        """Persist a best-effort snapshot after durable lifecycle changes."""
+        if not self._autosave_enabled():
+            return
+
+        try:
+            await self._backend.save(self._build_snapshot())
+            logger.debug("Autosaved orchestrator state after %s", reason)
+        except Exception as exc:
+            logger.warning("Autosave failed after %s: %s", reason, exc)
+
     def _resolve_tools(self, config: AgentConfig) -> list[str]:
         """Build the combined tools list from skills + connector commands."""
         tools = list(config.skills)
@@ -135,6 +149,7 @@ class AgentOrchestrator:
         health = AgentHealth(name=name, status="stopped")
         state = AgentState(config=agent_config, health=health)
         self._agents[name] = state
+        await self._autosave_if_configured(f"agent_create:{name}")
 
         return success(
             data={"name": name, "status": "stopped"},
@@ -157,6 +172,7 @@ class AgentOrchestrator:
             )
 
         del self._agents[name]
+        await self._autosave_if_configured(f"agent_delete:{name}")
 
         return success(
             data={"name": name, "deleted": True},
@@ -200,6 +216,7 @@ class AgentOrchestrator:
         state.started_at = now
         state.health.status = "idle"
         state.health.last_heartbeat = now
+        await self._autosave_if_configured(f"agent_start:{name}")
 
         return success(
             data={
@@ -240,6 +257,7 @@ class AgentOrchestrator:
         state.health.status = "stopped"
         state.health.current_task = ""
         state.started_at = None
+        await self._autosave_if_configured(f"agent_stop:{name}")
 
         return success(
             data={
@@ -486,6 +504,7 @@ class AgentOrchestrator:
             state.active_tasks.append(task.id)
         state.health.status = "busy"
         state.health.current_task = task.id
+        await self._autosave_if_configured(f"task_started:{task.id}")
 
         try:
             chat_result = await llm_chat(
@@ -513,6 +532,7 @@ class AgentOrchestrator:
             state.active_tasks.remove(task.id)
         state.health.current_task = ""
         state.health.status = "idle" if not state.active_tasks else "busy"
+        await self._autosave_if_configured(f"task_finished:{task.id}")
 
         if task.status == "failed":
             return error(
@@ -630,8 +650,6 @@ class AgentOrchestrator:
         except Exception as exc:
             logger.warning("State load failed: %s", exc)
             return error("STATE_LOAD_ERROR", f"Failed to load state: {exc}")
-
-    # TODO: auto-save on state changes is deferred to a future iteration.
 
 
 # ---------------------------------------------------------------------------

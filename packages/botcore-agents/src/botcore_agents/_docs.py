@@ -50,6 +50,7 @@ max_agents = 10
 enabled = true
 path = ".botcore/orchestrator-state.json"
 retention_hours = 168
+autosave = true
 
 [tool.botcore.plugins.agents.agents.researcher]
 name = "researcher"

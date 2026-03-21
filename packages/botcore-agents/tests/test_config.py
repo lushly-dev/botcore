@@ -153,6 +153,7 @@ class TestAgentsStateConfig:
         assert cfg.backend == "json"
         assert cfg.path == ".botcore/orchestrator-state.json"
         assert cfg.retention_hours == 168
+        assert cfg.autosave is False
 
     def test_resolve_path_absolute(self, tmp_path):
         path = tmp_path / "state.json"
