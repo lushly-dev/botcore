@@ -301,4 +301,5 @@ botcore.toml (or pyproject.toml [tool.botcore])
 - **Commands are async** — Every command is `async def`, returns `CommandResult[T]`.
 - **One plugin per package** — Split orthogonal concerns into separate packages.
 - **Skills have three-tier ownership** — `source: botcore` (bundled), `source: <plugin>` (plugin-provided), `source: local` (project-specific).
+- **Skills use noun-first naming** — Three suffix tiers signal the kind of help: bare noun for actions (`commit`, `pr`), noun-role for agents (`code-reviewer`, `mcp-builder`), noun-`learn` for reference (`caching-learn`, `authentication-learn`). See the `skill-manager` skill for full convention.
 - **Config is TOML** — `botcore.toml` or `pyproject.toml [tool.botcore]`. Secrets in env vars, never in config files.

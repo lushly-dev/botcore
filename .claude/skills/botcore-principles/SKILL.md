@@ -171,7 +171,19 @@ Each layer independently protective. No single point of failure.
 
 **Why:** A single security gate can be bypassed. A stack of independent layers requires an attacker to defeat all of them. Input validation catches malformed requests. Scope enforcement catches unauthorized access. Auth isolation prevents credential leaks. Rate limiting prevents abuse. Audit logging enables incident review.
 
-### 12. Don't Rebuild the Runtime
+### 12. Noun-First Skill Naming
+
+<rules>
+Skills use noun-first naming with three suffix tiers:
+- Bare noun for actions: `commit`, `pr`, `release`, `hotfix`
+- Noun-role for agent skills: `code-reviewer`, `mcp-builder`, `test-writer`
+- Noun-`learn` for reference: `caching-learn`, `authentication-learn`
+Never use verb-noun format (`write-tests`, `manage-git`).
+</rules>
+
+**Why:** Users think of the noun (domain) first, not the verb. The verb space is large and unpredictable, but the noun space maps directly to what you're working on. Noun-first also clusters related skills alphabetically in the `/` menu. The `-learn` suffix distinguishes reference skills from bare-noun actions that could otherwise be ambiguous.
+
+### 13. Don't Rebuild the Runtime
 
 <rules>
 The Copilot SDK provides: context compaction, streaming, multi-model, tool calling, auth, permissions, session persistence, hooks, subagents, MCP integration.
@@ -207,3 +219,4 @@ When evaluating a design choice, apply these tests:
 | Requiring 20 lines of config for basic use | #8 Convention Over Configuration | Add sensible defaults, make config optional |
 | Monolith plugin with 5k LOC | #9 One Plugin Per Package | Split into focused packages |
 | Auto-registering commands via decorators | #10 Explicit Registration | Register in `register()` explicitly |
+| Naming a skill `write-tests` or `manage-git` | #12 Noun-First Naming | Use `test-writer`, `git-manager` |
