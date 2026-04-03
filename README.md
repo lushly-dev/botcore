@@ -174,18 +174,18 @@ Skills are markdown knowledge packs that give agents domain expertise. botcore b
 | Category | Skills |
 |----------|--------|
 | **Architecture** | `architect-systems`, `design-apis`, `model-data` |
-| **Quality** | `audit-security`, `audit-licenses`, `enforce-standards`, `review-code`, `find-duplicates` |
-| **Testing** | `write-tests`, `test-components`, `build-stories` |
-| **Development** | `solve-problems`, `refactor-code`, `handle-errors`, `manage-concurrency`, `optimize-performance` |
+| **Quality** | `audit-security`, `audit-licenses`, `code-standards-learn`, `code-reviewer`, `find-duplicates` |
+| **Testing** | `test-writer`, `component-tester`, `build-stories` |
+| **Development** | `problem-solver`, `refactoring-learn`, `handle-errors`, `manage-concurrency`, `optimize-performance` |
 | **AI & Agents** | `integrate-llms`, `build-mcp-servers`, `create-prompts`, `create-personas`, `manage-commands` |
-| **Infrastructure** | `deploy-infrastructure`, `manage-dependencies`, `manage-environment`, `implement-observability` |
-| **Frontend** | `implement-designs`, `explore-css`, `ensure-accessibility`, `manage-state`, `manage-feature-flags` |
+| **Infrastructure** | `deploy-infrastructure`, `manage-dependencies`, `dev-environment-learn`, `implement-observability` |
+| **Frontend** | `implement-designs`, `explore-css`, `accessibility-learn`, `manage-state`, `manage-feature-flags` |
 | **Content** | `humanize-content`, `design-content`, `implement-i18n`, `implement-caching` |
-| **Workflow** | `do-commit`, `do-pr`, `do-release`, `do-review`, `do-hotfix` |
-| **Documentation** | `manage-documentation`, `write-specifications`, `write-commits`, `manage-skills` |
-| **Migration** | `migrate-systems`, `handle-authentication`, `research-topics` |
-| **Project** | `manage-git`, `manage-projects` |
-| **botcore** | `build-botcore-plugins`, `configure-botcore`, `run-dev-checks`, `automate-browsers` |
+| **Workflow** | `commit`, `pr`, `release`, `review`, `hotfix` |
+| **Documentation** | `docs-manager`, `spec-writer`, `commit-writer`, `skill-manager` |
+| **Migration** | `migration-learn`, `authentication-learn`, `research` |
+| **Project** | `git-manager`, `manage-projects` |
+| **botcore** | `plugin-builder`, `botcore-config`, `dev-checks`, `browser-automation` |
 
 ## Plugin System
 

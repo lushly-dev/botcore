@@ -222,6 +222,7 @@ async def llm_chat(
     session_id: str,
     message: str,
     attachments: list[dict] | None = None,
+    timeout: float | None = None,
 ) -> CommandResult[dict]:
     """Send a message to an active LLM session."""
     registry = get_session_registry()
@@ -239,7 +240,7 @@ async def llm_chat(
         send_options["attachments"] = attachments
 
     try:
-        event = await entry.session.send_and_wait(send_options)
+        event = await entry.session.send_and_wait(send_options, timeout=timeout)
     except Exception as exc:
         return error(
             "CHAT_ERROR",

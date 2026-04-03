@@ -36,14 +36,14 @@ class CopilotClientManager:
         if cls._instance is not None:
             return cls._instance
 
-        options: dict = {"use_stdio": True}
+        options: dict = {}
         if config.cli_url:
             options = {"cli_url": config.cli_url}
 
         client = CopilotClient(options)
         await client.start()
         cls._instance = client
-        logger.info("CopilotClient started (cli_url=%s)", config.cli_url or "stdio")
+        logger.info("CopilotClient started (cli_url=%s)", config.cli_url or "tcp")
         return client
 
     @classmethod

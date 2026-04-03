@@ -5,6 +5,12 @@ Shared bot infrastructure — config, plugin contract, skill registry, and extra
 > **!Important:** The year is 2026, not 2025.
 > **First time?** See [SETUP.md](SETUP.md) for installation, tooling, and environment setup.
 
+## CLI vs MCP
+
+For local development, **prefer CLI over MCP**. Run commands via `uv run python -c "..."` using `build_namespace()`. This gives instant startup, full output (no truncation), natural async chaining, and zero config. Document the command inventory in your project's `AGENTS.md` to replace the discovery role MCP normally fills.
+
+Use MCP only when the agent lacks terminal access — hosted deployment, Teams integration, remote clients, or environments where `run_in_terminal` is unavailable.
+
 ## Commands
 
 | Command | Purpose |
@@ -127,7 +133,7 @@ Commands: `cd botcore-connectors && uv run pytest tests/ -v` and `uv run ruff ch
 
 ## Plugin Contract
 
-Plugins register commands, docs, and skills via entry points. See [build-botcore-plugins](.claude/skills/build-botcore-plugins/) skill for full patterns.
+Plugins register commands, docs, and skills via entry points. See [plugin-builder](.claude/skills/plugin-builder/) skill for full patterns.
 
 ```python
 class MyPlugin:
@@ -148,7 +154,7 @@ Skills use `source:` frontmatter for three-tier ownership:
 
 ## Configuration
 
-Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`. See [configure-botcore](.claude/skills/configure-botcore/) skill for full reference.
+Per-repo config in `botcore.toml` or `pyproject.toml [tool.botcore]`. See [botcore-config](.claude/skills/botcore-config/) skill for full reference.
 
 ```toml
 [skills]

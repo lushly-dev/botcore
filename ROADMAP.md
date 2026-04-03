@@ -19,9 +19,9 @@ Architectural interfaces that must exist before expanding agent or connector fea
 
 | Spec | Why Foundation | Status |
 |------|----------------|--------|
-| [Agent Capability Declarations](docs/features/complete/agent-capability-declarations/spec.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
-| [Per-Agent Permission Profiles](docs/features/active/per-agent-permissions/spec.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Active |
-| [Orchestrator State Serialization](docs/features/complete/orchestrator-state-serialization/spec.md) | Shipped. Orchestrator state now supports versioned snapshots, restore-safe recovery, resumable pending tasks, and opt-in autosave. | Complete |
+| [Agent Capability Declarations](docs/features/complete/agent-skill-scoping/agent-skill-scoping.plan.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
+| [Per-Agent Permission Profiles](docs/features/complete/per-agent-permissions/per-agent-permissions.plan.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Complete |
+| [Orchestrator State Serialization](docs/features/complete/orchestrator-state-serialization/orchestrator-state-serialization.plan.md) | Shipped. Orchestrator state now supports versioned snapshots, restore-safe recovery, resumable pending tasks, and opt-in autosave. | Complete |
 
 ## AFD 0.6.0 Adoption
 
@@ -45,10 +45,10 @@ Features that the plugin architecture supports adding without rearchitecture. Ea
 
 | Proposal | Category | Effort |
 |----------|----------|--------|
-| [Async Task Execution](docs/features/proposed/async-task-execution/proposal.md) | Agents | Medium |
-| [Cost-Aware Routing](docs/features/proposed/cost-aware-routing/proposal.md) | Agents | Small-Medium |
-| [SQLite Memory Backend](docs/features/proposed/sqlite-memory-backend/proposal.md) | Memory | Medium |
-| [Azure Connectors](docs/features/proposed/azure-connectors/proposal.md) | Connectors | Medium |
+| [Async Task Execution](docs/features/proposed/async-task-execution/async-task-execution.plan.md) | Agents | Medium |
+| [Cost-Aware Routing](docs/features/proposed/cost-aware-routing/cost-aware-routing.plan.md) | Agents | Small-Medium |
+| [SQLite Memory Backend](docs/features/proposed/sqlite-memory-backend/sqlite-memory-backend.plan.md) | Memory | Medium |
+| [Azure Connectors](docs/features/proposed/azure-connectors/azure-connectors.plan.md) | Connectors | Medium |
 
 ## Future — Longer Term
 
@@ -97,7 +97,7 @@ Features on the horizon that don't need detailed specs yet. Listed for direction
 ### Developer Experience
 
 - **Config migration system** — Versioned config with auto-migration as botcore evolves. Matters when config complexity grows.
-- **Skill research command** — Auto-generate skill drafts from external documentation. See [proposal](docs/features/proposed/skill-research/proposal.md).
+- **Skill research command** — Auto-generate skill drafts from external documentation. See [proposal](docs/features/proposed/skill-research/skill-research.plan.md).
 
 ## Non-Goals
 

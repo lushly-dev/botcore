@@ -7,6 +7,7 @@ Each command follows the botcore convention: ``async def`` returning
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from afd import CommandResult
 

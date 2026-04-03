@@ -4,14 +4,14 @@ requires-python = ">=3.11"
 
 [[package]]
 name = "afd"
-version = "0.2.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/a3/0a9944f8912f58313783f6ab0205e4a7b0d38abb52fe0242621f3d1132bc/afd-0.2.0.tar.gz", hash = "sha256:5a59ba82d65d8a6bf0eeaf6ba73aebee457ef611aa2386cde0c5e64f6676b5d0", size = 78054, upload-time = "2026-02-11T21:40:00.715Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/03/0d81d6cee31c5175e04c623b8d2826d8bdc9be62d9eee36cf0e3c9100d4e/afd-0.6.0.tar.gz", hash = "sha256:03e8cebaa36cf1a5f6f5c885501f85b623ca5766f6590ca11f3ad3673b06da4d", size = 354374, upload-time = "2026-03-14T05:38:04.353Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/04/b7c49e5a026ce2866f6ef438879adcd8bce4bfa1a2416f5134c94ee7cb8a/afd-0.2.0-py3-none-any.whl", hash = "sha256:6a62e05f772bccffeb65aa3fcf07aad91081d57fe0ed43def1a10e245b309a27", size = 67511, upload-time = "2026-02-11T21:39:59.513Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/f5/55dc439216aca132379ba3000ee9d6979f70504b04026191b9d4802756f7/afd-0.6.0-py3-none-any.whl", hash = "sha256:70e39a02edc96d395c287863c68e47f452c119e822ca7cc09abc053fec46c4cf", size = 187884, upload-time = "2026-03-14T05:38:02.464Z" },
 ]
 
 [[package]]
@@ -805,7 +805,7 @@ wheels = [
 
 [[package]]
 name = "lushly-botcore"
-version = "0.2.1"
+version = "0.3.5"
 source = { editable = "." }
 dependencies = [
     { name = "afd" },
@@ -819,10 +819,12 @@ all = [
     { name = "google-genai" },
     { name = "httpx" },
     { name = "mcp" },
+    { name = "perfetto" },
     { name = "playwright" },
 ]
 cdp = [
     { name = "httpx" },
+    { name = "perfetto" },
     { name = "playwright" },
 ]
 dev = [
@@ -830,6 +832,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "vulture" },
 ]
 mcp = [
     { name = "mcp" },
@@ -843,13 +846,14 @@ research = [
 
 [package.metadata]
 requires-dist = [
-    { name = "afd", specifier = ">=0.1.0" },
+    { name = "afd", specifier = ">=0.6.0" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "google-genai", marker = "extra == 'research'", specifier = ">=0.3.0" },
     { name = "httpx", marker = "extra == 'cdp'", specifier = ">=0.24.0" },
     { name = "httpx", marker = "extra == 'quality'", specifier = ">=0.24.0" },
     { name = "lushly-botcore", extras = ["cdp", "research", "quality", "mcp"], marker = "extra == 'all'" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0.0" },
+    { name = "perfetto", marker = "extra == 'cdp'", specifier = ">=0.16.0" },
     { name = "playwright", marker = "extra == 'cdp'", specifier = ">=1.40.0" },
     { name = "pydantic", specifier = ">=2.5.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
@@ -857,6 +861,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
+    { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.11" },
 ]
 provides-extras = ["dev", "cdp", "research", "quality", "mcp", "all"]
 
@@ -1012,6 +1017,18 @@ wheels = [
 ]
 
 [[package]]
+name = "perfetto"
+version = "0.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/52/9deccf2a9708b39a78d984d62d2d315c3049e005c7f31bdae21dc80ada6d/perfetto-0.16.0.tar.gz", hash = "sha256:b345af38cc6113f76566b9194cabcc7cc1731e8142f1c869240c0983a501b1e0", size = 299406, upload-time = "2025-12-05T19:10:10.33Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/26/6a28db36a65f9f6e57cb0da611593e309b6422bdbf07e0785cf5b6e8e4cc/perfetto-0.16.0-py3-none-any.whl", hash = "sha256:7da26220635d80fd6a8401f3c75499d180cc48ebd257dad147090ec88b6417c1", size = 313916, upload-time = "2025-12-05T19:10:08.336Z" },
+]
+
+[[package]]
 name = "playwright"
 version = "1.58.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1136,6 +1153,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/ef/3c6ecf8b317aa982f309835e8f96987466123c6e596646d4e6a1dfcd080f/propcache-0.4.1-cp314-cp314t-win_amd64.whl", hash = "sha256:990f6b3e2a27d683cb7602ed6c86f15ee6b43b1194736f9baaeb93d0016633b1", size = 46259, upload-time = "2025-10-08T19:48:34.226Z" },
     { url = "https://files.pythonhosted.org/packages/c4/2d/346e946d4951f37eca1e4f55be0f0174c52cd70720f84029b02f296f4a38/propcache-0.4.1-cp314-cp314t-win_arm64.whl", hash = "sha256:ecef2343af4cc68e05131e45024ba34f6095821988a9d0a02aa7c73fcc448aa9", size = 40428, upload-time = "2025-10-08T19:48:35.441Z" },
     { url = "https://files.pythonhosted.org/packages/5b/5a/bc7b4a4ef808fa59a816c17b20c4bef6884daebbdf627ff2a161da67da19/propcache-0.4.1-py3-none-any.whl", hash = "sha256:af2a6052aeb6cf17d3e46ee169099044fd8224cbaf75c76a2ef596e8163e2237", size = 13305, upload-time = "2025-10-08T19:49:00.792Z" },
+]
+
+[[package]]
+name = "protobuf"
+version = "7.34.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/6b/a0e95cad1ad7cc3f2c6821fcab91671bd5b78bd42afb357bb4765f29bc41/protobuf-7.34.1.tar.gz", hash = "sha256:9ce42245e704cc5027be797c1db1eb93184d44d1cdd71811fb2d9b25ad541280", size = 454708, upload-time = "2026-03-20T17:34:47.036Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/11/3325d41e6ee15bf1125654301211247b042563bcc898784351252549a8ad/protobuf-7.34.1-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:d8b2cc79c4d8f62b293ad9b11ec3aebce9af481fa73e64556969f7345ebf9fc7", size = 429247, upload-time = "2026-03-20T17:34:37.024Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/9d/aa69df2724ff63efa6f72307b483ce0827f4347cc6d6df24b59e26659fef/protobuf-7.34.1-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:5185e0e948d07abe94bb76ec9b8416b604cfe5da6f871d67aad30cbf24c3110b", size = 325753, upload-time = "2026-03-20T17:34:38.751Z" },
+    { url = "https://files.pythonhosted.org/packages/92/e8/d174c91fd48e50101943f042b09af9029064810b734e4160bbe282fa1caa/protobuf-7.34.1-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:403b093a6e28a960372b44e5eb081775c9b056e816a8029c61231743d63f881a", size = 340198, upload-time = "2026-03-20T17:34:39.871Z" },
+    { url = "https://files.pythonhosted.org/packages/53/1b/3b431694a4dc6d37b9f653f0c64b0a0d9ec074ee810710c0c3da21d67ba7/protobuf-7.34.1-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:8ff40ce8cd688f7265326b38d5a1bed9bfdf5e6723d49961432f83e21d5713e4", size = 324267, upload-time = "2026-03-20T17:34:41.1Z" },
+    { url = "https://files.pythonhosted.org/packages/85/29/64de04a0ac142fb685fd09999bc3d337943fb386f3a0ec57f92fd8203f97/protobuf-7.34.1-cp310-abi3-win32.whl", hash = "sha256:34b84ce27680df7cca9f231043ada0daa55d0c44a2ddfaa58ec1d0d89d8bf60a", size = 426628, upload-time = "2026-03-20T17:34:42.536Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/87/cb5e585192a22b8bd457df5a2c16a75ea0db9674c3a0a39fc9347d84e075/protobuf-7.34.1-cp310-abi3-win_amd64.whl", hash = "sha256:e97b55646e6ce5cbb0954a8c28cd39a5869b59090dfaa7df4598a7fba869468c", size = 437901, upload-time = "2026-03-20T17:34:44.112Z" },
+    { url = "https://files.pythonhosted.org/packages/88/95/608f665226bca68b736b79e457fded9a2a38c4f4379a4a7614303d9db3bc/protobuf-7.34.1-py3-none-any.whl", hash = "sha256:bb3812cd53aefea2b028ef42bd780f5b96407247f20c6ef7c679807e9d188f11", size = 170715, upload-time = "2026-03-20T17:34:45.384Z" },
 ]
 
 [[package]]
@@ -1777,6 +1809,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/32/ce/eeb58ae4ac36fe09e3842eb02e0eb676bf2c53ae062b98f1b2531673efdd/uvicorn-0.41.0.tar.gz", hash = "sha256:09d11cf7008da33113824ee5a1c6422d89fbc2ff476540d69a34c87fab8b571a", size = 82633, upload-time = "2026-02-16T23:07:24.1Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/e4/d04a086285c20886c0daad0e026f250869201013d18f81d9ff5eada73a88/uvicorn-0.41.0-py3-none-any.whl", hash = "sha256:29e35b1d2c36a04b9e180d4007ede3bcb32a85fbdfd6c6aeb3f26839de088187", size = 68783, upload-time = "2026-02-16T23:07:22.357Z" },
+]
+
+[[package]]
+name = "vulture"
+version = "2.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/3e/4d08c5903b2c0c70cad583c170cc4a663fc6a61e2ad00b711fcda61358cd/vulture-2.16.tar.gz", hash = "sha256:f8d9f6e2af03011664a3c6c240c9765b3f392917d3135fddca6d6a68d359f717", size = 52680, upload-time = "2026-03-25T14:41:27.141Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/be/f935130312330614811dae2ea9df3f395f6d63889eb6c2e68c14507152ee/vulture-2.16-py3-none-any.whl", hash = "sha256:6e0f1c312cef1c87856957e5c2ca9608834a7c794c2180477f30bf0e4cc58eee", size = 26993, upload-time = "2026-03-25T14:41:26.21Z" },
 ]
 
 [[package]]

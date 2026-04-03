@@ -49,7 +49,7 @@ Task assignment (Teams, CLI, MCP)
 
 [agents.researcher]
 model = "gpt-4.1"
-skills = ["research-topics", "solve-problems"]
+skills = ["research", "problem-solver"]
 connectors = ["github"]
 memory_scope = "private"
 max_concurrent_tasks = 1
@@ -58,7 +58,7 @@ system_prompt = "You are a research specialist."
 
 [agents.developer]
 model = "claude-sonnet-4"
-skills = ["write-tests", "refactor-code", "do-commit"]
+skills = ["test-writer", "refactoring-learn", "commit"]
 connectors = ["github", "azure-devops"]
 memory_scope = "team"              # Can read shared memory
 max_concurrent_tasks = 2
@@ -66,7 +66,7 @@ system_prompt = "You are a senior developer."
 
 [agents.coordinator]
 model = "gpt-4.1"
-skills = ["manage-projects", "write-specifications"]
+skills = ["manage-projects", "spec-writer"]
 connectors = ["github", "email", "calendar"]
 memory_scope = "team"
 max_concurrent_tasks = 3
