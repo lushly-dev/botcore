@@ -97,13 +97,28 @@ project-b/.claude/skills/         # Project-specific
 
 ### 3. Naming Convention
 
+**Format rules:**
+
 | Pattern | Example | Rule |
 |---------|---------|------|
 | Lowercase + hyphens | `problem-solver` | Required (open standard) |
-| Match parent directory | `manage-skills/SKILL.md` → `name: manage-skills` | Required |
+| Match parent directory | `commit/SKILL.md` → `name: commit` | Required |
 | No consecutive hyphens | `my-skill` (not `my--skill`) | Required |
 | Max 64 characters | — | Required |
-| No suffixes | `accessibility` (not `accessibility-expert`) | Preferred |
+| Noun-first | `code-reviewer` (not `review-code`) | Required |
+
+**Naming tiers — the suffix signals what kind of help the skill provides:**
+
+| Suffix | Meaning | Examples |
+|--------|---------|---------|
+| *(bare noun)* | Action — does the thing | `commit`, `pr`, `release`, `hotfix`, `review` |
+| `-role` (`-er`/`-or`) | Agent — works with you actively | `code-reviewer`, `mcp-builder`, `test-writer`, `security-auditor` |
+| `-learn` | Reference — teaches patterns and guidance | `caching-learn`, `authentication-learn`, `concurrency-learn` |
+
+**How to choose:** Pick the noun (domain) first, then the suffix:
+- Will it *perform an action* when invoked? → bare noun (`commit`, `release`)
+- Will it *actively collaborate* on a task? → noun-role (`code-reviewer`, `problem-solver`)
+- Will it *teach patterns and provide reference*? → noun-learn (`caching-learn`, `state-learn`)
 
 ### 4. Deterministic Offloading
 

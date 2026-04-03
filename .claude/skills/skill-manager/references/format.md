@@ -53,16 +53,26 @@ These fields are defined by the Agent Skills open standard and work across any c
 - Lowercase letters, digits, and single hyphens only
 - Must start with a letter
 - No consecutive hyphens (`--`)
+- Noun-first (domain first, then suffix)
 - Regex: `^[a-z][a-z0-9](-?[a-z0-9])*$`
 - Must exactly match the parent directory name
 
+**Naming tiers** — the suffix signals what kind of help the skill provides:
+
+| Suffix | Meaning | Examples |
+|--------|---------|---------|
+| *(bare noun)* | Action — does the thing | `commit`, `pr`, `release`, `hotfix` |
+| `-role` (`-er`/`-or`) | Agent — works with you | `code-reviewer`, `test-writer`, `security-auditor` |
+| `-learn` | Reference — teaches patterns | `caching-learn`, `authentication-learn` |
+
 ```yaml
-# ✅ Valid
-name: api-design
-name: content-design
-name: fast-element
+# ✅ Valid (noun-first with tier suffix)
+name: api-designer
+name: caching-learn
+name: commit
 
 # ❌ Invalid
+name: design-apis      # verb-noun (old format)
 name: API-Design       # uppercase
 name: api--design      # consecutive hyphens
 name: 3d-viewer        # starts with digit
