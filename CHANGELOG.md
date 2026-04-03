@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-02
+
+### Changed
+
+- **BREAKING: skill naming convention** -- All 55 bundled skills renamed from verb-noun to noun-first format. Three naming tiers: bare noun for actions (`commit`, `pr`, `release`), noun-role for agent skills (`code-reviewer`, `mcp-builder`, `test-writer`), and noun-`learn` for reference skills (`caching-learn`, `authentication-learn`, `concurrency-learn`). Update any `skills` lists in agent configs and `include`/`skip` lists in `[skills]` config to use new names.
+
+### Added
+
+- **agents: state config model** -- `AgentsStateConfig` nested model replaces flat `state_backend`/`state_path`/`state_retention_hours` fields with structured `state.enabled`, `state.resolve_path()`, and `state.autosave` support.
+- **agents: per-agent permissions** -- Agent capability declarations and permission profiles for shell, filesystem, MCP, and custom tool access.
+- **skills: configure-agents** -- New skill for configuring botcore agent teams with MAS research patterns, persona definitions, and skill granularity guidance.
+
 ## [0.3.5] - 2026-03-19
 
 ### Improved
