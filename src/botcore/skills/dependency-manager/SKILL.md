@@ -112,7 +112,7 @@ Deep transitive dependency chains amplify risk. Prefer packages with few transit
 #### 2. Evaluate Candidates
 
 - [ ] Compare at least 2 alternatives when feasible
-- [ ] Run the Package Health Assessment (see `references/package-evaluation.md`)
+- [ ] Run the Package Health Assessment (see [references/package-evaluation.md](references/package-evaluation.md))
 - [ ] Check license compatibility with your project
 - [ ] Review transitive dependency count (`npm ls`, `pip show`, `cargo tree`)
 - [ ] Search for known vulnerabilities (`npm audit`, `pip-audit`, `cargo audit`)

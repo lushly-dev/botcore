@@ -120,13 +120,13 @@ uv pip install -e ".[dev]"
 # Windows: winget install Schniz.fnm
 # macOS: brew install fnm
 
-# Pin and use a Node version
-echo "22" > .node-version
+# Pin and use the project's Node LTS version
+echo "24" > .node-version
 fnm use
 
 # Align pnpm version
 corepack enable
-corepack prepare pnpm@10.26.2 --activate
+corepack prepare pnpm@10.32.1 --activate
 ```
 
 ### PATH Health
