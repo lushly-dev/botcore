@@ -14,7 +14,9 @@ from botcore.utils.workspace import find_workspace
 # Cross-platform path patterns
 PATH_PATTERNS = {
     "windows_drive": {
-        "pattern": re.compile(r'["\']?[A-Za-z]:\\[^"\']*["\']?'),
+        # Lookbehind keeps mid-word colons like `DTSTAMP:\d` or `User:\n` from matching —
+        # a real drive letter is a single letter, not the tail of an identifier.
+        "pattern": re.compile(r'(?<![A-Za-z0-9_])["\']?[A-Za-z]:\\[^"\']*["\']?'),
         "description": "Windows absolute path (D:\\...)",
         "severity": "error",
     },

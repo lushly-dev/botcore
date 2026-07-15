@@ -19,6 +19,9 @@ _LANG_EXTENSIONS: dict[str, list[str]] = {
     "rust": [".rs"],
 }
 
+# Directory names never scanned for size — dependency trees and build output
+_SKIP_DIRS = {"node_modules", "__pycache__", "dist", "build", "target", ".venv", ".git", "coverage"}
+
 
 def _parse_version(version: str) -> tuple[int, int, int]:
     """Parse version string into (major, minor, patch) tuple."""
@@ -94,7 +97,7 @@ async def dev_check_size(
             continue
         if source_file.suffix not in extensions:
             continue
-        if "__pycache__" in str(source_file) or "node_modules" in str(source_file):
+        if any(part in _SKIP_DIRS for part in source_file.parts):
             continue
         if "test_" in source_file.name or ".test." in source_file.name:
             continue

@@ -115,6 +115,26 @@ async def test_check_size_typescript_extensions(tmp_path) -> None:
     assert len(data["warnings"]) == 1  # Only app.ts
 
 
+async def test_check_size_skips_build_output(tmp_path) -> None:
+    """check_size ignores dist/ and build/ trees like it ignores node_modules."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "small.py").write_text("x = 1\n" * 50)
+    dist = tmp_path / "src" / "dist"
+    dist.mkdir()
+    (dist / "bundle.py").write_text("x = 1\n" * 2000)
+    build = tmp_path / "src" / "build"
+    build.mkdir()
+    (build / "out.py").write_text("x = 1\n" * 2000)
+
+    with patch("botcore.commands.dev.quality.find_workspace", return_value=tmp_path):
+        result = await dev_check_size(path=str(src), error_threshold=1000)
+
+    data = assert_success(result)
+    assert data["files_checked"] == 1
+    assert len(data["errors"]) == 0
+
+
 async def test_check_deps_npm_dispatch(tmp_path) -> None:
     """dev_check_deps dispatches to npm outdated for TypeScript."""
     (tmp_path / "package.json").write_text('{"name": "test"}')

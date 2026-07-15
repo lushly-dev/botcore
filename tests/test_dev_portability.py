@@ -63,6 +63,25 @@ async def test_check_paths_detects_windows_drive(tmp_path) -> None:
     assert_error(result, "HARDCODED_PATHS_FOUND")
 
 
+async def test_check_paths_ignores_escape_sequences(tmp_path) -> None:
+    """Mid-word colon-backslash pairs like `DTSTAMP:\\d` or `User:\\n` are not drive paths."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.ts").write_text(
+        "expect(ical).toMatch(/DTSTAMP:\\d{8}/);\n"
+        "sections.push(`User:\\n${ctx.join('\\n')}`);\n"
+    )
+
+    with (
+        patch("botcore.commands.dev.portability.find_workspace", return_value=tmp_path),
+        patch("botcore.commands.dev.portability.DEFAULT_ALLOWLIST_PATTERNS", []),
+    ):
+        result = await dev_check_paths(path=str(src))
+
+    data = assert_success(result)
+    assert len(data["errors"]) == 0
+
+
 async def test_check_paths_detects_unix_home(tmp_path) -> None:
     """Detects hardcoded Unix home paths."""
     src = tmp_path / "src"
