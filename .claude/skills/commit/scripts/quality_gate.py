@@ -1,4 +1,4 @@
-"""Quality gate script for commit skill.
+"""Quality gate script for do-commit skill.
 
 Detects project languages and runs all relevant quality checks.
 Outputs structured JSON to stdout. Recovery suggestions to stderr.
@@ -27,8 +27,15 @@ def detect_languages(root: Path) -> list[str]:
 
 
 def read_config(root: Path) -> dict:
-    """Read botcore.toml for thresholds."""
+    """Read botcore.toml thresholds for the diagnostic stderr line only.
+
+    Enforcement does not flow through this dict: the botcore checks read
+    botcore.toml themselves in-process. This just keeps the printed
+    "Config thresholds" line honest.
+    """
     config_path = root / "botcore.toml"
+    # Used only when botcore.toml is absent; values mirror botcore's own
+    # BotCoreConfig defaults so the diagnostics match what botcore would enforce.
     defaults = {
         "file_size_warn": 500,
         "file_size_error": 1000,
@@ -48,7 +55,10 @@ def read_config(root: Path) -> dict:
 
     with open(config_path, "rb") as f:
         data = tomllib.load(f)
-    defaults.update(data.get("settings", {}))
+    # Threshold keys live at the top level of botcore.toml (there is no [settings] table)
+    for key in defaults:
+        if key in data:
+            defaults[key] = data[key]
     return defaults
 
 
@@ -138,27 +148,20 @@ def get_checks(languages: list[str], root: Path) -> list[tuple[str, list[str]]]:
         checks.append(("check:rs", ["cargo", "check"]))
         checks.append(("test:rs", ["cargo", "test"]))
 
-    # Universal checks (use botcore commands if available)
-    checks.append(("check-size", [sys.executable, "-c",
-        "import asyncio; from botcore.commands.dev import dev_check_size; "
-        "r = asyncio.run(dev_check_size()); "
-        "import sys; sys.exit(0 if r.success else 1)"
-    ]))
-    checks.append(("check-paths", [sys.executable, "-c",
-        "import asyncio; from botcore.commands.dev import dev_check_paths; "
-        "r = asyncio.run(dev_check_paths()); "
-        "import sys; sys.exit(0 if r.success else 1)"
-    ]))
-    checks.append(("circular-imports", [sys.executable, "-c",
-        "import asyncio; "
-        "from botcore.commands.dev import dev_circular_imports; "
-        "r = asyncio.run(dev_circular_imports()); "
-        "import sys; sys.exit(0 if r.success else 1)"
-    ]))
-    checks.append(("lockfile-drift", [sys.executable, "-c",
-        "import asyncio; from botcore.commands.dev.quality import dev_check_lockfile; "
-        "r = asyncio.run(dev_check_lockfile()); "
-        "import sys; sys.exit(0 if r.success else 1)"
+    # Universal checks, delegated to botcore via botcore_checks.py (kept importable
+    # and unit-tested there rather than as inline code-as-strings). check-size and
+    # check-paths scan explicit source dirs: botcore defaults to <workspace>/src,
+    # which doesn't exist in this monorepo.
+    script_dir = Path(__file__).resolve().parent
+    helper = str(script_dir / "botcore_checks.py")
+    for name in ("check-size", "check-paths", "circular-imports", "lockfile-drift"):
+        checks.append((name, [sys.executable, helper, name]))
+
+    # The helper's own unit tests run as part of the gate — nothing else in the
+    # repo executes Python tests (no pyproject.toml), and gate plumbing that is
+    # itself untested is the blind spot this gate exists to prevent.
+    checks.append(("gate-selftest", [
+        sys.executable, "-m", "unittest", "discover", "-s", str(script_dir), "-q",
     ]))
 
     return checks

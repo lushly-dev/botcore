@@ -98,10 +98,10 @@ Then run `git add` (stage relevant files) and `git commit`.
 
 ## Quality Gate Script
 
-The `scripts/quality_gate.py` script automates deterministic checks. Run it from the repo root:
+The `scripts/quality_gate.py` script automates deterministic checks. Run it from the repo root **with the botcore venv on PATH** — the four botcore checks (check-size, check-paths, circular-imports, lockfile-drift) shell out to the same interpreter and fail with "botcore not importable" under a bare `python`:
 
 ```bash
-python {skill-dir}/scripts/quality_gate.py
+PATH=".botcore-venv/bin:$PATH" python {skill-dir}/scripts/quality_gate.py
 ```
 
 It reads `botcore.toml` for per-repo thresholds and detects languages from config files. Output is JSON:
