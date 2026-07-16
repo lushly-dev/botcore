@@ -117,6 +117,25 @@ async def test_circular_imports_ts_clean_output_is_not_a_cycle(tmp_path) -> None
 
     data = assert_success(result)
     assert data.get("cycle_count") == 0
+    assert data.get("files_processed") == 361
+
+
+async def test_circular_imports_ts_zero_files_is_an_error(tmp_path) -> None:
+    """madge processing 0 files means a mis-targeted scan, not a clean graph."""
+    (tmp_path / "package.json").write_text('{"name": "test"}')
+
+    with (
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
+    ):
+        mock_tool.return_value = {
+            "success": True,
+            "output": "Processed 0 files (140ms)\n\n✔ No circular dependency found!\n",
+            "error": None,
+        }
+        result = await dev_circular_imports(language="typescript")
+
+    assert_error(result, "NO_FILES_SCANNED")
 
 
 async def test_circular_imports_ts_tool_not_found(tmp_path) -> None:

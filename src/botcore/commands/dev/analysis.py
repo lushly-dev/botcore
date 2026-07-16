@@ -157,6 +157,16 @@ async def dev_circular_imports(
                 reasoning="madge not available — skipped TypeScript circular dependency check",
             )
         output = result.get("output", "")
+        # Fail closed on empty scans: madge reports "Processed N files", and
+        # N == 0 means a mis-targeted invocation, not a clean dependency graph.
+        processed = re.search(r"Processed (\d+) files", output)
+        files_processed = int(processed.group(1)) if processed else None
+        if files_processed == 0:
+            return error(
+                "NO_FILES_SCANNED",
+                "madge processed 0 files — wrong path or missing extensions",
+                suggestion="Point at a directory containing TypeScript sources",
+            )
         # Cycles are listed as "N) a.ts > b.ts > a.ts" lines; madge's prose
         # ("No circular dependency found!") also contains the word "circular",
         # so parse the numbered lines rather than substring-matching.
@@ -177,6 +187,7 @@ async def dev_circular_imports(
                 "path": path or ".",
                 "cycles": cycles,
                 "cycle_count": len(cycles),
+                "files_processed": files_processed,
                 "tool": "madge",
             },
             reasoning=f"Circular dependency check via madge — {len(cycles)} cycle(s)",
