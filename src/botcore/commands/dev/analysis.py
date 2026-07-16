@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 import subprocess
 import sys
 import tomllib
@@ -143,8 +144,10 @@ async def dev_circular_imports(
     ) if ws else (language or config.language)
 
     if lang == "typescript":
+        # --extensions is required: without it madge processes 0 files when
+        # pointed at a TypeScript directory and cycles go undetected.
         result = await run_external_tool(
-            "npx", ["madge", "--circular", path or "."],
+            "npx", ["madge", "--circular", "--extensions", "ts,tsx", path or "."],
             install_hint="npm i -D madge",
             cwd=ws,
         )
@@ -154,13 +157,29 @@ async def dev_circular_imports(
                 reasoning="madge not available — skipped TypeScript circular dependency check",
             )
         output = result.get("output", "")
-        has_cycles = result.get("success") is False or "circular" in output.lower()
+        # Cycles are listed as "N) a.ts > b.ts > a.ts" lines; madge's prose
+        # ("No circular dependency found!") also contains the word "circular",
+        # so parse the numbered lines rather than substring-matching.
+        cycles = [
+            line.strip() for line in output.splitlines()
+            if re.match(r"^\s*\d+\)\s", line)
+        ]
+        if len(cycles) > config.circular_deps_allowed:
+            cycle_summary = "; ".join(cycles[:5])
+            return error(
+                "CIRCULAR_DEPS",
+                f"Found {len(cycles)} circular dependenc"
+                f"{'y' if len(cycles) == 1 else 'ies'}: {cycle_summary}",
+                suggestion="Break cycles by restructuring imports",
+            )
         return success(
-            data={"path": path or ".", "raw_output": output, "tool": "madge"},
-            reasoning=(
-                "Circular dependency check via madge"
-                + (" — cycles found" if has_cycles else "")
-            ),
+            data={
+                "path": path or ".",
+                "cycles": cycles,
+                "cycle_count": len(cycles),
+                "tool": "madge",
+            },
+            reasoning=f"Circular dependency check via madge — {len(cycles)} cycle(s)",
         )
 
     scan_path = Path(path) if path else (ws / "src" if ws else Path("src"))

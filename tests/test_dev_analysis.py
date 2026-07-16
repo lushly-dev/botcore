@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from afd.testing import assert_success
+from afd.testing import assert_error, assert_success
 
 from botcore.commands.dev.analysis import (
     dev_circular_imports,
@@ -77,6 +77,46 @@ async def test_circular_imports_ts_runs_madge(tmp_path) -> None:
 
     data = assert_success(result)
     assert data.get("tool") == "madge"
+
+
+async def test_circular_imports_ts_detects_cycles(tmp_path) -> None:
+    """madge cycle output ("N) a > b" lines) becomes a CIRCULAR_DEPS error."""
+    (tmp_path / "package.json").write_text('{"name": "test"}')
+
+    with (
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
+    ):
+        mock_tool.return_value = {
+            "success": False,
+            "output": "Processed 2 files\n\n1) _a.ts > _b.ts\n",
+            "error": None,
+        }
+        result = await dev_circular_imports(language="typescript")
+
+    err = assert_error(result, "CIRCULAR_DEPS")
+    assert "_a.ts > _b.ts" in err.message
+    # --extensions must be passed or madge processes 0 TypeScript files
+    assert "--extensions" in mock_tool.call_args.args[1]
+
+
+async def test_circular_imports_ts_clean_output_is_not_a_cycle(tmp_path) -> None:
+    """madge's "No circular dependency found!" prose must not read as a cycle."""
+    (tmp_path / "package.json").write_text('{"name": "test"}')
+
+    with (
+        patch(_FIND_WS, return_value=tmp_path),
+        patch(_RUN_TOOL, new_callable=AsyncMock) as mock_tool,
+    ):
+        mock_tool.return_value = {
+            "success": True,
+            "output": "Processed 361 files\n\n✔ No circular dependency found!\n",
+            "error": None,
+        }
+        result = await dev_circular_imports(language="typescript")
+
+    data = assert_success(result)
+    assert data.get("cycle_count") == 0
 
 
 async def test_circular_imports_ts_tool_not_found(tmp_path) -> None:
