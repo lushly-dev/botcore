@@ -192,15 +192,27 @@ async def my_execute(code: str) -> dict:
 
 ### Truncated Results
 
-**Symptom:** Tool output ends with "..."
+**Symptom:** Tool output ends with "..." -- or, for a tool returning JSON, fails to parse
 
-**Check:** Is output exceeding limits?
+**Check:** Is output exceeding the budget?
 
 ```python
-MAX_OUTPUT_LENGTH = 8000
+result = run_command(cmd)
+if result["truncated"]:
+    ...  # the payload was clipped
+```
 
-if len(output) > MAX_OUTPUT_LENGTH:
-    output = output[:MAX_OUTPUT_LENGTH] + "\n... (truncated)"
+**If the tool returns structured data, do not raise the budget -- remove it.**
+Truncated JSON is not shorter JSON, it is a decode error:
+
+```python
+run_command(cmd, max_output=None)
+```
+
+**For prose output, raise the budget:**
+
+```python
+run_command(cmd, max_output=250_000)
 ```
 
 **Increase limit if needed:**
