@@ -69,14 +69,20 @@ description="""Dev tools. Actions: lint, test, build.
 Params: {"package": "...", "fix": bool}"""
 ```
 
-### 3. Truncate All Outputs
+### 3. Bound Prose Outputs -- Never Truncate Structured Ones
 
-Large outputs crash Opus 4.5 and consume excessive context. Enforce a hard limit.
+Unbounded output consumes context that a long-running agent cannot get back. Bound
+it -- but only where truncation *degrades* the result instead of destroying it.
+
+Truncating log or diff text yields shorter log or diff text. Truncating JSON,
+NDJSON, or any structured payload yields an unparseable string: the caller does not
+get less data, it gets a decode error. Never apply a character budget to a tool
+whose contract is "returns structured data."
 
 ```python
-MAX_OUTPUT_LENGTH = 8000  # ~2000 tokens
+MAX_OUTPUT_LENGTH = 100_000  # ~25k tokens -- generous, still bounded
 
-def truncate_output(output: str, max_length: int = 8000) -> str:
+def truncate_output(output: str, max_length: int = MAX_OUTPUT_LENGTH) -> str:
     if len(output) <= max_length:
         return output
     truncated = output[:max_length]
@@ -85,6 +91,13 @@ def truncate_output(output: str, max_length: int = 8000) -> str:
         truncated = truncated[:last_newline]
     return truncated + "\n\n... (truncated for token safety)"
 ```
+
+Use `run_command(..., max_output=None)` for structured payloads, and always surface
+the returned `truncated` flag so a clipped result is diagnosable rather than silent.
+
+> The old 8,000-char default dated from small-context models. Modern models
+> comfortably handle far more, and the cost of corrupting a structured payload
+> exceeds the cost of a larger read.
 
 ### 4. Use the Execute Pattern for Opus Compatibility
 
@@ -141,7 +154,7 @@ stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)
 |---|---|---|
 | Tool descriptions (total) | <500 tokens | Loaded on every request |
 | Single tool description | <50 tokens | Keep concise |
-| Command output | 8,000 chars | ~2,000 tokens |
+| Command output | 100,000 chars | ~25,000 tokens; use `max_output=None` for structured payloads |
 | Research output | 12,000 chars | ~3,000 tokens, still safe |
 | Tool count | <10 tools | LLMs degrade above 10-20 |
 
@@ -226,7 +239,7 @@ Before shipping an MCP server, verify:
 
 - [ ] Tool count is under 10 (`@mcp.tool` decorator count)
 - [ ] Total description tokens under 500 (estimate ~4 chars per token)
-- [ ] All outputs truncated with `MAX_OUTPUT_LENGTH`
+- [ ] Prose outputs bounded by `MAX_OUTPUT_LENGTH`; structured outputs use `max_output=None`
 - [ ] All subprocess calls use `asyncio.create_subprocess_exec`
 - [ ] All subprocess calls set `stdin=asyncio.subprocess.DEVNULL`
 - [ ] Execute tool added if any tools fail silently on Opus

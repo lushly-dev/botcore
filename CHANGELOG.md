@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **runner: raise the default output budget to 100,000 chars** -- `MAX_OUTPUT_LENGTH` was 8000, a limit inherited from small-context models. Truncating a structured payload (JSON, NDJSON) does not shorten it, it *corrupts* it into an unparseable string, so any command returning structured data over 8KB failed at the parse step rather than degrading gracefully. Callers that relied on the old default now receive up to 100,000 chars.
+- **runner: report truncation explicitly** -- `run_command` now returns a `truncated: bool` on every return path, so a caller can detect a clipped payload instead of silently parsing corrupt output.
+
+### Added
+
+- **runner: `max_output` parameter** -- `run_command(..., max_output=N)` overrides the default budget per call; `max_output=None` disables truncation entirely for commands whose output must survive intact.
+
+### Fixed
+
+- **runner: `smart_truncate` with small budgets** -- head/tail sizes were hardcoded at 3000/4000, so any `max_len` under 7000 returned output *longer* than the requested budget. Head and tail now scale to fit `max_len`.
+
 ## [0.4.0] - 2026-04-02
 
 ### Changed

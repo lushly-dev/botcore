@@ -36,9 +36,13 @@ Sources:
 ### Output Limits
 
 ```python
-# Safe limits for all models
-MAX_OUTPUT_LENGTH = 8000      # ~2000 tokens
+# Budgets for modern long-context models
+MAX_OUTPUT_LENGTH = 100_000   # ~25,000 tokens
 MAX_RESEARCH_LENGTH = 12000   # ~3000 tokens (for long-form content)
+
+# Structured payloads (JSON/NDJSON) must not be truncated at all --
+# clipping them yields a decode error, not a smaller result.
+# Use run_command(..., max_output=None).
 
 # Claude Code defaults (can be overridden)
 # MAX_MCP_OUTPUT_TOKENS=25000 (env var)
@@ -47,7 +51,7 @@ MAX_RESEARCH_LENGTH = 12000   # ~3000 tokens (for long-form content)
 ### Truncation Pattern
 
 ```python
-def truncate_output(output: str, max_length: int = 8000) -> str:
+def truncate_output(output: str, max_length: int = MAX_OUTPUT_LENGTH) -> str:
     if len(output) <= max_length:
         return output
 

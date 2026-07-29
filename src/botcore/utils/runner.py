@@ -12,7 +12,12 @@ from typing import Any, TypeVar
 
 _T = TypeVar("_T")
 
-MAX_OUTPUT_LENGTH = 8000
+# Output budget for a single stream, in characters. This is a context-economy guard for
+# LLM-facing callers, not a memory guard -- the whole stream is read into memory either way.
+# It was 8000 (~2000 tokens), sized for models whose entire context was a few thousand tokens.
+# That budget silently corrupts structured output: truncating JSON yields a decode error rather
+# than a smaller object. Pass ``max_output=None`` for machine-readable payloads.
+MAX_OUTPUT_LENGTH = 100_000
 
 
 def smart_truncate(output: str, max_len: int = MAX_OUTPUT_LENGTH) -> str:
@@ -20,9 +25,11 @@ def smart_truncate(output: str, max_len: int = MAX_OUTPUT_LENGTH) -> str:
     if len(output) <= max_len:
         return output
 
-    head = output[:3000]
-    tail = output[-4000:]
-    omitted = len(output) - 7000
+    head_len = min(3000, max_len // 2)
+    tail_len = min(4000, max_len - head_len)
+    head = output[:head_len]
+    tail = output[-tail_len:]
+    omitted = len(output) - head_len - tail_len
 
     return f"{head}\n\n... [{omitted:,} chars truncated] ...\n\n{tail}"
 
@@ -31,6 +38,7 @@ async def run_command(
     command: list[str],
     cwd: Path | None = None,
     timeout: int = 300,
+    max_output: int | None = MAX_OUTPUT_LENGTH,
 ) -> dict[str, Any]:
     """Run a command asynchronously and return result.
 
@@ -38,9 +46,11 @@ async def run_command(
         command: Command and arguments as list.
         cwd: Working directory (optional).
         timeout: Timeout in seconds (default 300).
+        max_output: Per-stream character budget, or ``None`` to return output whole.
+            Use ``None`` when parsing structured output -- truncation corrupts it.
 
     Returns:
-        Dict with success, output, and error keys.
+        Dict with success, output, error, and truncated keys.
     """
     try:
         process = await asyncio.create_subprocess_exec(
@@ -57,24 +67,32 @@ async def run_command(
             )
         except TimeoutError:
             process.kill()
-            return {"success": False, "error": f"Command timed out after {timeout}s"}
+            return {
+                "success": False,
+                "error": f"Command timed out after {timeout}s",
+                "truncated": False,
+            }
 
         output = stdout_data.decode("utf-8", errors="replace")
         error_output = stderr_data.decode("utf-8", errors="replace")
 
-        if len(output) > MAX_OUTPUT_LENGTH:
-            output = smart_truncate(output, MAX_OUTPUT_LENGTH)
-
-        if len(error_output) > MAX_OUTPUT_LENGTH:
-            error_output = smart_truncate(error_output, MAX_OUTPUT_LENGTH)
+        truncated = max_output is not None and (
+            len(output) > max_output or len(error_output) > max_output
+        )
+        if max_output is not None:
+            if len(output) > max_output:
+                output = smart_truncate(output, max_output)
+            if len(error_output) > max_output:
+                error_output = smart_truncate(error_output, max_output)
 
         return {
             "success": process.returncode == 0,
             "output": output,
             "error": error_output if process.returncode != 0 else None,
+            "truncated": truncated,
         }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "truncated": False}
 
 
 async def run_external_tool(
