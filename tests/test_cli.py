@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from click.testing import CliRunner
 
+import botcore
 from botcore.cli import cli
 
 
@@ -28,6 +30,24 @@ def test_version():
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
     assert "botcore" in result.output
+
+
+def test_version_matches_pyproject():
+    """`__version__` must track [project] version -- the CLI and MCP server report it.
+
+    Regression: v0.4.0 bumped pyproject.toml but not `__version__`, so
+    `botcore --version` and the MCP server handshake both advertised 0.3.5
+    from a 0.4.0 package.
+    """
+    pyproject = Path(__file__).parent.parent / "pyproject.toml"
+    declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    assert botcore.__version__ == declared
+
+
+def test_version_output_reports_the_real_version():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--version"])
+    assert botcore.__version__ in result.output
 
 
 def test_help():

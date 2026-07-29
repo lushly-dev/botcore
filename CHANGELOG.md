@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-28
+
 ### Changed
 
 - **runner: raise the default output budget to 100,000 chars** -- `MAX_OUTPUT_LENGTH` was 8000, a limit inherited from small-context models. Truncating a structured payload (JSON, NDJSON) does not shorten it, it *corrupts* it into an unparseable string, so any command returning structured data over 8KB failed at the parse step rather than degrading gracefully. Callers that relied on the old default now receive up to 100,000 chars.
 - **runner: report truncation explicitly** -- `run_command` now returns a `truncated: bool` on every return path, so a caller can detect a clipped payload instead of silently parsing corrupt output.
+- **skills: mcp-builder output guidance** -- the skill and its `token-budget`/`troubleshooting` references taught the 8000 default as the recommended pattern. Guidance is now "bound prose, never truncate structured payloads."
 
 ### Added
 
@@ -19,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **runner: `smart_truncate` with small budgets** -- head/tail sizes were hardcoded at 3000/4000, so any `max_len` under 7000 returned output *longer* than the requested budget. Head and tail now scale to fit `max_len`.
+- **`__version__` drift** -- v0.4.0 bumped `pyproject.toml` but not `botcore.__version__`, so `botcore --version` and the MCP server handshake both advertised `0.3.5` from a `0.4.0` package. A test now pins `__version__` to the `[project] version`, so the two cannot diverge again.
+- **changeset: platform-dependent paths in command results** -- `changeset_create`, `changeset_delete`, and `changeset_status` returned `str(Path.relative_to(...))`, which emits `.changeset\name.md` on Windows and `.changeset/name.md` elsewhere. Those values are handed to agents and fed back into `changeset_delete` as `undo_args`, so results now use POSIX separators on every platform.
 
 ## [0.4.0] - 2026-04-02
 
