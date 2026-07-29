@@ -99,12 +99,12 @@ async def changeset_create(
 
     return success(
         data={
-            "path": str(filepath.relative_to(ws)),
+            "path": filepath.relative_to(ws).as_posix(),
             "type": change_type,
             "description": description,
         },
         undo_command="changeset_delete",
-        undo_args={"path": str(filepath.relative_to(ws))},
+        undo_args={"path": filepath.relative_to(ws).as_posix()},
     )
 
 
@@ -140,7 +140,7 @@ async def changeset_delete(path: str) -> CommandResult[dict]:
     changeset_path.unlink()
 
     return success(
-        data={"path": str(changeset_path.relative_to(ws)), "deleted": True},
+        data={"path": changeset_path.relative_to(ws).as_posix(), "deleted": True},
         reasoning=f"Deleted changeset {changeset_path.name}",
         undo_command="changeset_create",
         undo_args={
@@ -167,7 +167,7 @@ async def changeset_status() -> CommandResult[dict]:
     for f in files:
         change_type, description = _parse_changeset(f)
         entries.append({
-            "file": str(f.relative_to(ws)),
+            "file": f.relative_to(ws).as_posix(),
             "type": change_type or "unknown",
             "description": description[:100],
         })

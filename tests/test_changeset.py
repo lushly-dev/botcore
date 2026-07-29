@@ -57,6 +57,26 @@ async def test_create_success(workspace):
     assert "**cli** -- new init command" in content
 
 
+async def test_returned_paths_are_posix_on_every_platform(workspace):
+    """Paths in command results must not vary by platform.
+
+    Regression: these were `str(Path.relative_to(...))`, which emits
+    `.changeset\\x.md` on Windows and `.changeset/x.md` on POSIX. The value is
+    both handed to agents and fed straight back into `changeset_delete` as
+    `undo_args`, so a backslash form makes results platform-dependent.
+    """
+    with _patch_ws(workspace):
+        created = assert_success(await changeset_create("added", "**cli** -- thing"))
+        assert "\\" not in created["path"]
+        assert created["path"].startswith(".changeset/")
+
+        listed = assert_success(await changeset_status())
+        assert all("\\" not in entry["file"] for entry in listed["entries"])
+
+        deleted = assert_success(await changeset_delete(created["path"]))
+        assert "\\" not in deleted["path"]
+
+
 async def test_create_invalid_type(workspace):
     with _patch_ws(workspace):
         result = await changeset_create("feature", "some desc")
