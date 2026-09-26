@@ -37,6 +37,18 @@ Use MCP only when the agent lacks terminal access — hosted deployment, Teams i
 
 All commands except `serve` support `--json` for machine-readable output. Exit codes: 0 = success, 1 = error.
 
+## Session Loop
+
+Project-local skills in `.claude/skills/` (no `source:`, so `skill-seed --update` never touches them) drive a session end to end:
+
+| Skill | Stage |
+|-------|-------|
+| `session-init` | Fresh base, uv env with plugin packages, test baseline, task intake |
+| `pr-prep` | Review, changeset/docs, diff-scoped gate vs baseline, commit, push, PR (`inspect`, `quick`) |
+| `session-end` | Content-based landing check, capture findings, remote branch cleanup (`check`, `park`) |
+
+Run Python tools via `uv run --frozen` so they resolve from the worktree's `.venv`. No CI runs tests on PRs and `main` is not green on the full tree, so `pr-prep`'s gate is the PR's test evidence.
+
 ## Architecture
 
 ```
