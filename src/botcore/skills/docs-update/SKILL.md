@@ -165,7 +165,7 @@ Check if structural changes require AGENTS.md updates:
 | New package added | Update package structure |
 | Convention changed | Update conventions section |
 
-Run `docs_check_agents` — it detects structural changes (new commands, new packages) in staged files and flags whether AGENTS.md needs updating. If AGENTS.md was updated, sync CLAUDE.md afterward (see Step 9).
+Run `docs_check_agents` — it detects structural changes (new commands, new packages) in staged files and flags whether AGENTS.md needs updating. Never create a CLAUDE.md to mirror it (see Step 9).
 
 **Count verification**: List actual directories/files and compare to counts claimed in AGENTS.md:
 
@@ -267,17 +267,11 @@ For docs that reference external URLs, spot-check a few critical ones:
 
 Full external link validation is expensive — only do it during audits, not every update pass.
 
-### Step 9: Sync CLAUDE.md
+### Step 9: Keep AGENTS.md the Only Instruction File
 
-If AGENTS.md was modified, regenerate CLAUDE.md:
+Claude Code, Codex, Copilot, and Cursor read AGENTS.md directly. Do not create or regenerate a `CLAUDE.md`: Claude Code reads AGENTS.md only when no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists, so any of them hides AGENTS.md. Rules that apply only to Claude belong in `.claude/rules/`.
 
-```bash
-# If a sync script exists
-node scripts/sync-claude-md.mjs
-# Or copy AGENTS.md content if no script
-```
-
-**Never edit CLAUDE.md directly.** It is auto-generated from AGENTS.md.
+If one of those files already exists, report it and propose merging its unique content into AGENTS.md and deleting it (plus any sync script that regenerated it).
 
 ### Step 10: Report
 

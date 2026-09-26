@@ -81,7 +81,7 @@ AI produces sentences of remarkably consistent length and complexity. Human writ
 
 **Human Pattern:**
 
-> The new system worked. Not just worked -- it transformed how the team operated. Customer complaints dropped 40% in the first month. People actually liked using it.
+> The new system worked. Not just worked -- it changed how the team operated. Complaints dropped. People actually liked using it.
 
 **Remediation Techniques:**
 

@@ -116,7 +116,7 @@ severity, location, WCAG criterion, and fix.
 description: Generate a new component
 argument-hint: component name (e.g., data-grid)
 agent: agent
-model: claude-sonnet-4
+model: <model-name>  # optional; omit to use the model picker's choice
 tools:
   - create_file
   - read_file

@@ -3,8 +3,8 @@ name: docs-manager
 source: botcore
 description: >
   Manages documentation architecture, review, staleness detection, and maintenance
-  policy across project repositories. Covers README, AGENTS.md, CLAUDE.md,
-  CHANGELOG, ROADMAP, doc sites, and skill indexing. Use when creating docs,
+  policy across project repositories. Covers README, AGENTS.md, CHANGELOG,
+  ROADMAP, doc sites, and skill indexing. Use when creating docs,
   reviewing documentation structure, auditing for staleness, updating changelogs,
   maintaining roadmaps, or enforcing documentation standards. Triggers: docs,
   documentation, readme, changelog, roadmap, agents.md, claude.md, doc site,
@@ -40,7 +40,7 @@ Documentation architecture, review, staleness detection, and maintenance policy 
 5. **Rot prevention** -- enforce the "drive content to skills" principle to keep root docs lean
 6. **Doc site management** -- Docsify configuration for browsable skill documentation
 7. **Index generation** -- auto-generate skill indexes and sidebars from frontmatter
-8. **CLAUDE.md sync** -- maintain CLAUDE.md as auto-generated from AGENTS.md
+8. **Single instruction file** -- keep AGENTS.md as the only agent instruction file; retire CLAUDE.md copies
 
 ## Routing Logic
 
@@ -56,11 +56,11 @@ Documentation architecture, review, staleness detection, and maintenance policy 
 
 ### 1. Skills Are Truth
 
-All detailed knowledge lives in `.claude/skills/`. CLAUDE.md, AGENTS.md, and README.md are routing tables that point to skills for depth. If you are writing more than 5-10 lines about a topic in a root doc, it belongs in a skill.
+All detailed knowledge lives in `.claude/skills/`. AGENTS.md and README.md are routing tables that point to skills for depth. If you are writing more than 5-10 lines about a topic in a root doc, it belongs in a skill.
 
-### 2. Single Source of Truth
+### 2. AGENTS.md Is the Only Instruction File
 
-AGENTS.md is the canonical agent instruction file. CLAUDE.md is auto-generated from it -- never edit CLAUDE.md directly. Edit AGENTS.md, then run the sync script.
+AGENTS.md is the single agent instruction file, read directly by Claude Code, Copilot, Cursor, and other AI tools. Do not create CLAUDE.md, `.claude/CLAUDE.md`, or `CLAUDE.local.md`: Claude Code reads AGENTS.md only when none of those files exist, so any of them -- including a generated copy -- hides AGENTS.md from Claude. If a project already has one, merge its unique content into AGENTS.md and delete it.
 
 ### 3. Link, Don't Duplicate
 
@@ -85,12 +85,11 @@ CHANGELOG.md follows Keep a Changelog 1.1.0 strictly. Entries are human-curated 
 5. **Check ROADMAP.md** -- should any items move phases based on shipped work?
 6. **Verify counts** -- list `.claude/skills/`, `src/components/`, `.github/prompts/` and compare to doc claims
 7. **Apply updates** -- follow each doc's format spec from the reference files
-8. **Sync CLAUDE.md** -- run the sync script to regenerate from AGENTS.md
-9. **Report** -- summarize what was updated and what was already current
+8. **Report** -- summarize what was updated and what was already current
 
 ### Documentation Rot Prevention
 
-Add this note to the top of CLAUDE.md and README.md:
+Add this note to the top of AGENTS.md and README.md:
 
 ```markdown
 > **Documentation Policy**: Skills are the source of truth. This file is a
@@ -99,16 +98,16 @@ Add this note to the top of CLAUDE.md and README.md:
 
 ## Checklist
 
-- [ ] CLAUDE.md has doc policy note at top
+- [ ] AGENTS.md has doc policy note at top
 - [ ] README.md has doc policy note at top
 - [ ] AGENTS.md reflects current architecture and counts
 - [ ] All skills have `category` in frontmatter
-- [ ] No content blocks exceeding 10 lines in CLAUDE.md or AGENTS.md for topics covered by skills
+- [ ] No content blocks exceeding 10 lines in AGENTS.md for topics covered by skills
 - [ ] Skill index is up to date (count matches directories)
 - [ ] Version in package.json matches README badge and CHANGELOG latest
 - [ ] `[Unreleased]` in CHANGELOG captures all merged work since last version
 - [ ] ROADMAP shipped items link to CHANGELOG versions
-- [ ] CLAUDE.md content matches AGENTS.md (auto-generated header present)
+- [ ] No CLAUDE.md, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists (each one hides AGENTS.md from Claude Code)
 - [ ] Internal links resolve (no broken references)
 - [ ] Doc site reflects current skills
 

@@ -6,7 +6,7 @@ Format standards for each documentation type. Each document has a distinct audie
 
 ## AGENTS.md Format
 
-The canonical agent instruction file. All AI coding tools (Copilot, Claude, Cursor) consume this. CLAUDE.md is auto-generated from it.
+The only agent instruction file. All AI coding tools (Claude Code, Copilot, Cursor) read it directly -- there is no CLAUDE.md.
 
 ### Required Sections (in order)
 
@@ -37,15 +37,9 @@ Bullet list of hard constraints. Each rule should be one line with emphasis on t
 - **Lit is Storybook-only** -- never import in src/
 ```
 
-### CLAUDE.md Sync
+### No CLAUDE.md
 
-AGENTS.md is the source of truth. Sync via script:
-
-```bash
-node scripts/sync-claude-md.mjs
-```
-
-**Never edit CLAUDE.md directly.** Always edit AGENTS.md and re-sync.
+Do not create CLAUDE.md, `.claude/CLAUDE.md`, or `CLAUDE.local.md`, and do not keep a script that generates one. Claude Code reads AGENTS.md only when none of those files exist, so a copy or import stub hides AGENTS.md from Claude. Put instructions in AGENTS.md; rules that apply only to Claude belong in `.claude/rules/`, which does not displace AGENTS.md.
 
 ---
 

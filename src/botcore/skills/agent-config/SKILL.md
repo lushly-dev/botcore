@@ -39,7 +39,7 @@ under the `[plugins.agents]` section:
 
 ```toml
 [plugins.agents]
-default_model = "claude-sonnet-4-20250514"
+default_model = "<model-id>"  # a model your runtime serves; see llm-integration-learn Model Selection
 max_agents = 5
 
 [plugins.agents.agents.my-agent]
