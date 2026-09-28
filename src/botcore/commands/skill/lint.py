@@ -207,9 +207,15 @@ async def skill_lint(
     if path:
         target = Path(path) if Path(path).is_absolute() else skills_dir / path
         if not target.is_dir():
-            return error("SKILL_NOT_FOUND", f"Skill directory not found: {path}")
+            return error(
+                "SKILL_NOT_FOUND",
+                f"Skill directory not found: {target}",
+                suggestion=f"Pass a skill name under {skills_dir} or an absolute path",
+            )
         skill_dirs = {target.name: target}
+        linted_path = target
     else:
+        linted_path = skills_dir
         local = discover_local_skills(skills_dir)
         skill_dirs = {name: p for name, (p, _) in local.items()}
 
@@ -258,7 +264,7 @@ async def skill_lint(
 
     return success(
         data={
-            "path": str(skills_dir),
+            "path": str(linted_path),
             "total": len(results),
             "passed": passed,
             "errors": total_errors,
