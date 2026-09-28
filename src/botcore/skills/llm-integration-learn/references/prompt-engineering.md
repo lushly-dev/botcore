@@ -24,7 +24,7 @@ You are [role] that [core behavior].
 
 ### Best Practices
 
-1. **Be specific about what NOT to do** -- Negative constraints reduce hallucination
+1. **State the desired behavior** -- Keep prohibitions for real constraints and give the reason with each; a list of don'ts can anchor the model toward the failure it names
 2. **Place instructions before data** -- Models attend more to content at the beginning
 3. **Use XML tags for structure** -- `<rules>`, `<context>`, `<examples>` improve parsing
 4. **Version your system prompts** -- Track changes in source control alongside application code
@@ -35,8 +35,8 @@ You are [role] that [core behavior].
 ```python
 # Claude supports system prompts as a top-level parameter
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,  # see Model Selection in SKILL.md
+    max_tokens=16000,
     system="You are a technical documentation writer. Respond in markdown.",
     messages=[{"role": "user", "content": "Document the auth flow."}]
 )
@@ -47,7 +47,7 @@ response = client.messages.create(
 ```python
 # OpenAI uses the 'instructions' parameter or system message
 response = client.responses.create(
-    model="gpt-4o",
+    model=MODEL,  # see Model Selection in SKILL.md
     instructions="You are a technical documentation writer.",
     input="Document the auth flow."
 )
@@ -94,80 +94,51 @@ Output:
 - Keep examples concise -- long examples waste tokens
 - Use consistent formatting across all examples
 
-## Chain-of-Thought (CoT)
+## Reasoning: Thinking and Effort
 
-Encourage step-by-step reasoning for complex tasks.
+Current frontier models (Claude Opus 5.5+, Claude Fable 5.1+, GPT-6) reason internally before they answer. Control reasoning depth with API configuration, not prompt text:
 
-### Explicit CoT
+- Do not add "Let's think step by step", `<scratchpad>` / `<thinking>` tag instructions, or required "show your reasoning" sections. The model already thinks; asking it to reproduce that reasoning in the response wastes output tokens and, on Claude Opus 5.5 and Fable 5.1, can be declined with `stop_reason: "refusal"` (category `reasoning_extraction`).
+- Describe the task, the quality bar, and what a good answer contains, then let the model plan its own steps.
+- To inspect the reasoning, request summarized thinking blocks from the API instead of asking for it in the output.
 
-```
-Analyze whether this code change could cause a regression.
-
-Think through this step by step:
-1. What does the original code do?
-2. What does the changed code do differently?
-3. What callers or tests depend on the original behavior?
-4. Could any of those break?
-
-Then give your final verdict.
-```
-
-### Zero-Shot CoT
-
-Simply append "Let's think step by step" or "Think through this carefully" to the prompt. Effective but less controllable than explicit CoT.
-
-### When CoT Helps
-
-- Math and logic problems
-- Multi-step reasoning
-- Code review and debugging
-- Risk assessment
-- Comparing trade-offs
-
-### When CoT Hurts
-
-- Simple lookups or classification
-- Tasks where speed matters more than accuracy
-- Very short expected outputs (CoT adds token cost)
-
-## Extended Thinking (Claude)
-
-Claude supports a dedicated extended thinking mode that gives the model internal reasoning space before responding.
+### Claude: Adaptive Thinking + Effort
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=16000,
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 10000  # Max tokens for internal reasoning
-    },
-    messages=[{"role": "user", "content": "Complex analysis task..."}]
+    model=MODEL,  # see Model Selection in SKILL.md
+    max_tokens=16000,  # thinking tokens count toward max_tokens
+    thinking={"type": "adaptive", "display": "summarized"},  # omit to keep the default; thinking still runs
+    output_config={"effort": "high"},  # low | medium | high | xhigh | max
+    messages=[{"role": "user", "content": "Could this code change cause a regression? ..."}],
 )
 
-# Access thinking and response separately
 for block in response.content:
     if block.type == "thinking":
-        print("Reasoning:", block.thinking)
+        print("Reasoning summary:", block.thinking)
     elif block.type == "text":
         print("Response:", block.text)
 ```
 
-### When to Use Extended Thinking
+- Thinking is always on for Claude Opus 5.5 and Fable 5.1. `thinking={"type": "enabled", "budget_tokens": N}` and `{"type": "disabled"}` both return a 400 -- `effort` is the only depth control.
+- Claude Opus 5.5 defaults to `effort: "medium"`; set it explicitly for each route.
+- `display: "summarized"` returns a readable summary; the default returns thinking blocks with empty text.
 
-- Complex analysis requiring deep reasoning
-- Math, logic, and coding problems
-- Tasks where you want to inspect the reasoning process
-- When accuracy matters more than latency
+### Choosing Effort
 
-### Budget Guidelines
-
-| Task Complexity | Budget Tokens |
+| Effort | Use For |
 |---|---|
-| Simple reasoning | 2,000-5,000 |
-| Moderate analysis | 5,000-10,000 |
-| Complex multi-step | 10,000-20,000 |
-| Deep research/analysis | 20,000+ |
+| `low` | Classification, extraction, routing, sub-agents, latency-sensitive routes |
+| `medium` | Routine Q&A and drafting where evals show quality holds |
+| `high` | Intelligence-sensitive analysis, review, most production reasoning |
+| `xhigh` | Coding and long-horizon agentic work |
+| `max` | Correctness matters more than cost, and evals show headroom above `xhigh` |
+
+Tune effort per route before switching models: lower effort on a frontier model often matches a smaller model running at higher effort, and keeps one prompt cache.
+
+### OpenAI
+
+GPT-6 models expose the same control as `reasoning.effort` on the Responses API.
 
 ## Prompt Scaffolding (Defensive Prompting)
 

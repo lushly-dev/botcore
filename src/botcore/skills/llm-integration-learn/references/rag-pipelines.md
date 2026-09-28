@@ -36,7 +36,7 @@ The simplest approach. Split by token count with overlap.
 def fixed_size_chunk(text: str, chunk_size: int = 512, overlap: int = 64) -> list[str]:
     """Split text into fixed-size chunks with overlap."""
     import tiktoken
-    enc = tiktoken.encoding_for_model("gpt-4o")
+    enc = tiktoken.get_encoding("o200k_base")  # approximate token counts
     tokens = enc.encode(text)
     chunks = []
     for i in range(0, len(tokens), chunk_size - overlap):

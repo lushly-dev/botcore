@@ -21,7 +21,7 @@ triggers:
 # user-invocable: true             # Show in slash-command menu
 # disable-model-invocation: false  # Set true for user-only skills
 # agent: general-purpose           # Agent type (Explore, Plan, custom)
-# model: claude-sonnet             # Override model
+# model: opus                      # Override model (alias resolves to latest)
 # argument-hint: "file path"       # Argument placeholder hint
 # hooks:                           # Guardrail/janitor hooks
 #   - event: PreToolUse
@@ -92,11 +92,8 @@ Hard rules that must always be followed.
 
 ## Verification
 
-Before completing, run:
-```bash
-{verification-command}
-```
-Confirm zero errors before finishing.
+<!-- Remove this section unless a deterministic check exists (linter, tests, validator) -->
+Run `{verification-command}` and confirm zero errors.
 
 ## Checklist
 
@@ -160,7 +157,7 @@ The script outputs JSON with {description of output}. Interpret results and sugg
      - A CLI command or script can confirm correctness
 
      Include Checklist when:
-     - Skill has verification steps
+     - Output has concrete, checkable completion criteria
      - Quality gates need checking
 
      Include Hooks when:

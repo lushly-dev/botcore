@@ -75,7 +75,7 @@ Research request received
 
 ```
 Project sources (check in order):
-1. README.md, AGENTS.md, CLAUDE.md — project-level guidance
+1. AGENTS.md, README.md — project-level guidance
 2. Codebase search — grep for similar patterns, imports, usages
 3. Package manifests — check installed versions in package.json, Cargo.toml, etc.
 4. Config files — existing tool/framework configuration

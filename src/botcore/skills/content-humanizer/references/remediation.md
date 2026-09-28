@@ -2,34 +2,30 @@
 
 Practical techniques for transforming AI-generated content into natural, human-sounding text.
 
-## Strategy 1: Negative Constraints
+## Strategy 1: Voice Sample First, Flagged Patterns for Audits
 
-Block high-probability AI paths by explicitly prohibiting common patterns.
+When generating, lead with a short sample of the target voice and name the audience (see the SKILL.md "Lead Generation With a Voice Sample" example). A generation prompt that lists banned words can anchor the model toward them, so use the lists below when reviewing a draft.
 
-### Vocabulary Constraints
-
-When prompting or editing, explicitly ban:
+### Vocabulary to Flag
 
 ```
-Do not use these words: delve, tapestry, landscape, realm, pivotal,
-crucial, foster, leverage, underscore, embark, navigate, robust,
-seamless, cutting-edge, groundbreaking, game-changing
+delve, tapestry, landscape, realm, pivotal, crucial, foster, leverage,
+underscore, embark, navigate, robust, seamless, cutting-edge,
+groundbreaking, game-changing
 ```
 
-### Structural Constraints
+### Structural Patterns to Flag
 
 ```
-Do not use:
 - "It is important to note"
 - "In conclusion" or "To summarize"
 - More than one em-dash per paragraph
 - "Furthermore," "Moreover," "Additionally" as sentence starters
 ```
 
-### Tonal Constraints
+### Tonal Patterns to Flag
 
 ```
-Avoid:
 - Hedging phrases
 - Both-sides framing when taking a position
 - Vague attributions ("some argue," "many believe")
@@ -50,7 +46,7 @@ Transform uniform sentences into varied rhythm:
 
 **After (varied 4-25 words):**
 
-> The project launched. Not just launched -- it exceeded every metric we tracked. Team satisfaction jumped. Customer feedback? Overwhelmingly positive. Growth looks inevitable.
+> The project launched last quarter. Every department reports higher satisfaction. Customer feedback? Overwhelmingly positive. We expect the growth to continue.
 
 ### Vocabulary Variation
 
@@ -73,9 +69,9 @@ Mix sentence types:
 - Imperative (commands)
 - Fragments (intentional incomplete sentences)
 
-## Strategy 3: Specificity Injection
+## Strategy 3: Grounded Specificity
 
-Replace abstract claims with concrete details.
+Replace abstract claims with concrete details -- only details you can verify from the source material, the user, or a cited reference. Never invent numbers, names, dates, or quotes; a fabricated statistic is worse than a vague claim.
 
 ### The Abstraction Problem
 
@@ -85,26 +81,28 @@ AI defaults to abstract, unfalsifiable claims because they are "safe."
 
 > This serves as a stark reminder of the crucial role that security plays in modern organizations.
 
-**After (specific):**
+**After (specific, figures from the incident report):**
 
 > The breach exposed 2.3 million records in 48 hours -- exactly what proper encryption prevents.
 
 ### Specificity Techniques
 
-1. **Add numbers:** "significant improvement" becomes "40% improvement"
-2. **Add names:** "industry leaders" becomes "Satya Nadella and Jensen Huang"
-3. **Add examples:** "various tools" becomes "Figma, VS Code, and Copilot"
-4. **Add timeframes:** "recently" becomes "last Tuesday"
-5. **Add consequences:** "important" becomes "saves 3 hours per week"
+1. **Numbers:** replace "significant improvement" with the measured figure from the report or dataset
+2. **Names:** replace "industry leaders" with the people or organizations the source actually cites
+3. **Examples:** replace "various tools" with the tools the project actually uses
+4. **Timeframes:** replace "recently" with the date from the changelog, ticket, or source
+5. **Consequences:** replace "important" with the measured effect, if one was measured
+
+If no verified detail exists, state the claim plainly, cut it, or mark `[source needed]` for the author.
 
 ### Before/After Examples
 
-| Abstract | Specific |
-|---|---|
-| The team achieved significant results | The team shipped 3 features ahead of schedule |
-| Many users reported positive experiences | 847 users rated the feature 4.5/5 |
-| The process was streamlined | Processing time dropped from 6 hours to 45 minutes |
-| Experts recommend this approach | Nielsen Norman Group's 2024 research recommends this |
+| Abstract | Specific | Where the Detail Must Come From |
+|---|---|---|
+| The team achieved significant results | The team shipped 3 features ahead of schedule | Sprint report or release notes |
+| Many users reported positive experiences | 847 users rated the feature 4.5/5 | Survey or analytics export |
+| The process was streamlined | Processing time dropped from 6 hours to 45 minutes | Before/after measurement |
+| Experts recommend this approach | [Named study you have read] recommends this | A citation you can link |
 
 ## Strategy 4: Voice Injection
 
@@ -129,11 +127,11 @@ Replace neutral framing with position:
 
 **After (opinionated):**
 
-> The waterfall approach wastes time. Agile works better for 90% of teams.
+> The waterfall approach wastes time. Agile works better for most product teams.
 
 ### Personal Reference
 
-Where appropriate, add first-person experience:
+Where the author actually had the experience, add it in first person -- never invent one:
 
 **Before:**
 
@@ -171,9 +169,9 @@ Break rigid AI patterns with intentional variation.
 **Human variation:**
 
 ```
-- Start with the biggest impact: the 40% efficiency gain
+- Start with the biggest impact: the efficiency gain
 - Team satisfaction improved too
-- And costs dropped -- not by a little, by 15%
+- And costs dropped
 ```
 
 ### Opening Restructuring
@@ -234,8 +232,8 @@ For each piece of content:
 ### Specificity Pass
 
 - [ ] Replaced abstract claims with concrete examples
-- [ ] Added numbers where possible
-- [ ] Named specific people/tools/sources
+- [ ] Added numbers only where a source provides them
+- [ ] Every name, number, date, and quote traces to a source -- none invented
 
 ### Voice Pass
 

@@ -125,7 +125,7 @@ When an agent encounters a request, skills resolve in scope order:
 3. **Project** (`.claude/skills/` in project root, including nested auto-discovered)
 4. **Added directories** (via `--add-dir`)
 5. **Plugin** (installed packages / extensions)
-6. **AGENTS.md / CLAUDE.md** guidance (fallback documentation)
+6. **AGENTS.md** guidance (fallback documentation)
 
 Within the same scope, more specific matches (deeper nesting, exact name match) take priority. Project-specific skills can **override** general patterns when needed, and enterprise skills enforce organization-wide policies that cannot be bypassed.
 
@@ -145,7 +145,7 @@ Skills can reference other skills using relative paths:
 When moving a skill between locations:
 
 1. [ ] Update all references in source location's `_index.md`
-2. [ ] Update all references in CLAUDE.md / AGENTS.md files
+2. [ ] Update all references in AGENTS.md files
 3. [ ] Run linter on both source and destination
 4. [ ] Verify skill discovery still works in IDE
 5. [ ] Update any documentation pointing to old location

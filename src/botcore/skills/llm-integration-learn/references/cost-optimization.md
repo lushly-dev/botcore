@@ -9,6 +9,7 @@ Strategies for reducing LLM API costs without sacrificing quality.
 Strategy               (typical savings)   Implementation Effort
 -------------------------------------------------------
 Prompt caching           10-90%            Low
+Effort tuning            varies            Low
 Model routing            60-87%            Medium
 Response caching         15-30%            Low
 Token optimization       20-40%            Low
@@ -26,16 +27,17 @@ Cache static prompt content (system prompts, reference docs, few-shot examples) 
 from anthropic import Anthropic
 
 client = Anthropic()
+MODEL = "<model-id>"  # see Model Selection in SKILL.md
 
 # Mark static content for caching with cache_control
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,
     system=[
         {
             "type": "text",
             "text": "You are a helpful assistant...",  # Stable system prompt
-            "cache_control": {"type": "ephemeral"}     # Cache for up to 1 hour
+            "cache_control": {"type": "ephemeral"}     # 5-minute TTL; add "ttl": "1h" for longer
         }
     ],
     messages=[
@@ -92,23 +94,32 @@ OpenAI automatically caches matching prompt prefixes. No explicit cache control 
 
 ## Model Routing
 
-Route simple queries to cheap models, complex queries to expensive ones.
+Tune `effort` before routing across models. Lower effort on a frontier model often matches a smaller model at higher effort, and a single model keeps one prompt cache (caches are per-model). Route across models only when evals and cost data show the savings are real. Judge cost per completed task, not per request -- a cheaper call that needs retries is not cheaper.
 
 ### Cascade Pattern
 
+Define tiers as `(model, effort)` pairs loaded from config. Start with one model at different effort levels; add a second model (for example, a high-volume GPT-6 model behind its own client) only when measurement justifies it.
+
 ```python
-from enum import Enum
+MODEL = "<model-id>"  # load from config; see Model Selection in SKILL.md
 
-class ModelTier(Enum):
-    FAST = "claude-haiku-4-5-20250514"      # $0.80 / $4 per M tokens
-    BALANCED = "claude-sonnet-4-5-20250514"  # $3 / $15 per M tokens
-    POWERFUL = "claude-opus-4-5-20250514"    # $15 / $75 per M tokens
+TIERS = {
+    "fast": {"model": MODEL, "effort": "low"},
+    "balanced": {"model": MODEL, "effort": "medium"},
+    "powerful": {"model": MODEL, "effort": "high"},
+}
 
-async def classify_complexity(query: str) -> ModelTier:
-    """Use a cheap model to classify query complexity."""
+def extract_text(response) -> str:
+    """Join text blocks; skip thinking blocks (thinking is always on)."""
+    return "".join(b.text for b in response.content if b.type == "text")
+
+async def classify_complexity(query: str) -> str:
+    """Use the fast tier to classify query complexity."""
+    tier = TIERS["fast"]
     response = await client.messages.create(
-        model=ModelTier.FAST.value,
-        max_tokens=64,
+        model=tier["model"],
+        max_tokens=4096,  # thinking counts toward max_tokens
+        output_config={"effort": tier["effort"]},
         messages=[{
             "role": "user",
             "content": f"""Classify this query's complexity as SIMPLE, MODERATE, or COMPLEX.
@@ -116,47 +127,51 @@ SIMPLE: factual lookup, classification, formatting
 MODERATE: analysis, comparison, multi-step reasoning
 COMPLEX: creative writing, deep research, complex code generation
 
-Query: {query}
-Complexity:"""
+Query: {query}"""
         }]
     )
-    text = response.content[0].text.strip().upper()
+    text = extract_text(response).upper()
     if "SIMPLE" in text:
-        return ModelTier.FAST
+        return "fast"
     elif "COMPLEX" in text:
-        return ModelTier.POWERFUL
-    return ModelTier.BALANCED
+        return "powerful"
+    return "balanced"
 
 async def routed_query(query: str) -> str:
-    """Route query to appropriate model tier."""
-    tier = await classify_complexity(query)
+    """Route query to the matching tier."""
+    tier = TIERS[await classify_complexity(query)]
     response = await client.messages.create(
-        model=tier.value,
-        max_tokens=4096,
+        model=tier["model"],
+        max_tokens=16000,
+        output_config={"effort": tier["effort"]},
         messages=[{"role": "user", "content": query}]
     )
-    return response.content[0].text
+    return extract_text(response)
 ```
 
 ### TypeScript Model Router
 
 ```typescript
-type ModelTier = "fast" | "balanced" | "powerful";
+type Tier = "fast" | "balanced" | "powerful";
+type Effort = "low" | "medium" | "high";
 
-const MODELS: Record<ModelTier, string> = {
-  fast: "claude-haiku-4-5-20250514",
-  balanced: "claude-sonnet-4-5-20250514",
-  powerful: "claude-opus-4-5-20250514",
+const MODEL = "<model-id>"; // load from config; see Model Selection in SKILL.md
+
+const TIERS: Record<Tier, { model: string; effort: Effort }> = {
+  fast: { model: MODEL, effort: "low" },
+  balanced: { model: MODEL, effort: "medium" },
+  powerful: { model: MODEL, effort: "high" },
 };
 
-async function routeQuery(query: string): Promise<ModelTier> {
+async function routeQuery(query: string): Promise<Tier> {
   const response = await client.messages.create({
-    model: MODELS.fast,
-    max_tokens: 64,
+    model: TIERS.fast.model,
+    max_tokens: 4096, // thinking counts toward max_tokens
+    output_config: { effort: TIERS.fast.effort },
     messages: [
       {
         role: "user",
-        content: `Classify complexity: SIMPLE, MODERATE, or COMPLEX.\nQuery: ${query}\nComplexity:`,
+        content: `Classify complexity: SIMPLE, MODERATE, or COMPLEX.\nQuery: ${query}`,
       },
     ],
   });
@@ -172,11 +187,11 @@ async function routeQuery(query: string): Promise<ModelTier> {
 
 | Signal | Route To | Reason |
 |---|---|---|
-| FAQ / known patterns | Cache or fast model | No reasoning needed |
-| Classification / extraction | Fast model | Pattern matching task |
-| Summarization / analysis | Balanced model | Needs comprehension |
-| Code generation / complex reasoning | Powerful model | Needs deep reasoning |
-| Safety-critical outputs | Powerful model + guardrails | Accuracy paramount |
+| FAQ / known patterns | Response cache or fast tier | No reasoning needed |
+| Classification / extraction | Fast tier (low effort) | Pattern matching task |
+| Summarization / analysis | Balanced tier | Needs comprehension |
+| Code generation / complex reasoning | Powerful tier (high or xhigh effort) | Needs deep reasoning |
+| Safety-critical outputs | Powerful tier + guardrails | Accuracy paramount |
 
 ## Response Caching
 
@@ -203,7 +218,7 @@ async def cached_generate(model: str, messages: list, **kwargs) -> str:
         return response_cache[key]
 
     response = await client.messages.create(model=model, messages=messages, **kwargs)
-    result = response.content[0].text
+    result = "".join(b.text for b in response.content if b.type == "text")
     response_cache[key] = result
     return result
 ```
@@ -254,11 +269,13 @@ def compress_prompt(prompt: str) -> str:
 ### Output Length Control
 
 ```python
-# Control output tokens to avoid paying for unnecessary generation
+# Lower effort and ask for a short answer to cut output and thinking tokens.
+# max_tokens is a hard cutoff that also caps thinking -- set it too low and replies truncate.
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=256,  # Limit output for classification tasks
-    messages=[{"role": "user", "content": "Classify: positive, negative, or neutral"}]
+    model=MODEL,
+    max_tokens=4096,
+    output_config={"effort": "low"},
+    messages=[{"role": "user", "content": "Classify as positive, negative, or neutral. Reply with the label only: ..."}]
 )
 ```
 
@@ -267,14 +284,14 @@ response = client.messages.create(
 ```python
 # Anthropic - use the token counting API
 count = client.messages.count_tokens(
-    model="claude-sonnet-4-5-20250514",
+    model=MODEL,
     messages=[{"role": "user", "content": prompt}]
 )
 print(f"Input tokens: {count.input_tokens}")
 
-# OpenAI - use tiktoken
+# OpenAI - use tiktoken (approximate; confirm the encoding for your model)
 import tiktoken
-enc = tiktoken.encoding_for_model("gpt-4o")
+enc = tiktoken.get_encoding("o200k_base")
 token_count = len(enc.encode(prompt))
 ```
 
@@ -291,8 +308,8 @@ batch = client.messages.batches.create(
         {
             "custom_id": f"request-{i}",
             "params": {
-                "model": "claude-sonnet-4-5-20250514",
-                "max_tokens": 1024,
+                "model": MODEL,
+                "max_tokens": 16000,
                 "messages": [{"role": "user", "content": prompt}]
             }
         }
@@ -319,18 +336,14 @@ batch = client.messages.batches.create(
 ### Track Per-Request Costs
 
 ```python
-# Model pricing (per million tokens, approximate 2025)
-PRICING = {
-    "claude-haiku-4-5-20250514": {"input": 0.80, "output": 4.00},
-    "claude-sonnet-4-5-20250514": {"input": 3.00, "output": 15.00},
-    "claude-opus-4-5-20250514": {"input": 15.00, "output": 75.00},
-    "gpt-4o": {"input": 2.50, "output": 10.00},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-}
+# Load per-model prices (USD per million tokens) from config -- they change often.
+# Current prices: https://platform.claude.com/docs/en/about-claude/pricing
+#                 https://developers.openai.com/api/docs/pricing
+PRICING: dict[str, dict[str, float]] = load_pricing_config()
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Estimate cost in USD for a single request."""
-    pricing = PRICING.get(model, {"input": 5.0, "output": 15.0})
+    pricing = PRICING[model]  # fail loudly on a model with no configured price
     return (
         input_tokens * pricing["input"] / 1_000_000 +
         output_tokens * pricing["output"] / 1_000_000
