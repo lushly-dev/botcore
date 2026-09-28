@@ -30,40 +30,63 @@ def _check_metadata(manifest: SkillManifest, strict: bool) -> list[dict]:
     violations: list[dict] = []
 
     if not manifest.name:
-        violations.append({"rule": "SK002", "severity": "error",
-                           "message": "Missing 'name' in frontmatter"})
+        violations.append(
+            {"rule": "SK002", "severity": "error", "message": "Missing 'name' in frontmatter"}
+        )
 
     if not manifest.description:
-        violations.append({"rule": "SK003", "severity": "error",
-                           "message": "Missing 'description' in frontmatter"})
+        violations.append(
+            {
+                "rule": "SK003",
+                "severity": "error",
+                "message": "Missing 'description' in frontmatter",
+            }
+        )
 
     if manifest.name and not _KEBAB_RE.match(manifest.name):
-        violations.append({"rule": "SK004", "severity": "error",
-                           "message": f"Name '{manifest.name}' is not kebab-case"})
+        violations.append(
+            {
+                "rule": "SK004",
+                "severity": "error",
+                "message": f"Name '{manifest.name}' is not kebab-case",
+            }
+        )
 
     desc_len = len(manifest.description) if manifest.description else 0
     if desc_len > _MAX_DESCRIPTION_LENGTH:
-        violations.append({
-            "rule": "SK005", "severity": "warning",
-            "message": f"Description is {desc_len} chars (max {_MAX_DESCRIPTION_LENGTH})",
-        })
+        violations.append(
+            {
+                "rule": "SK005",
+                "severity": "warning",
+                "message": f"Description is {desc_len} chars (max {_MAX_DESCRIPTION_LENGTH})",
+            }
+        )
 
     if not manifest.triggers:
-        violations.append({"rule": "SK006", "severity": "warning",
-                           "message": "No triggers defined — skill may not be auto-activated"})
+        violations.append(
+            {
+                "rule": "SK006",
+                "severity": "warning",
+                "message": "No triggers defined — skill may not be auto-activated",
+            }
+        )
 
     if manifest.version == "0.0.0":
-        violations.append({
-            "rule": "SK013",
-            "severity": "warning" if not strict else "error",
-            "message": "No version set (using default 0.0.0)",
-        })
+        violations.append(
+            {
+                "rule": "SK013",
+                "severity": "warning" if not strict else "error",
+                "message": "No version set (using default 0.0.0)",
+            }
+        )
 
     return violations
 
 
 def _check_body_and_refs(
-    skill_dir: Path, manifest: SkillManifest, body: str,
+    skill_dir: Path,
+    manifest: SkillManifest,
+    body: str,
 ) -> list[dict]:
     """Check body/reference rules SK008-SK014."""
     violations: list[dict] = []
@@ -74,39 +97,58 @@ def _check_body_and_refs(
         for match in re.finditer(r"references/([^\s)]+)", body):
             ref_name = match.group(1)
             if not (skill_dir / "references" / ref_name).exists():
-                violations.append({
-                    "rule": "SK008", "severity": "error",
-                    "message": f"Referenced file missing: references/{ref_name}",
-                })
+                violations.append(
+                    {
+                        "rule": "SK008",
+                        "severity": "error",
+                        "message": f"Referenced file missing: references/{ref_name}",
+                    }
+                )
 
     # SK009: Body too long
     if len(body) > _MAX_BODY_LENGTH:
-        violations.append({"rule": "SK009", "severity": "warning",
-                           "message": f"Body is {len(body)} chars (max {_MAX_BODY_LENGTH})"})
+        violations.append(
+            {
+                "rule": "SK009",
+                "severity": "warning",
+                "message": f"Body is {len(body)} chars (max {_MAX_BODY_LENGTH})",
+            }
+        )
 
     # SK010: Placeholder text
     for pattern in _PLACEHOLDER_PATTERNS:
         m = pattern.search(body)
         if m:
-            violations.append({"rule": "SK010", "severity": "warning",
-                               "message": f"Placeholder text found: '{m.group()}'"})
+            violations.append(
+                {
+                    "rule": "SK010",
+                    "severity": "warning",
+                    "message": f"Placeholder text found: '{m.group()}'",
+                }
+            )
             break
 
     # SK012: File naming (directory should match skill name)
     if manifest.name and skill_dir.name != manifest.name:
-        violations.append({
-            "rule": "SK012", "severity": "warning",
-            "message": f"Directory '{skill_dir.name}' doesn't match name '{manifest.name}'",
-        })
+        violations.append(
+            {
+                "rule": "SK012",
+                "severity": "warning",
+                "message": f"Directory '{skill_dir.name}' doesn't match name '{manifest.name}'",
+            }
+        )
 
     # SK014: Orphan references
     if refs_dir.is_dir():
         for ref_file in refs_dir.iterdir():
             if ref_file.is_file() and ref_file.name not in body:
-                violations.append({
-                    "rule": "SK014", "severity": "warning",
-                    "message": f"Orphan reference: references/{ref_file.name}",
-                })
+                violations.append(
+                    {
+                        "rule": "SK014",
+                        "severity": "warning",
+                        "message": f"Orphan reference: references/{ref_file.name}",
+                    }
+                )
 
     return violations
 
@@ -123,8 +165,9 @@ def _lint_skill(skill_dir: Path, strict: bool = False) -> list[dict]:
 
     content = skill_file.read_text(encoding="utf-8")
     if not content.strip().startswith("---"):
-        return [{"rule": "SK001", "severity": "error",
-                 "message": "SKILL.md has no YAML frontmatter"}]
+        return [
+            {"rule": "SK001", "severity": "error", "message": "SKILL.md has no YAML frontmatter"}
+        ]
 
     manifest, body = parse_frontmatter(content)
     violations = _check_metadata(manifest, strict)
@@ -197,22 +240,21 @@ async def skill_lint(
         if len(dirs) > 1:
             for r in results:
                 if r["skill"] in dirs:
-                    r["violations"].append({
-                        "rule": "SK015", "severity": "error",
-                        "message": f"Duplicate name '{name}' in: {', '.join(dirs)}",
-                    })
+                    r["violations"].append(
+                        {
+                            "rule": "SK015",
+                            "severity": "error",
+                            "message": f"Duplicate name '{name}' in: {', '.join(dirs)}",
+                        }
+                    )
 
     total_errors = sum(
-        len([v for v in r["violations"] if v["severity"] == "error"])
-        for r in results
+        len([v for v in r["violations"] if v["severity"] == "error"]) for r in results
     )
     total_warnings = sum(
-        len([v for v in r["violations"] if v["severity"] == "warning"])
-        for r in results
+        len([v for v in r["violations"] if v["severity"] == "warning"]) for r in results
     )
-    passed = len([r for r in results if not any(
-        v["severity"] == "error" for v in r["violations"]
-    )])
+    passed = len([r for r in results if not any(v["severity"] == "error" for v in r["violations"])])
 
     return success(
         data={
