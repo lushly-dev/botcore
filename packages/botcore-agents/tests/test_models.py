@@ -99,7 +99,7 @@ class TestAgentHealth:
 
 class TestAgentState:
     def test_construction(self):
-        cfg = AgentConfig(name="worker", model="gpt-4.1")
+        cfg = AgentConfig(name="worker", model="test-model")
         health = AgentHealth(name="worker")
         state = AgentState(config=cfg, health=health)
         assert state.session_id == ""

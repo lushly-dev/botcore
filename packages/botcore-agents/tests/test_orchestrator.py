@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-import botcore_agents.orchestrator as orch_mod
 from afd.testing import assert_error, assert_success
+
+import botcore_agents.orchestrator as orch_mod
 from botcore_agents.config import AgentPermissionsConfig, AgentsPluginConfig
 from botcore_agents.models import Task
 from botcore_agents.orchestrator import AgentOrchestrator, get_orchestrator, reset_orchestrator
@@ -84,7 +85,7 @@ class TestStartAgent:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         mock_llm["session_create"].assert_awaited_once_with(
-            model="gpt-4.1",
+            model="test-model",
             tools=[],
             system_prompt="You are a research agent.",
             permissions=AgentPermissionsConfig(),
@@ -107,6 +108,51 @@ class TestStartAgent:
         call_kwargs = mock_llm["session_create"].call_args.kwargs
         assert call_kwargs["permissions"] is custom_perms
         assert call_kwargs["agent_name"] == "researcher"
+
+    async def test_start_falls_back_to_default_model(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.agents["researcher"].model = ""
+        sample_config.default_model = "test-model-mini"
+        orch = AgentOrchestrator(sample_config)
+        await orch.create_agent("researcher")
+        assert_success(await orch.start_agent("researcher"))
+        assert mock_llm["session_create"].call_args.kwargs["model"] == "test-model-mini"
+
+    async def test_start_errors_when_no_model_configured(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.agents["researcher"].model = ""
+        sample_config.default_model = ""
+        orch = AgentOrchestrator(sample_config)
+        await orch.create_agent("researcher")
+
+        err = assert_error(await orch.start_agent("researcher"), "CONFIG_ERROR")
+
+        assert "[tool.botcore.plugins.agents] default_model" in err.message
+        assert "llm_model_list" in err.suggestion
+        mock_llm["session_create"].assert_not_awaited()
+        assert orch._agents["researcher"].health.status == "stopped"
+
+    async def test_start_treats_blank_default_model_as_unset(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.agents["researcher"].model = ""
+        sample_config.default_model = "  "
+        orch = AgentOrchestrator(sample_config)
+        await orch.create_agent("researcher")
+
+        assert_error(await orch.start_agent("researcher"), "CONFIG_ERROR")
+
+    async def test_blank_agent_model_falls_back_to_default(
+        self, sample_config: AgentsPluginConfig, mock_llm
+    ):
+        sample_config.agents["researcher"].model = "  "
+        sample_config.default_model = "test-model-mini"
+        orch = AgentOrchestrator(sample_config)
+        await orch.create_agent("researcher")
+        assert_success(await orch.start_agent("researcher"))
+        assert mock_llm["session_create"].call_args.kwargs["model"] == "test-model-mini"
 
 
 class TestStopAgent:
@@ -167,9 +213,7 @@ class TestAssignTask:
         task_result = orchestrator.get_task(task_id)
         assert task_result.data["priority"] == 1
 
-    async def test_agent_returns_idle_after_task(
-        self, orchestrator: AgentOrchestrator, mock_llm
-    ):
+    async def test_agent_returns_idle_after_task(self, orchestrator: AgentOrchestrator, mock_llm):
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         await orchestrator.assign_task("Do something", agent="researcher")
@@ -213,9 +257,7 @@ class TestResumeTask:
         result = await orchestrator.resume_task("missing-task", agent="researcher")
         assert_error(result, "TASK_NOT_FOUND")
 
-    async def test_resume_completed_task_rejected(
-        self, orchestrator: AgentOrchestrator, mock_llm
-    ):
+    async def test_resume_completed_task_rejected(self, orchestrator: AgentOrchestrator, mock_llm):
         task = Task(description="Already done", status="completed")
         orchestrator._tasks[task.id] = task
 
@@ -279,9 +321,7 @@ class TestHeartbeat:
 
 
 class TestAutosave:
-    async def test_create_agent_autosaves_when_enabled(
-        self, sample_config: AgentsPluginConfig
-    ):
+    async def test_create_agent_autosaves_when_enabled(self, sample_config: AgentsPluginConfig):
         sample_config.state.enabled = True
         sample_config.state.autosave = True
         backend = AsyncMock()
@@ -305,9 +345,7 @@ class TestAutosave:
         assert_success(result)
         backend.save.assert_not_awaited()
 
-    async def test_autosave_failures_do_not_break_commands(
-        self, sample_config: AgentsPluginConfig
-    ):
+    async def test_autosave_failures_do_not_break_commands(self, sample_config: AgentsPluginConfig):
         sample_config.state.enabled = True
         sample_config.state.autosave = True
         backend = AsyncMock()
@@ -396,7 +434,7 @@ class TestRoleBasedPooling:
             return success(
                 data={
                     "session_id": f"session-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",
@@ -419,6 +457,26 @@ class TestRoleBasedPooling:
         assert data["agent"] == "researcher-1"
         assert "researcher-1" in orchestrator.agents
 
+    async def test_spawn_without_model_keeps_config_suggestion(
+        self, orchestrator: AgentOrchestrator, mock_llm
+    ):
+        await orchestrator.create_agent("researcher")
+        await orchestrator.start_agent("researcher")
+        state = orchestrator._agents["researcher"]
+        state.active_tasks.extend(["t1", "t2"])
+        state.health.status = "busy"
+
+        # The spawn template has no model and there is no default to fall back to.
+        orchestrator._config.agents["researcher"] = state.config.model_copy(update={"model": ""})
+        orchestrator._config.default_model = ""
+
+        result = await orchestrator.assign_task("Second task", role="researcher")
+
+        err = assert_error(result, "ROLE_SPAWN_FAILED")
+        assert "[tool.botcore.plugins.agents] default_model" in err.message
+        assert "llm_model_list" in err.suggestion
+        assert "researcher-1" not in orchestrator.agents
+
     async def test_assign_by_role_spawns_sequential_names(
         self, orchestrator: AgentOrchestrator, mock_llm
     ):
@@ -433,7 +491,7 @@ class TestRoleBasedPooling:
             return success(
                 data={
                     "session_id": f"session-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",
@@ -481,7 +539,7 @@ class TestRoleBasedPooling:
             return success(
                 data={
                     "session_id": f"session-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",
@@ -524,7 +582,7 @@ class TestRoleBasedPooling:
             return success(
                 data={
                     "session_id": f"session-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",
@@ -543,7 +601,7 @@ class TestRoleBasedPooling:
 
         # The spawned instance should have same config
         spawned = orchestrator._agents["researcher-1"]
-        assert spawned.config.model == "gpt-4.1"
+        assert spawned.config.model == "test-model"
         assert spawned.config.skills == ["dev_test", "dev_lint"]
         assert spawned.config.system_prompt == "You are a research agent."
         assert spawned.config.role == "researcher"
@@ -577,7 +635,7 @@ class TestCapabilityDeclarations:
         await orchestrator.create_agent("researcher")
         await orchestrator.start_agent("researcher")
         mock_llm["session_create"].assert_awaited_once_with(
-            model="gpt-4.1",
+            model="test-model",
             tools=[],
             system_prompt="You are a research agent.",
             permissions=AgentPermissionsConfig(),
@@ -630,9 +688,7 @@ class TestCapabilityDeclarations:
         tools = call_kwargs["tools"]
         assert tools == []
 
-    async def test_wildcard_connectors(
-        self, connector_orchestrator: AgentOrchestrator, mock_llm
-    ):
+    async def test_wildcard_connectors(self, connector_orchestrator: AgentOrchestrator, mock_llm):
         """connectors=["*"] → all connector commands from KNOWN_CONNECTORS."""
         orch_mod._namespace = _FAKE_NS
         known = frozenset({"github", "email"})
@@ -679,7 +735,7 @@ class TestCapabilityDeclarations:
             return success(
                 data={
                     "session_id": f"session-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",
