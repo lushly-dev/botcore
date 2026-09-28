@@ -269,7 +269,8 @@ def test_info_json():
             result = runner.invoke(cli, ["info", "--json"])
             assert result.exit_code == 0
             output = json.loads(result.output)
-            assert "workspace_root" in output
+            assert output["success"] is True
+            assert "workspace_root" in output["data"]
 
 
 def test_command_error_exit_code():
@@ -327,3 +328,85 @@ def test_serve_missing_mcp_dependency():
             assert result.exit_code == 1
             combined = result.output + str(result.exception or "")
             assert "mcp" in combined.lower()
+
+
+# ── CommandResult normalization ──────────────────────────────────────────────
+
+
+def test_skill_status_json_is_real_json(tmp_path):
+    """--json must emit the dumped CommandResult, not a quoted Python repr."""
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        Path(td, ".git").mkdir()
+        with patch("botcore.commands.skill.status.find_workspace", return_value=Path(td)):
+            result = runner.invoke(cli, ["skill-status", "--json"])
+        assert result.exit_code == 0, result.output
+        output = json.loads(result.output)
+        assert isinstance(output, dict)
+        assert output["success"] is True
+        assert "data" in output
+
+
+def test_skill_list_json_is_real_json(tmp_path):
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        Path(td, ".git").mkdir()
+        with patch("botcore.commands.skill.list.find_workspace", return_value=Path(td)):
+            result = runner.invoke(cli, ["skill-list", "--json"])
+        assert result.exit_code == 0, result.output
+        output = json.loads(result.output)
+        assert isinstance(output, dict)
+        assert output["success"] is True
+
+
+def test_skill_status_no_workspace_exits_nonzero():
+    """A CommandResult error (success=False) must exit 1 and show code + hint."""
+    runner = CliRunner()
+    with patch("botcore.commands.skill.status.find_workspace", return_value=None):
+        result = runner.invoke(cli, ["skill-status"])
+    assert result.exit_code == 1
+    assert "NO_WORKSPACE" in result.output
+    assert "Hint:" in result.output
+
+
+def test_skill_status_no_workspace_json_exits_nonzero():
+    runner = CliRunner()
+    with patch("botcore.commands.skill.status.find_workspace", return_value=None):
+        result = runner.invoke(cli, ["skill-status", "--json"])
+    assert result.exit_code == 1
+    output = json.loads(result.output)
+    assert output["success"] is False
+    assert output["error"]["code"] == "NO_WORKSPACE"
+    assert output["error"]["suggestion"]
+
+
+def test_non_json_success_prints_data(tmp_path):
+    runner = CliRunner()
+    with patch("botcore.commands.info.find_workspace", return_value=Path.cwd()):
+        with patch("botcore.commands.info.get_packages", return_value=[]):
+            result = runner.invoke(cli, ["info"])
+    assert result.exit_code == 0
+    output = json.loads(result.output)
+    assert "workspace_root" in output
+    assert "success=" not in result.output
+
+
+def test_init_reports_seeded_count(tmp_path):
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        Path(td, ".git").mkdir()
+        result = runner.invoke(cli, ["init", "--non-interactive", "--json"])
+        assert result.exit_code == 0, result.output
+        output = json.loads(result.output)
+        seeded_dirs = [p for p in Path(td, ".claude", "skills").iterdir() if p.is_dir()]
+        assert output["skills_seeded"] > 0
+        assert output["skills_seeded"] == len(seeded_dirs)
+
+
+def test_init_reports_seeded_count_text(tmp_path):
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        Path(td, ".git").mkdir()
+        result = runner.invoke(cli, ["init", "--non-interactive"])
+        assert result.exit_code == 0, result.output
+        assert "Skills seeded:" in result.output
