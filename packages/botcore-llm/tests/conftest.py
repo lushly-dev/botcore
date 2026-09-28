@@ -26,8 +26,8 @@ class _MockModelSupports:
 
 @dataclass
 class _MockModelInfo:
-    id: str = "gpt-4.1"
-    name: str = "GPT 4.1"
+    id: str = "test-model"
+    name: str = "Test Model"
     capabilities: Any = None
     policy: Any = None
     billing: Any = None

@@ -29,7 +29,9 @@ class LlmConfig(BaseModel):
     Mapped from ``[tool.botcore.plugins.llm]`` in botcore.toml.
     """
 
-    default_model: str = "gpt-4.1"
+    # No built-in default: model IDs are account-specific in the Copilot runtime
+    # (see ``llm_model_list``). ``llm_session_create`` errors when unset.
+    default_model: str = ""
     cli_url: str = ""
     streaming: bool = True
     infinite_sessions: bool = True

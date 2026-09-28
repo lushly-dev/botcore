@@ -21,6 +21,17 @@ LLM_DOCS = """\
 | `llm_session_list` | List active LLM sessions |
 | `llm_model_list` | List available models from Copilot CLI |
 | `llm_chat` | Send a message to an active LLM session |
+
+## Configuration
+
+```toml
+[tool.botcore.plugins.llm]
+default_model = "<model-id>"  # required unless every call passes model=
+```
+
+`default_model` has no built-in value. Model IDs are account-specific in the
+Copilot runtime; run `llm_model_list` to see the IDs you can use. Without a
+model, `llm_session_create` returns `CONFIG_ERROR`.
 """
 
 

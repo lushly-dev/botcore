@@ -26,14 +26,22 @@ def _clean_registry():
     registry._sessions.clear()
 
 
+@pytest.fixture(autouse=True)
+def _default_model():
+    """Configure a placeholder default model; the real config has none."""
+    set_config(LlmConfig(default_model="test-model"))
+    yield
+    set_config(LlmConfig())
+
+
 class TestLlmSessionCreate:
     @pytest.mark.asyncio
     async def test_returns_session_id(self, patch_client_manager, mock_copilot_session):
-        result = await llm_session_create(model="gpt-4.1")
+        result = await llm_session_create(model="test-model")
 
         data = assert_success(result)
         assert data["session_id"] == mock_copilot_session.session_id
-        assert data["model"] == "gpt-4.1"
+        assert data["model"] == "test-model"
 
     @pytest.mark.asyncio
     async def test_registers_in_session_registry(self, patch_client_manager, mock_copilot_session):
@@ -42,18 +50,58 @@ class TestLlmSessionCreate:
         registry = get_session_registry()
         entry = registry.get(mock_copilot_session.session_id)
         assert entry is not None
-        assert entry.model == "gpt-4.1"
+        assert entry.model == "test-model"
 
     @pytest.mark.asyncio
     async def test_uses_config_default_model(self, patch_client_manager, mock_copilot_session):
-        set_config(LlmConfig(default_model="claude-sonnet-4.5"))
+        set_config(LlmConfig(default_model="test-model-alt"))
         try:
             result = await llm_session_create()
 
             data = assert_success(result)
-            assert data["model"] == "claude-sonnet-4.5"
+            assert data["model"] == "test-model-alt"
         finally:
             set_config(LlmConfig())  # reset
+
+    @pytest.mark.asyncio
+    async def test_errors_when_no_model_configured(self, patch_client_manager, mock_copilot_client):
+        set_config(LlmConfig())
+
+        result = await llm_session_create()
+
+        err = assert_error(result, "CONFIG_ERROR")
+        assert "[tool.botcore.plugins.llm] default_model" in err.message
+        assert "llm_model_list" in err.suggestion
+        mock_copilot_client.create_session.assert_not_awaited()
+        assert get_session_registry().list_all() == []
+
+    @pytest.mark.asyncio
+    async def test_errors_when_default_model_blank(self, patch_client_manager):
+        set_config(LlmConfig(default_model="   "))
+
+        result = await llm_session_create()
+
+        assert_error(result, "CONFIG_ERROR")
+
+    @pytest.mark.asyncio
+    async def test_blank_explicit_model_falls_back_to_default(
+        self, patch_client_manager, mock_copilot_session
+    ):
+        result = await llm_session_create(model="  ")
+
+        data = assert_success(result)
+        assert data["model"] == "test-model"
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_works_without_default(
+        self, patch_client_manager, mock_copilot_session
+    ):
+        set_config(LlmConfig())
+
+        result = await llm_session_create(model="test-model-alt")
+
+        data = assert_success(result)
+        assert data["model"] == "test-model-alt"
 
 
 class TestLlmSessionDestroy:
@@ -85,7 +133,7 @@ class TestLlmSessionDestroy:
 class TestLlmSessionList:
     @pytest.mark.asyncio
     async def test_returns_registered_sessions(self, patch_client_manager, mock_copilot_session):
-        await llm_session_create(model="gpt-4.1")
+        await llm_session_create(model="test-model")
 
         result = await llm_session_list()
 
@@ -107,7 +155,7 @@ class TestLlmModelList:
 
         data = assert_success(result)
         assert len(data) == 1
-        assert data[0]["id"] == "gpt-4.1"
+        assert data[0]["id"] == "test-model"
         assert data[0]["supports_vision"] is True
 
 

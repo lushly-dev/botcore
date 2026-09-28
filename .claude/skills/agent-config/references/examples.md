@@ -11,7 +11,7 @@ From the Fabric UX Agent project.
 
 ```toml
 [plugins.agents]
-default_model = "claude-sonnet-4-20250514"
+default_model = "<model-id>"  # set once; agents inherit it
 max_agents = 5
 ```
 
@@ -24,7 +24,6 @@ API access. Scoped to source, component, and doc directories.
 [plugins.agents.agents.reviewer]
 name = "reviewer"
 role = "Review designs and implementations against Fabric UX standards"
-model = "claude-sonnet-4-20250514"
 skills = ["code-standards-learn", "accessibility-learn", "code-reviewer", "fabric-standards"]
 memory_scope = "agent"
 max_concurrent_tasks = 1
@@ -78,7 +77,6 @@ Uses Nexus KB as primary source, then GitHub, then web.
 [plugins.agents.agents.researcher]
 name = "researcher"
 role = "Research design patterns, accessibility standards, and competitive analysis"
-model = "claude-sonnet-4-20250514"
 skills = ["research"]
 connectors = ["github"]
 connector_commands = ["research_query"]
@@ -127,7 +125,6 @@ can see context from all agents.
 [plugins.agents.agents.coordinator]
 name = "coordinator"
 role = "Triage issues, track project status, and delegate to the right agent"
-model = "claude-sonnet-4-20250514"
 skills = ["fabric-standards"]
 connectors = ["github"]
 memory_scope = "global"

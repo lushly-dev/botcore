@@ -64,7 +64,10 @@ class AgentsPluginConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     agents: dict[str, AgentConfig] = Field(default_factory=dict)
-    default_model: str = "gpt-4.1"
+    # No built-in default: model IDs are account-specific in the Copilot runtime
+    # (see ``llm_model_list``). ``start_agent`` errors when neither this nor
+    # ``agents.<name>.model`` is set.
+    default_model: str = ""
     max_agents: int = Field(default=10, ge=1, le=100)
     state: AgentsStateConfig = Field(default_factory=AgentsStateConfig)
 

@@ -31,7 +31,7 @@ def _minimal_config() -> AgentsPluginConfig:
             "researcher": AgentConfig(
                 name="researcher",
                 role="researcher",
-                model="gpt-4.1",
+                model="test-model",
             ),
         },
     )

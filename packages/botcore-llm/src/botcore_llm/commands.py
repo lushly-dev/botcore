@@ -64,7 +64,17 @@ async def llm_session_create(
 ) -> CommandResult[dict]:
     """Create a new LLM session with bridged botcore tools."""
     config = _get_config()
-    model = model or config.default_model
+    model = (model or "").strip() or config.default_model.strip()
+    if not model:
+        return error(
+            "CONFIG_ERROR",
+            "No model specified and [tool.botcore.plugins.llm] default_model is not set",
+            suggestion=(
+                "Set default_model under [tool.botcore.plugins.llm] in botcore.toml, "
+                "or pass model=. Use llm_model_list to see model IDs your account can use"
+            ),
+            retryable=False,
+        )
 
     try:
         client = await CopilotClientManager.get_client(config)

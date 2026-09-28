@@ -8,7 +8,7 @@ description: >
   resolution, and multi-agent team composition patterns. Use when creating agent teams,
   writing agent configs, authoring system prompts, setting permissions, or debugging
   agent configuration issues.
-version: "1.3.0"
+version: "1.4.0"
 source: botcore
 category: agents
 triggers:
@@ -39,7 +39,7 @@ under the `[plugins.agents]` section:
 
 ```toml
 [plugins.agents]
-default_model = "claude-sonnet-4-20250514"
+default_model = "<model-id>"  # a model your runtime serves; see llm-integration-learn Model Selection
 max_agents = 5
 
 [plugins.agents.agents.my-agent]
@@ -64,14 +64,20 @@ role = "What this agent does"
 
 ```toml
 [plugins.agents]
-default_model = "gpt-4.1"   # Fallback when agent.model is blank
-max_agents = 10              # Pool size limit (1–100)
+default_model = "<model-id>"   # Required fallback when agent.model is blank
+max_agents = 10                # Pool size limit (1–100)
 ```
 
 | Field | Type | Default | Constraint |
 |-------|------|---------|------------|
-| `default_model` | string | `"gpt-4.1"` | Any model ID |
+| `default_model` | string | `""` (unset) | Model ID from `llm_model_list`; required unless every agent sets `model` |
 | `max_agents` | int | `10` | 1–100 |
+
+There is no built-in default model. Model IDs come from the Copilot runtime and
+vary by account and org policy, so run `llm_model_list` and copy an `id` from its
+output (IDs use Copilot's own format, which differs from provider API IDs). If
+neither `default_model` nor the agent's `model` is set, `agent_start` returns a
+`CONFIG_ERROR` naming `[tool.botcore.plugins.agents] default_model`.
 
 ## AgentConfig Fields
 
@@ -459,7 +465,8 @@ connectors = ["github"]
 
 If `model = ""` or not set, the agent uses `default_model` from the
 `[plugins.agents]` section. This is intentional — set `default_model` once,
-override per-agent only when needed.
+override per-agent only when needed. If both are blank, `agent_start` fails
+with `CONFIG_ERROR`; there is no hard-coded fallback model.
 
 ### 2. connector_commands overrides connectors
 
