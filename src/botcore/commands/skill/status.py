@@ -7,6 +7,7 @@ from pathlib import Path
 from afd import CommandResult, error, success
 
 from botcore.commands.skill._discovery import discover_available_skills, discover_local_skills
+from botcore.commands.skill.renames import locally_owned_rename_suggestion, resolve_rename
 from botcore.config import load_config
 from botcore.utils.workspace import find_workspace
 
@@ -22,6 +23,7 @@ async def skill_status(
     - unmanaged: local skill has no source: field
     - missing: source skill not installed locally
     - conflict: local skill has a different source: than expected
+    - renamed: local skill uses a retired name; see renamed_to and suggestion
     """
     ws = find_workspace()
     if not ws:
@@ -102,6 +104,25 @@ async def skill_status(
     # Check local-only skills (not in any source)
     for dir_name, (_, local_manifest) in sorted(local.items()):
         name = local_manifest.name if local_manifest else dir_name
+        new_name = resolve_rename(dir_name)
+        if new_name and dir_name not in available:
+            owner = local_manifest.source if local_manifest else None
+            if owner == "botcore":
+                suggestion = f"Run skill-seed to replace '{dir_name}' with '{new_name}'."
+            else:
+                suggestion = locally_owned_rename_suggestion(
+                    dir_name, new_name, config.skills.source_dir
+                )
+            statuses.append({
+                "name": dir_name,
+                "source": owner,
+                "source_version": None,
+                "local_version": local_manifest.version if local_manifest else None,
+                "status": "renamed",
+                "renamed_to": new_name,
+                "suggestion": suggestion,
+            })
+            continue
         if name not in available and dir_name not in {s["name"] for s in statuses}:
             statuses.append({
                 "name": dir_name,
@@ -112,6 +133,6 @@ async def skill_status(
             })
 
     summary = {s: len([x for x in statuses if x["status"] == s]) for s in
-                ("ok", "stale", "unmanaged", "missing", "conflict")}
+                ("ok", "stale", "unmanaged", "missing", "conflict", "renamed")}
 
     return success(data={"skills": statuses, "summary": summary})
