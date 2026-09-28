@@ -6,7 +6,11 @@ from pathlib import Path
 
 from afd import CommandResult, error, success
 
-from botcore.commands.skill._discovery import discover_available_skills, discover_local_skills
+from botcore.commands.skill._discovery import (
+    discover_available_skills,
+    discover_local_skills,
+    filter_skills,
+)
 from botcore.commands.skill.renames import locally_owned_rename_suggestion, resolve_rename
 from botcore.config import load_config
 from botcore.utils.workspace import find_workspace
@@ -37,6 +41,7 @@ async def skill_status(
     skills_dir = ws / config.skills.source_dir
 
     available = discover_available_skills(plugin_dirs)
+    seedable = filter_skills(available, config.skills.include, config.skills.skip)
     local = discover_local_skills(skills_dir)
 
     statuses: list[dict] = []
@@ -44,62 +49,74 @@ async def skill_status(
     # Check all available skills
     for name, source_skill in sorted(available.items()):
         if name not in local:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": None,
-                "status": "missing",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": None,
+                    "status": "missing",
+                }
+            )
             continue
 
         _, local_manifest = local[name]
         if local_manifest is None:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": None,
-                "status": "unmanaged",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": None,
+                    "status": "unmanaged",
+                }
+            )
             continue
 
         if local_manifest.source is None:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": local_manifest.version,
-                "status": "unmanaged",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": local_manifest.version,
+                    "status": "unmanaged",
+                }
+            )
             continue
 
         if local_manifest.source != source_skill.source:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": local_manifest.version,
-                "status": "conflict",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": local_manifest.version,
+                    "status": "conflict",
+                }
+            )
             continue
 
         if local_manifest.version != source_skill.manifest.version:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": local_manifest.version,
-                "status": "stale",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": local_manifest.version,
+                    "status": "stale",
+                }
+            )
         else:
-            statuses.append({
-                "name": name,
-                "source": source_skill.source,
-                "source_version": source_skill.manifest.version,
-                "local_version": local_manifest.version,
-                "status": "ok",
-            })
+            statuses.append(
+                {
+                    "name": name,
+                    "source": source_skill.source,
+                    "source_version": source_skill.manifest.version,
+                    "local_version": local_manifest.version,
+                    "status": "ok",
+                }
+            )
 
     # Check local-only skills (not in any source)
     for dir_name, (_, local_manifest) in sorted(local.items()):
@@ -107,32 +124,44 @@ async def skill_status(
         new_name = resolve_rename(dir_name)
         if new_name and dir_name not in available:
             owner = local_manifest.source if local_manifest else None
-            if owner == "botcore":
+            if new_name not in seedable:
+                suggestion = (
+                    f"'{dir_name}' was renamed to '{new_name}', which [skills] include/skip "
+                    f"excludes, so skill-seed will leave it. Remove or rename it, or allow "
+                    f"'{new_name}'."
+                )
+            elif owner == "botcore":
                 suggestion = f"Run skill-seed to replace '{dir_name}' with '{new_name}'."
             else:
                 suggestion = locally_owned_rename_suggestion(
-                    dir_name, new_name, config.skills.source_dir
+                    dir_name, new_name, config.skills.source_dir, owner
                 )
-            statuses.append({
-                "name": dir_name,
-                "source": owner,
-                "source_version": None,
-                "local_version": local_manifest.version if local_manifest else None,
-                "status": "renamed",
-                "renamed_to": new_name,
-                "suggestion": suggestion,
-            })
+            statuses.append(
+                {
+                    "name": dir_name,
+                    "source": owner,
+                    "source_version": None,
+                    "local_version": local_manifest.version if local_manifest else None,
+                    "status": "renamed",
+                    "renamed_to": new_name,
+                    "suggestion": suggestion,
+                }
+            )
             continue
         if name not in available and dir_name not in {s["name"] for s in statuses}:
-            statuses.append({
-                "name": dir_name,
-                "source": local_manifest.source if local_manifest else None,
-                "source_version": None,
-                "local_version": local_manifest.version if local_manifest else None,
-                "status": "unmanaged",
-            })
+            statuses.append(
+                {
+                    "name": dir_name,
+                    "source": local_manifest.source if local_manifest else None,
+                    "source_version": None,
+                    "local_version": local_manifest.version if local_manifest else None,
+                    "status": "unmanaged",
+                }
+            )
 
-    summary = {s: len([x for x in statuses if x["status"] == s]) for s in
-                ("ok", "stale", "unmanaged", "missing", "conflict", "renamed")}
+    summary = {
+        s: len([x for x in statuses if x["status"] == s])
+        for s in ("ok", "stale", "unmanaged", "missing", "conflict", "renamed")
+    }
 
     return success(data={"skills": statuses, "summary": summary})

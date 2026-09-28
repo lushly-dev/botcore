@@ -79,13 +79,20 @@ def resolve_rename(name: str) -> str | None:
     return name
 
 
-def locally_owned_rename_suggestion(old_name: str, new_name: str, source_dir: str) -> str:
+def locally_owned_rename_suggestion(
+    old_name: str, new_name: str, source_dir: str, owner: str | None = None
+) -> str:
     """Explain how to resolve a renamed skill that botcore does not own."""
     old_path = PurePosixPath(source_dir, old_name)
+    # A skill with no source: needs adopting so seed won't treat the renamed copy as botcore's
+    keep = (
+        f"then run skill_adopt('{new_name}') to keep your version"
+        if owner is None
+        else f"keeping its source: {owner} field so seed leaves it alone"
+    )
     return (
         f"'{old_name}' was renamed to '{new_name}' but is not managed by botcore, so it "
         f"was left in place. If it is an unmodified copy, delete {old_path} and run "
         f"skill-seed to install '{new_name}'. If you customized it, rename it to "
-        f"'{new_name}' (directory and name: field), then run skill_adopt('{new_name}') "
-        f"to keep your version."
+        f"'{new_name}' (directory and name: field), {keep}."
     )

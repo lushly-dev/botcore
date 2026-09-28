@@ -8,7 +8,11 @@ from pathlib import Path
 
 from afd import CommandResult, error, success
 
-from botcore.commands.skill._discovery import discover_available_skills, discover_local_skills
+from botcore.commands.skill._discovery import (
+    discover_available_skills,
+    discover_local_skills,
+    filter_skills,
+)
 from botcore.commands.skill.frontmatter import read_skill_manifest, set_frontmatter_source
 from botcore.commands.skill.renames import locally_owned_rename_suggestion, resolve_rename
 from botcore.config import load_config
@@ -56,7 +60,7 @@ async def skill_seed(
         return error("NO_SKILLS_AVAILABLE", "No skills found in any source")
 
     # Filter
-    candidates = _filter_skills(available, skills_config.include, skills_config.skip)
+    candidates = filter_skills(available, skills_config.include, skills_config.skip)
     local = discover_local_skills(skills_dir)
 
     seeded: list[str] = []
@@ -71,10 +75,12 @@ async def skill_seed(
 
     for name, skill in sorted(candidates.items()):
         if name in blocked_by_rename and name not in local:
-            skipped.append({
-                "name": name,
-                "reason": f"renamed from '{blocked_by_rename[name]}', which is locally owned",
-            })
+            skipped.append(
+                {
+                    "name": name,
+                    "reason": f"renamed from '{blocked_by_rename[name]}', which is locally owned",
+                }
+            )
             continue
 
         if name in local:
@@ -129,17 +135,6 @@ async def skill_seed(
     )
 
 
-def _filter_skills(
-    available: dict,
-    include: list[str] | None,
-    skip: list[str],
-) -> dict:
-    """Filter skills by include/skip. Include takes priority."""
-    if include is not None:
-        return {k: v for k, v in available.items() if k in include}
-    return {k: v for k, v in available.items() if k not in skip}
-
-
 def _migrate_renamed_skills(
     local: dict,
     candidates: dict,
@@ -169,15 +164,19 @@ def _migrate_renamed_skills(
         owner = old_manifest.source if old_manifest else None
         if owner == "botcore":
             if not dry_run:
-                shutil.rmtree(old_path)
+                _remove_skill_dir(old_path)
             migrated.append({"from": old_name, "to": new_name})
         else:
-            renamed_locally_owned.append({
-                "name": old_name,
-                "renamed_to": new_name,
-                "owner": owner,
-                "suggestion": locally_owned_rename_suggestion(old_name, new_name, source_dir),
-            })
+            renamed_locally_owned.append(
+                {
+                    "name": old_name,
+                    "renamed_to": new_name,
+                    "owner": owner,
+                    "suggestion": locally_owned_rename_suggestion(
+                        old_name, new_name, source_dir, owner
+                    ),
+                }
+            )
 
     return migrated, renamed_locally_owned
 
@@ -188,7 +187,15 @@ def _remove_botcore_owned(skills_dir: Path, names: list[str]) -> None:
         path = skills_dir / name
         manifest = read_skill_manifest(path) if path.is_dir() else None
         if manifest and manifest.source == "botcore":
-            shutil.rmtree(path)
+            _remove_skill_dir(path)
+
+
+def _remove_skill_dir(path: Path) -> None:
+    """Remove a skill directory; for a symlink, remove only the link."""
+    if path.is_symlink():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
 
 
 def _copy_skill(source_path: Path, target_path: Path, source_name: str) -> None:

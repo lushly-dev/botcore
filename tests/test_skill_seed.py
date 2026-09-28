@@ -29,9 +29,7 @@ def _make_source_skill(
     return skill_dir
 
 
-def _make_source_skill_with_refs(
-    base: Path, name: str, version: str = "1.0.0"
-) -> Path:
+def _make_source_skill_with_refs(base: Path, name: str, version: str = "1.0.0") -> Path:
     """Create a source skill with references/ dir."""
     skill_dir = _make_source_skill(base, name, version)
     refs = skill_dir / "references"
@@ -451,7 +449,11 @@ async def test_seed_keeps_locally_owned_renamed_skill(tmp_path: Path, owner: str
     assert entry["renamed_to"] == "review"
     assert entry["owner"] == owner
     assert ".claude/skills/do-review" in entry["suggestion"]
-    assert "skill_adopt('review')" in entry["suggestion"]
+    if owner is None:
+        assert "skill_adopt('review')" in entry["suggestion"]
+    else:
+        assert "skill_adopt" not in entry["suggestion"]
+        assert f"source: {owner}" in entry["suggestion"]
     assert {"name": "review", "reason": "renamed from 'do-review', which is locally owned"} in (
         data["skipped"]
     )
@@ -526,3 +528,64 @@ async def test_seed_migration_removes_agent_mirror(tmp_path: Path) -> None:
     assert not (agent_dir / "manage-documentation").exists()
     assert (agent_dir / "docs-manager").exists()
     assert (agent_dir / "manage-git").exists()
+
+
+async def test_seed_keeps_locally_owned_old_name_when_new_name_present(tmp_path: Path) -> None:
+    """With both names installed, a locally owned old name is reported and left alone."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    _make_source_skill(skills_dir, "do-review", "0.3.5")
+    _make_source_skill(skills_dir, "review", "1.0.0", source="botcore")
+
+    source_dir = tmp_path / "source"
+    _make_source_skill(source_dir, "review", "2.0.0")
+
+    result = await _seed(ws, _discovered(source_dir, "review"), update=True)
+
+    data = assert_success(result)
+    assert [e["name"] for e in data["renamed_locally_owned"]] == ["do-review"]
+    assert data["updated"] == ["review"]
+    assert (skills_dir / "do-review").exists()
+
+
+async def test_seed_migrates_include_filtered_new_name(tmp_path: Path) -> None:
+    """An include list naming the new skill still migrates the old botcore-owned one."""
+    ws = _setup_workspace(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname = 'test'\nversion = '0.1.0'"
+        "\n\n[tool.botcore.skills]\ninclude = ['docs-manager']\n",
+        encoding="utf-8",
+    )
+    skills_dir = ws / ".claude" / "skills"
+    _make_source_skill(skills_dir, "manage-documentation", "1.0.0", source="botcore")
+    _make_source_skill(skills_dir, "manage-git", "1.0.0", source="botcore")
+
+    source_dir = tmp_path / "source"
+    _make_source_skill(source_dir, "docs-manager", "2.0.0")
+    _make_source_skill(source_dir, "git-manager", "2.0.0")
+
+    result = await _seed(ws, _discovered(source_dir, "docs-manager", "git-manager"))
+
+    data = assert_success(result)
+    assert data["migrated"] == [{"from": "manage-documentation", "to": "docs-manager"}]
+    assert (skills_dir / "manage-git").exists()
+
+
+async def test_seed_migration_unlinks_symlinked_old_skill(tmp_path: Path) -> None:
+    """A symlinked old-name skill loses only the link; the link target is untouched."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+    shared = _make_source_skill(tmp_path / "shared", "manage-documentation", source="botcore")
+    (skills_dir / "manage-documentation").symlink_to(shared, target_is_directory=True)
+
+    source_dir = tmp_path / "source"
+    _make_source_skill(source_dir, "docs-manager", "2.0.0")
+
+    result = await _seed(ws, _discovered(source_dir, "docs-manager"))
+
+    data = assert_success(result)
+    assert data["migrated"] == [{"from": "manage-documentation", "to": "docs-manager"}]
+    assert not (skills_dir / "manage-documentation").exists()
+    assert (shared / "SKILL.md").exists()
+    assert (skills_dir / "docs-manager").exists()
