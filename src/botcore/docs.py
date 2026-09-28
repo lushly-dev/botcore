@@ -55,12 +55,15 @@ List available and installed skills with version and source info.
 ## skill_seed(update=False, dry_run=False, plugin_dirs=None)
 Copy skills from botcore/plugin sources into project's .claude/skills/.
 Injects `source:` frontmatter for ownership tracking.
+Skills installed under a retired name (e.g. `manage-documentation`, renamed to
+`docs-manager` in 0.4.0) are migrated when `source: botcore`; otherwise they are
+left in place, listed in `renamed_locally_owned`, and the new name is not seeded.
 - `update`: Also update stale skills (default: only new)
 - `dry_run`: Preview changes without writing
 
 ## skill_status(plugin_dirs=None)
 Detect version drift between installed and available skills.
-Reports: ok, stale, missing, unmanaged, conflict.
+Reports: ok, stale, missing, unmanaged, conflict, renamed.
 
 ## skill_lint(path=None, strict=False)
 Run 15 quality rules (SK001-SK015) on skill files.

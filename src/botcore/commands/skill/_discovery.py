@@ -97,3 +97,14 @@ def discover_local_skills(
         local[skill_dir.name] = (skill_dir, manifest)
 
     return local
+
+
+def filter_skills(
+    available: dict,
+    include: list[str] | None,
+    skip: list[str],
+) -> dict:
+    """Filter skills by include/skip. Include takes priority."""
+    if include is not None:
+        return {k: v for k, v in available.items() if k in include}
+    return {k: v for k, v in available.items() if k not in skip}
