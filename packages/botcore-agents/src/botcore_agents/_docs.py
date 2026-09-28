@@ -43,7 +43,7 @@ await agent_delete(name="researcher")
 
 ```toml
 [tool.botcore.plugins.agents]
-default_model = "gpt-4.1"
+default_model = "<model-id>"  # required; pick an id from llm_model_list
 max_agents = 10
 
 [tool.botcore.plugins.agents.state]
@@ -54,9 +54,14 @@ autosave = true
 
 [tool.botcore.plugins.agents.agents.researcher]
 name = "researcher"
-model = "gpt-4.1"
+model = "<model-id>"  # optional; overrides default_model
 skills = ["dev_test", "dev_lint"]
 max_concurrent_tasks = 2
 system_prompt = "You are a research agent."
 ```
+
+`default_model` has no built-in value. Model IDs are account-specific in the
+Copilot runtime; run `llm_model_list` to see the IDs you can use. If neither
+`default_model` nor the agent's `model` is set, `agent_start` returns
+`CONFIG_ERROR`.
 """

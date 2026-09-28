@@ -4,7 +4,7 @@ source: botcore
 description: >
   Identifies and remediates AI-generated text patterns including lexical signatures,
   syntactic rigidity, and structural tells that flag content as machine-written.
-  Covers vocabulary replacement, sentence variation, specificity injection, and
+  Covers vocabulary replacement, sentence variation, grounded specificity, and
   voice transformation across all content types.
   Use when reviewing content for authenticity, improving AI drafts, eliminating
   robotic writing patterns, or auditing text before publishing.
@@ -35,8 +35,8 @@ Identify and eliminate AI-generated text patterns to create authentic, human-sou
 1. **Detect AI Patterns** -- Identify lexical, syntactic, and structural tells across any content
 2. **Remediate Text** -- Transform robotic patterns into natural human voice using proven strategies
 3. **Audit Content** -- Review documents for AI fingerprints before publishing
-4. **Guide Generation** -- Apply negative constraints and variation techniques to prevent AI patterns during writing
-5. **Inject Specificity** -- Replace abstract, unfalsifiable claims with concrete details, numbers, and named sources
+4. **Guide Generation** -- Lead with a short sample of the target voice; keep flagged-pattern lists for auditing drafts
+5. **Ground Specifics** -- Replace abstract, unfalsifiable claims with concrete details taken from verified sources
 6. **Inject Voice** -- Add personality, opinion, and conversational markers to break neutral-professional tone
 
 ## Routing Logic
@@ -73,9 +73,9 @@ The goal is to improve AI text, not catch it. Focus on:
 
 Some AI tells are acceptable in formal contexts. Oxford commas belong in technical docs. Transitional phrases are expected in academic writing. Structured lists suit how-to content. The problem is when these patterns appear everywhere without variation.
 
-### 4. Specificity Beats Abstraction
+### 4. Verified Specificity Beats Abstraction
 
-AI defaults to abstract, unfalsifiable claims because they are safe. Replace "significant improvement" with "40% improvement." Replace "industry leaders" with named people. Replace "recently" with "last Tuesday." Concrete details are the strongest humanization tool.
+AI defaults to abstract, unfalsifiable claims because they are safe. Concrete details are the strongest humanization tool -- but only details you can verify from the source material, the user, or a cited reference. Never invent a number, name, date, or quote to sound concrete; a fabricated statistic is worse than a vague claim. When no verified detail exists, state the claim plainly, cut it, or mark it `[source needed]` for the author.
 
 ## Workflow
 
@@ -83,7 +83,7 @@ AI defaults to abstract, unfalsifiable claims because they are safe. Replace "si
 2. **Assess** -- Determine which patterns are contextually inappropriate vs. acceptable
 3. **Transform** -- Replace flagged vocabulary with specific, concrete alternatives
 4. **Vary** -- Introduce sentence length variation, structural diversity, and mixed sentence types
-5. **Inject** -- Add specificity (numbers, names, examples) and voice (opinion, conversational markers)
+5. **Ground** -- Add verified specifics (numbers, names, examples from the source or the user) and voice (opinion, conversational markers)
 6. **Verify** -- Read aloud to check for natural rhythm; apply the read-aloud test
 
 ## Quick Reference: High-Priority Flags
@@ -114,18 +114,28 @@ Words appearing 100x+ more frequently in AI text than human writing:
 
 - **Hedging** -- "It is worth mentioning" -- state directly or remove
 - **Both-sidesism** -- "On the other hand" when unnecessary -- take a position
-- **Vague attributions** -- "Some experts argue" -- name specific sources
+- **Vague attributions** -- "Some experts argue" -- name the actual source if you have one; otherwise drop the attribution
 - **Hollow sophistication** -- "realm," "era," "symphony" for mundane topics -- use plain words
 
 ## Key Remediation Strategies
 
-### Negative Constraints
+### Lead Generation With a Voice Sample
 
-Block high-probability AI paths by banning common patterns in prompts or edits:
+When generating new text, show the model a short (2-4 sentence) sample of the target voice and name the audience. Describe the voice you want rather than listing words to avoid -- a generation prompt full of banned words can anchor the model toward them.
 
-- Ban Tier 1 vocabulary (delve, tapestry, landscape, realm, pivotal, crucial, foster, leverage)
-- Ban structural tells ("It is important to note," "In conclusion," stacked em-dashes)
-- Ban tonal patterns (hedging phrases, both-sides framing, vague attributions)
+```
+Write in this voice -- plain, direct, a little dry:
+"We shipped the importer on Tuesday. It handles CSV and nothing else yet. That's deliberate."
+Audience: engineers deciding whether to adopt the tool.
+```
+
+### Audit Drafts Against Flagged Patterns
+
+Ban lists belong in review. After drafting, scan for and rewrite:
+
+- Tier 1 vocabulary (delve, tapestry, landscape, realm, pivotal, crucial, foster, leverage)
+- Structural tells ("It is important to note," "In conclusion," stacked em-dashes)
+- Tonal patterns (hedging phrases, both-sides framing, vague attributions)
 
 ### Perplexity Injection
 
@@ -135,14 +145,15 @@ Force variation and unpredictability:
 - **Mixed sentence types** -- Declarative, interrogative, imperative, and fragments
 - **Vocabulary variation** -- Never repeat the same pattern phrase; use different verbs and structures
 
-### Specificity Injection
+### Grounded Specificity
 
-Replace abstract claims with concrete details:
+Replace abstract claims with concrete details you can trace to a source:
 
-- Add numbers: "significant improvement" becomes "40% improvement"
-- Add names: "industry leaders" becomes "Satya Nadella and Jensen Huang"
-- Add examples: "various tools" becomes "Figma, VS Code, and Copilot"
-- Add timeframes: "recently" becomes "last Tuesday"
+- Numbers: "significant improvement" becomes the measured figure from the report or dataset
+- Names: "industry leaders" becomes the people or organizations the source actually cites
+- Examples: "various tools" becomes the tools the project actually uses
+- Timeframes: "recently" becomes the date from the changelog, ticket, or source
+- No verified detail? State the claim plainly, cut it, or mark `[source needed]`. Never invent one.
 
 ### Voice Injection
 
@@ -157,19 +168,19 @@ Add personality and human idiosyncrasy:
 
 **Hedging removal:**
 > Before: It is important to note that the new policy has had significant impact.
-> After: The new policy reduced processing time by 40%.
+> After (figure from the ops report): The new policy reduced processing time by 40%.
 
 **Vocabulary replacement:**
 > Before: Let's delve into the rich tapestry of content design principles.
 > After: Here's how content design principles work in practice.
 
-**Specificity injection:**
+**Grounded specificity:**
 > Before: This serves as a stark reminder of the crucial role that security plays.
-> After: The breach exposed 2.3 million records in 48 hours -- exactly what proper encryption prevents.
+> After (figures from the incident report): The breach exposed 2.3 million records in 48 hours -- exactly what proper encryption prevents.
 
 **Structure variation:**
 > Before: Furthermore, the implementation was successful. Additionally, the team exceeded expectations. Moreover, costs were reduced.
-> After: The implementation succeeded. The team exceeded expectations. Costs dropped 15%.
+> After: The implementation succeeded. The team exceeded expectations. Costs dropped.
 
 ## Checklist
 
@@ -182,8 +193,9 @@ Before publishing AI-assisted content:
 - [ ] Hedging phrases removed or replaced with direct statements
 - [ ] At least one sentence fragment or intentional grammatical variation
 - [ ] Content includes specific examples, numbers, or named sources -- not just abstract claims
+- [ ] Every number, name, date, and quote traces to the source material, the user, or a cited reference -- none invented
 - [ ] No stacked transitions (Furthermore / Additionally / Moreover in sequence)
-- [ ] Vague attributions replaced with specific sources
+- [ ] Vague attributions replaced with the actual source, or removed
 - [ ] Read aloud passes the "robot voice" test -- natural rhythm, no monotonous cadence
 
 ## When to Escalate

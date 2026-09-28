@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from pathlib import Path
 
 import yaml
@@ -10,6 +11,49 @@ from pydantic import BaseModel, ConfigDict
 
 # Deterministic field order for rendering
 _FIELD_ORDER = ["name", "source", "description", "version", "triggers"]
+
+# Descriptions longer than this are emitted as a folded block scalar
+_FOLD_THRESHOLD = 60
+_FOLD_WIDTH = 80
+
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)", re.DOTALL)
+
+
+def _dump(data: object) -> str:
+    """Safe-dump a value as block-style YAML without a trailing newline."""
+    return yaml.safe_dump(
+        data,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+        width=_FOLD_WIDTH,
+    ).rstrip("\n")
+
+
+def _render_description(val: str) -> str:
+    """Render description, folding long single-paragraph text for readability.
+
+    Falls back to a safe-dumped scalar whenever the folded form would not
+    round-trip to exactly the same string.
+    """
+    text = val.removesuffix("\n")
+    if len(text) > _FOLD_THRESHOLD and text and " ".join(text.split()) == text:
+        indicator = ">" if val.endswith("\n") else ">-"
+        wrapped = textwrap.wrap(
+            text,
+            width=_FOLD_WIDTH,
+            initial_indent="  ",
+            subsequent_indent="  ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        folded = "\n".join([f"description: {indicator}", *wrapped])
+        try:
+            if yaml.safe_load(folded) == {"description": val}:
+                return folded
+        except yaml.YAMLError:
+            pass
+    return _dump({"description": val})
 
 
 class SkillManifest(BaseModel):
@@ -32,7 +76,7 @@ def parse_frontmatter(content: str) -> tuple[SkillManifest, str]:
     Returns:
         (manifest, body) where body is everything after the closing ---.
     """
-    match = re.match(r"^---\s*\n(.*?)\n---\s*\n?(.*)", content, re.DOTALL)
+    match = _FRONTMATTER_RE.match(content)
     if not match:
         return SkillManifest(), content
 
@@ -73,17 +117,15 @@ def render_frontmatter(manifest: SkillManifest, body: str = "") -> str:
         val = data.pop(key)
         if key == "triggers" and isinstance(val, list):
             lines.append("triggers:")
-            for t in val:
-                lines.append(f"  - {t}")
-        elif key == "description" and len(str(val)) > 60:
-            lines.append("description: >")
-            lines.append(f"  {val}")
+            lines.append(textwrap.indent(_dump(val), "  "))
+        elif key == "description" and isinstance(val, str):
+            lines.append(_render_description(val))
         else:
-            lines.append(yaml.dump({key: val}, default_flow_style=False).strip())
+            lines.append(_dump({key: val}))
 
     # Remaining fields alphabetically
     for key in sorted(data):
-        lines.append(yaml.dump({key: data[key]}, default_flow_style=False).strip())
+        lines.append(_dump({key: data[key]}))
 
     lines.append("---")
 
@@ -114,6 +156,53 @@ def read_skill_manifest(skill_dir: Path) -> SkillManifest | None:
     return manifest
 
 
+def set_frontmatter_source(content: str, source: str | None) -> str | None:
+    """Set or remove the top-level ``source:`` field with a minimal text edit.
+
+    Only the ``source:`` line is touched; every other frontmatter line and the
+    body are kept byte-for-byte. The new line is inserted right after
+    ``name:`` when absent. Falls back to a full ``render_frontmatter`` if the
+    targeted edit does not yield the expected manifest. Returns None when the
+    content has no parseable frontmatter with a name.
+    """
+    match = _FRONTMATTER_RE.match(content)
+    if not match:
+        return None
+    manifest, body = parse_frontmatter(content)
+    if not manifest.name:
+        return None
+
+    lines = match.group(1).split("\n")
+    kept: list[str] = []
+    insert_at: int | None = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if re.match(r"source\s*:", line):
+            # Drop the key and any indented continuation lines of its value
+            insert_at = len(kept)
+            i += 1
+            while i < len(lines) and lines[i][:1] in (" ", "\t"):
+                i += 1
+            continue
+        kept.append(line)
+        if insert_at is None and re.match(r"name\s*:", line):
+            insert_at = len(kept)
+        i += 1
+
+    if source is not None:
+        kept.insert(len(kept) if insert_at is None else insert_at, _dump({"source": source}))
+
+    start, end = match.span(1)
+    new_content = content[:start] + "\n".join(kept) + content[end:]
+
+    expected = manifest.model_copy(update={"source": source})
+    reparsed, _ = parse_frontmatter(new_content)
+    if reparsed.model_dump() != expected.model_dump():
+        return render_frontmatter(expected, body)
+    return new_content
+
+
 def update_skill_source(skill_dir: Path, source: str | None) -> bool:
     """Add or update the source: field in a skill's frontmatter.
 
@@ -126,12 +215,9 @@ def update_skill_source(skill_dir: Path, source: str | None) -> bool:
         return False
 
     content = skill_file.read_text(encoding="utf-8")
-    manifest, body = parse_frontmatter(content)
-
-    if not manifest.name:
+    new_content = set_frontmatter_source(content, source)
+    if new_content is None:
         return False
 
-    manifest.source = source
-    new_content = render_frontmatter(manifest, body)
     skill_file.write_text(new_content, encoding="utf-8")
     return True

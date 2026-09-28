@@ -3,6 +3,7 @@
 Commands are split into modules:
 - frontmatter.py: YAML frontmatter parse/write + SkillManifest model
 - _discovery.py: Discover bundled + plugin + local skills
+- renames.py: Retired skill names -> current names
 - seed.py: Seed skills into a project
 - list.py: List available and installed skills
 - status.py: Version drift detection

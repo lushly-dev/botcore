@@ -311,7 +311,7 @@ context: fork                # Isolate in subagent (Claude Code 2.0+)
 user-invocable: true         # Show in slash-command menu (default: true)
 disable-model-invocation: true  # Boolean. User-only, removed from model context
 agent: general-purpose       # Must be: Explore, Plan, general-purpose, or custom string
-model: claude-sonnet         # Model identifier string — override model for this skill
+model: opus                  # Model alias or identifier string — override model for this skill
 argument-hint: "file path"   # String hint for argument placeholder in UI
 hooks:                       # Array of hook objects — guardrails and janitors
   - event: PreToolUse        #   Required: event name (PreToolUse, PostToolUse, etc.)
@@ -330,7 +330,7 @@ hooks:                       # Array of hook objects — guardrails and janitors
 | `metadata` | Optional. Max 10 keys. Key max 64 chars, value max 256 chars. |
 | `hooks` | Optional. Array of objects. Each requires `event` (string) and `command` (string); `matcher` is optional. |
 | `agent` | Optional. One of `Explore`, `Plan`, `general-purpose`, or a custom string. |
-| `model` | Optional. Model identifier string. |
+| `model` | Optional. Model alias (e.g. `opus`, `fable`) or model identifier string. |
 | `argument-hint` | Optional. String. |
 | `disable-model-invocation` | Optional. Boolean (`true`/`false`). |
 | `triggers` | Optional. Array of strings. |

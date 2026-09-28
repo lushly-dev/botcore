@@ -193,7 +193,7 @@ context: fork                # Isolate in subagent
 user-invocable: true         # Show in slash-command menu (default: true)
 disable-model-invocation: true  # User-only, removed from model context
 agent: general-purpose       # Agent type (Explore, Plan, general-purpose, custom)
-model: claude-sonnet         # Override model for this skill
+model: opus                  # Model alias (opus, fable); resolves to the latest version
 argument-hint: "file path"   # Hint for argument placeholder
 hooks:                       # Inline hook definitions
   - event: PreToolUse

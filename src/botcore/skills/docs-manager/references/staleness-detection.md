@@ -28,7 +28,7 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline --no-merges
 - [ ] Prompt count matches actual `.github/prompts/` files
 - [ ] `[Unreleased]` in CHANGELOG captures all merged work since last version
 - [ ] ROADMAP shipped items link to CHANGELOG versions
-- [ ] CLAUDE.md content matches AGENTS.md (auto-generated header present)
+- [ ] No CLAUDE.md, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists (each one hides AGENTS.md from Claude Code)
 
 ### Content Freshness
 

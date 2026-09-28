@@ -330,12 +330,12 @@ user-invocable: false  # Model-only skill (no slash command)
 ---
 name: deep-analysis
 agent: code-review        # Use a specific agent mode
-model: claude-opus-4      # Override model for this skill
+model: opus               # Alias: resolves to the latest Opus
 ---
 ```
 
 - `agent`: Routes execution to a named agent configuration
-- `model`: Forces a specific model regardless of session default
+- `model`: Forces a specific model regardless of session default. Use an alias (`opus`, `fable`) rather than a pinned ID so the skill doesn't break when models are retired
 
 ## Skills vs MCP vs Subagents
 

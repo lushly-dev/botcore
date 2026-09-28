@@ -73,7 +73,7 @@ Before forming any opinion:
 1. **Search the codebase** — Verify current patterns, existing implementations
 2. **Verify 3rd-party APIs** — Check that code samples use real APIs (not hallucinated)
 3. **Use research tools** — Check latest docs, APIs, best practices
-4. **Read project files** — AGENTS.md, CLAUDE.md, existing specs
+4. **Read project files** — AGENTS.md first, then existing specs
 
 ### 3. Understand Before Judging
 
@@ -124,7 +124,7 @@ See [feedback-format.md](references/feedback-format.md) for the full output temp
 
 - Read PR description, linked issues, commit messages
 - Check scope — do the changed files match the stated intent?
-- Read project configuration (AGENTS.md, CLAUDE.md)
+- Read project configuration (AGENTS.md)
 
 ### Step 2: Research
 

@@ -113,20 +113,17 @@ Heuristics and judgment guidelines. Use for creative or analytical tasks where r
 
 Choose based on the domain — if a human expert would follow an exact checklist, use narrow bridge. If they'd apply judgment, use open field.
 
-## Self-Verification Pattern
+## Deterministic Checks
 
-Every skill should include a mandatory verification step before the agent considers the task complete. This prevents "looks good to me" drift.
+Current models check their own work unprompted, so a generic "verify before finishing" step adds cost and causes over-verification. Instead, when a deterministic check exists -- a linter, test suite, schema validator, or build -- name the exact command in the skill so the agent runs the real check rather than re-reading its own output.
 
 ```markdown
-## Verification (required)
+## Verification
 
-Before completing, run:
-1. `lush skill lint` — confirm zero errors
-2. Check that all generated files exist at expected paths
-3. Verify no placeholder text remains
+Run `botcore skill-lint` and confirm zero errors.
 ```
 
-Without self-verification, agents tend to declare success without confirming their output actually works.
+Omit the section when no such command exists.
 
 ## When to Create a New Skill
 
