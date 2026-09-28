@@ -42,24 +42,48 @@ def _is_json(ctx: click.Context) -> bool:
     return False
 
 
+def _to_dict(result: Any) -> Any:
+    """Normalize an afd ``CommandResult`` (Pydantic model) to a plain dict."""
+    if hasattr(result, "model_dump"):
+        return result.model_dump(mode="json", exclude_none=True)
+    return result
+
+
+def _is_error(result: Any) -> bool:
+    """True for a failed CommandResult (``success: False``) or a legacy error dict."""
+    if not isinstance(result, dict):
+        return False
+    return result.get("success") is False or result.get("status") == "error"
+
+
 def _format_result(result: Any, json_mode: bool) -> None:
     """Format a CommandResult for output and set exit code."""
+    result = _to_dict(result)
+    failed = _is_error(result)
     if json_mode:
         click.echo(json.dumps(result, indent=2, default=str))
+        if failed:
+            sys.exit(1)
+        return
+    if not isinstance(result, dict):
+        click.echo(result)
+        return
+    if failed:
+        err = result.get("error", "unknown")
+        suggestion = result.get("suggestion")
+        if isinstance(err, dict):
+            code, message = err.get("code"), err.get("message", "unknown")
+            suggestion = err.get("suggestion") or suggestion
+            err = f"{code}: {message}" if code else message
+        click.secho(f"Error: {err}", fg="red", err=True)
+        if suggestion:
+            click.secho(f"  Hint: {suggestion}", fg="yellow", err=True)
+        sys.exit(1)
+    data = result.get("data")
+    if data is not None:
+        click.echo(json.dumps(data, indent=2, default=str))
     else:
-        if isinstance(result, dict):
-            if result.get("status") == "error":
-                click.secho(f"Error: {result.get('error', 'unknown')}", fg="red", err=True)
-                if suggestion := result.get("suggestion"):
-                    click.secho(f"  Hint: {suggestion}", fg="yellow", err=True)
-                sys.exit(1)
-            data = result.get("data")
-            if data is not None:
-                click.echo(json.dumps(data, indent=2, default=str))
-            else:
-                click.echo(json.dumps(result, indent=2, default=str))
-        else:
-            click.echo(result)
+        click.echo(json.dumps(result, indent=2, default=str))
 
 
 # ── TOML generation ─────────────────────────────────────────────────────────
@@ -226,9 +250,9 @@ def init(
         from botcore.commands.skill.seed import skill_seed
 
         try:
-            result = _run_async(skill_seed())
-            if isinstance(result, dict) and result.get("status") == "success":
-                data = result.get("data", {})
+            result = _to_dict(_run_async(skill_seed()))
+            if isinstance(result, dict) and not _is_error(result):
+                data = result.get("data") or {}
                 skills_seeded = len(data.get("seeded", []))
         except Exception as exc:
             if not json_out:
@@ -345,11 +369,7 @@ def skill_lint_cmd(ctx: click.Context, path: str | None, **_kwargs: Any) -> None
     from botcore.commands.skill_lint import skill_lint_spec
 
     result = _run_async(skill_lint_spec(path=path))
-    json_mode = _is_json(ctx)
-    # CommandResult is a Pydantic model — convert to dict for _format_result
-    if hasattr(result, "model_dump"):
-        result = result.model_dump(exclude_none=True)
-    _format_result(result, json_mode)
+    _format_result(result, _is_json(ctx))
 
 
 @cli.command()

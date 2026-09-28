@@ -70,7 +70,7 @@ Delegate to the `docs-update` skill. It runs a full documentation pass:
 6. Update ROADMAP.md — move shipped items, link to changelog versions
 7. Lint skill files — if any were modified
 8. Verify links — fix broken or stale internal links across touched docs
-9. Sync CLAUDE.md — if AGENTS.md changed
+9. Keep AGENTS.md the only instruction file — never create or regenerate a CLAUDE.md
 
 **Do not skip this step.** Documentation updates are part of the deliverable, not an afterthought.
 

@@ -1,5 +1,7 @@
 """Agent orchestrator — pool management, task assignment, session lifecycle."""
 
+# botcore-override: max-lines=750 — already 692 lines on main; splitting is a separate refactor
+
 from __future__ import annotations
 
 import logging
@@ -119,11 +121,13 @@ class AgentOrchestrator:
 
                 _namespace, _ = build_namespace()
 
-            tools.extend(resolve_connector_commands(
-                config.connectors,
-                config.connector_commands,
-                _namespace,
-            ))
+            tools.extend(
+                resolve_connector_commands(
+                    config.connectors,
+                    config.connector_commands,
+                    _namespace,
+                )
+            )
 
         return tools
 
@@ -198,7 +202,18 @@ class AgentOrchestrator:
                 f"Agent {name!r} is already {state.health.status}",
             )
 
-        model = state.config.model or self._config.default_model
+        model = state.config.model.strip() or self._config.default_model.strip()
+        if not model:
+            return error(
+                "CONFIG_ERROR",
+                f"No model configured for agent {name!r}: set "
+                "[tool.botcore.plugins.agents] default_model or the agent's model field",
+                suggestion=(
+                    "Add default_model under [tool.botcore.plugins.agents] in botcore.toml. "
+                    "Use llm_model_list to see model IDs your account can use"
+                ),
+                retryable=False,
+            )
         tools = self._resolve_tools(state.config)
         system_prompt = state.config.system_prompt or None
 
@@ -326,6 +341,7 @@ class AgentOrchestrator:
                 "ROLE_SPAWN_FAILED",
                 f"Spawned {instance_name!r} for role {role!r} but failed to start: "
                 f"{start_result.error.message}",
+                suggestion=start_result.error.suggestion,
             )
 
         return success(
@@ -563,14 +579,8 @@ class AgentOrchestrator:
         """
         from .state import AgentSnapshot, OrchestratorSnapshot, TaskSnapshot
 
-        agents = {
-            name: AgentSnapshot.from_state(state)
-            for name, state in self._agents.items()
-        }
-        tasks = {
-            tid: TaskSnapshot.from_task(task)
-            for tid, task in self._tasks.items()
-        }
+        agents = {name: AgentSnapshot.from_state(state) for name, state in self._agents.items()}
+        tasks = {tid: TaskSnapshot.from_task(task) for tid, task in self._tasks.items()}
 
         return OrchestratorSnapshot(
             config=self._config.model_copy(deep=True),
@@ -588,12 +598,10 @@ class AgentOrchestrator:
         logger.info("Replacing orchestrator config from snapshot (version=%s)", snapshot.version)
         self._config = snapshot.config.model_copy(deep=True)
         self._tasks = {
-            tid: task_snapshot.to_task()
-            for tid, task_snapshot in snapshot.tasks.items()
+            tid: task_snapshot.to_task() for tid, task_snapshot in snapshot.tasks.items()
         }
         self._agents = {
-            name: agent_snapshot.to_state()
-            for name, agent_snapshot in snapshot.agents.items()
+            name: agent_snapshot.to_state() for name, agent_snapshot in snapshot.agents.items()
         }
 
     async def save_state(self) -> CommandResult[dict]:

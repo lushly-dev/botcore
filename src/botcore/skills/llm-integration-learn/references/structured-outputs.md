@@ -8,20 +8,43 @@ Structured outputs guarantee that model responses conform to a JSON schema by co
 
 ### Claude Structured Outputs
 
+Pass the schema through `output_config.format` -- not OpenAI's `response_format`, which the Anthropic API does not accept. The simplest path is `messages.parse()` with a Pydantic model:
+
 ```python
+from typing import Literal
+
 import anthropic
+from pydantic import BaseModel
 
 client = anthropic.Anthropic()
+MODEL = "<model-id>"  # see Model Selection in SKILL.md
+
+class SentimentResult(BaseModel):
+    sentiment: Literal["positive", "negative", "neutral"]
+    confidence: float
+    reasoning: str
+
+response = client.messages.parse(
+    model=MODEL,
+    max_tokens=16000,
+    messages=[{"role": "user", "content": "Analyze the sentiment of: 'Great product!'"}],
+    output_format=SentimentResult,
+)
+result = response.parsed_output  # Validated SentimentResult
+```
+
+With a raw JSON schema, use `messages.create()` and `output_config`:
+
+```python
+import json
 
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,
     messages=[{"role": "user", "content": "Analyze the sentiment of: 'Great product!'"}],
-    response_format={
-        "type": "json_schema",
-        "json_schema": {
-            "name": "sentiment_analysis",
-            "strict": True,
+    output_config={
+        "format": {
+            "type": "json_schema",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -36,8 +59,10 @@ response = client.messages.create(
                 "additionalProperties": False
             }
         }
-    }
+    },
 )
+# Skip thinking blocks; the text block holds the JSON
+data = json.loads(next(b.text for b in response.content if b.type == "text"))
 ```
 
 **Performance note:** First request with a new schema incurs 100-300ms grammar compilation overhead. The grammar is cached for 24 hours. For production, warm the cache during deployment with a dummy request.
@@ -56,7 +81,7 @@ class SentimentResult(BaseModel):
     reasoning: str
 
 response = client.responses.parse(
-    model="gpt-4o",
+    model="<model-id>",  # e.g. a GPT-6 model; see Model Selection in SKILL.md
     input="Analyze the sentiment of: 'Great product!'",
     text_format=SentimentResult
 )
@@ -78,7 +103,7 @@ const SentimentResult = z.object({
 });
 
 const response = await openai.responses.parse({
-  model: "gpt-4o",
+  model: "<model-id>", // e.g. a GPT-6 model; see Model Selection in SKILL.md
   input: "Analyze the sentiment of: 'Great product!'",
   text_format: zodResponseFormat(SentimentResult, "sentiment_analysis"),
 });
@@ -125,8 +150,8 @@ tools = [
 ]
 
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,
     tools=tools,
     messages=[{"role": "user", "content": "What's the weather in Tokyo?"}]
 )
@@ -143,8 +168,8 @@ for block in response.content:
 
         # Return result to Claude
         followup = client.messages.create(
-            model="claude-sonnet-4-5-20250514",
-            max_tokens=1024,
+            model=MODEL,
+            max_tokens=16000,
             tools=tools,
             messages=[
                 {"role": "user", "content": "What's the weather in Tokyo?"},
@@ -187,7 +212,7 @@ tools = [{
 }]
 
 response = client.responses.create(
-    model="gpt-4o",
+    model="<model-id>",  # e.g. a GPT-6 model
     input="What's the weather in Tokyo?",
     tools=tools
 )
@@ -223,8 +248,8 @@ const tools: Anthropic.Tool[] = [
 ];
 
 const response = await client.messages.create({
-  model: "claude-sonnet-4-5-20250514",
-  max_tokens: 1024,
+  model: "<model-id>", // see Model Selection in SKILL.md
+  max_tokens: 16000,
   tools,
   messages: [{ role: "user", content: "What's the weather in Tokyo?" }],
 });
@@ -239,16 +264,20 @@ for (const block of response.content) {
 
 ## Tool Design Best Practices
 
-### 1. Keep Tool Descriptions Concise
+### 1. Write Detailed Tool Descriptions
+
+A description is the tool's contract. Under-description is the most common tool-use failure: say what the tool does, when to use it and when not to, what each parameter means, and what it returns or leaves out.
 
 ```python
-# BAD: 100+ tokens
-description="""This tool searches the database for customer records
-matching the given criteria. It supports filtering by name, email,
-date range, and account status. Returns up to 50 results..."""
-
-# GOOD: ~20 tokens
+# BAD: the model has to guess limits, matching, and when to use it
 description="Search customers by name, email, date, or status."
+
+# GOOD: states behavior, limits, and boundaries
+description="""Search customer records by name, email, signup date range,
+or account status. Name and email match case-insensitive substrings.
+Returns at most 50 customers, newest first, with id, name, email, and
+status -- not billing data (use get_invoices for that). Use this to find
+a customer's id before calling any account tool."""
 ```
 
 ### 2. Use Enum Constraints
@@ -319,8 +348,8 @@ Claude supports source citations for RAG applications:
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,
     messages=[{
         "role": "user",
         "content": [

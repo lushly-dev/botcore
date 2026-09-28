@@ -118,7 +118,7 @@ These fields extend the open standard with Claude Code-specific behavior. They m
 | `user-invocable` | boolean | `true` | If true, appears in the `/` slash-command menu. If false, model-only "background skill" hidden from the menu. |
 | `disable-model-invocation` | boolean | `false` | If true, user-only skill removed from model context entirely. Only invocable via `/` command. |
 | `agent` | string | — | Agent type: `Explore`, `Plan`, `general-purpose`, or a custom name. |
-| `model` | string | — | Override the model for this skill (e.g., `claude-sonnet`). |
+| `model` | string | — | Override the model for this skill. Prefer an alias (`opus`, `fable`), which resolves to the latest version, over a pinned model ID. |
 | `argument-hint` | string | — | Placeholder text for the argument input (e.g., `"file path"`). |
 | `hooks` | array | — | Inline hook definitions. See hooks reference for schema. |
 
@@ -367,7 +367,7 @@ context: fork                       # isolate in subagent
 user-invocable: true                # show in / menu
 disable-model-invocation: false     # hide from model context
 agent: general-purpose              # Explore | Plan | custom
-model: claude-sonnet                # model override
+model: opus                         # model alias (resolves to latest)
 argument-hint: "file path"          # input placeholder
 hooks:                              # inline hook definitions
   - event: on-activate

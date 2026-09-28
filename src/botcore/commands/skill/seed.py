@@ -9,11 +9,7 @@ from pathlib import Path
 from afd import CommandResult, error, success
 
 from botcore.commands.skill._discovery import discover_available_skills, discover_local_skills
-from botcore.commands.skill.frontmatter import (
-    parse_frontmatter,
-    read_skill_manifest,
-    render_frontmatter,
-)
+from botcore.commands.skill.frontmatter import read_skill_manifest, set_frontmatter_source
 from botcore.commands.skill.renames import locally_owned_rename_suggestion, resolve_rename
 from botcore.config import load_config
 from botcore.utils.workspace import find_workspace
@@ -209,6 +205,6 @@ def _copy_skill(source_path: Path, target_path: Path, source_name: str) -> None:
         return
 
     content = skill_file.read_text(encoding="utf-8")
-    manifest, body = parse_frontmatter(content)
-    manifest.source = source_name
-    skill_file.write_text(render_frontmatter(manifest, body), encoding="utf-8")
+    new_content = set_frontmatter_source(content, source_name)
+    if new_content is not None and new_content != content:
+        skill_file.write_text(new_content, encoding="utf-8")

@@ -30,7 +30,7 @@ class TestAgentConfig:
     def test_valid_config(self):
         cfg = AgentConfig(
             name="researcher",
-            model="gpt-4.1",
+            model="test-model",
             skills=["dev_test", "dev_lint"],
             memory_scope="agent",
             max_concurrent_tasks=3,
@@ -117,7 +117,7 @@ class TestAgentsPluginConfig:
     def test_defaults(self):
         cfg = AgentsPluginConfig()
         assert cfg.agents == {}
-        assert cfg.default_model == "gpt-4.1"
+        assert cfg.default_model == ""
         assert cfg.max_agents == 10
         assert cfg.state.enabled is False
         assert cfg.state.path == ".botcore/orchestrator-state.json"
@@ -125,10 +125,10 @@ class TestAgentsPluginConfig:
     def test_with_agents(self):
         cfg = AgentsPluginConfig(
             agents={
-                "researcher": AgentConfig(name="researcher", model="gpt-4.1"),
-                "coder": AgentConfig(name="coder", model="gpt-4.1"),
+                "researcher": AgentConfig(name="researcher", model="test-model"),
+                "coder": AgentConfig(name="coder", model="test-model"),
             },
-            default_model="gpt-4.1-mini",
+            default_model="test-model-mini",
             max_agents=5,
         )
         assert len(cfg.agents) == 2
@@ -173,13 +173,13 @@ class TestGetAgentsConfig:
 
     def test_dict_validates(self):
         raw = {
-            "default_model": "gpt-4.1-mini",
+            "default_model": "test-model-mini",
             "agents": {
-                "worker": {"name": "worker", "model": "gpt-4.1"},
+                "worker": {"name": "worker", "model": "test-model"},
             },
         }
         cfg = get_agents_config(raw)
-        assert cfg.default_model == "gpt-4.1-mini"
+        assert cfg.default_model == "test-model-mini"
         assert "worker" in cfg.agents
 
     def test_invalid_dict_raises(self):

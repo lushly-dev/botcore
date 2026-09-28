@@ -172,8 +172,8 @@ class TestTaskStatus:
 
 class TestTaskResume:
     async def test_resume_pending_task(self, mock_llm):
-        from botcore_agents.orchestrator import get_orchestrator
         from botcore_agents.models import Task
+        from botcore_agents.orchestrator import get_orchestrator
 
         await agent_create(name="researcher")
         await agent_start(name="researcher")
@@ -187,8 +187,8 @@ class TestTaskResume:
         assert data["agent"] == "researcher"
 
     async def test_resume_non_pending_task_returns_error(self, mock_llm):
-        from botcore_agents.orchestrator import get_orchestrator
         from botcore_agents.models import Task
+        from botcore_agents.orchestrator import get_orchestrator
 
         task = Task(description="done", status="completed")
         get_orchestrator()._tasks[task.id] = task
@@ -284,7 +284,7 @@ class TestMultiAgentIsolation:
             return success(
                 data={
                     "session_id": f"session-agent-{call_count:03d}",
-                    "model": kwargs.get("model", "gpt-4.1"),
+                    "model": kwargs.get("model", "test-model"),
                     "tools": [],
                 },
                 reasoning="Mock session",

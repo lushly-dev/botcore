@@ -40,7 +40,7 @@ def sample_agent_config() -> AgentConfig:
     return AgentConfig(
         name="researcher",
         role="researcher",
-        model="gpt-4.1",
+        model="test-model",
         skills=["dev_test", "dev_lint"],
         max_concurrent_tasks=2,
         system_prompt="You are a research agent.",
@@ -55,12 +55,12 @@ def sample_config(sample_agent_config: AgentConfig) -> AgentsPluginConfig:
             "coder": AgentConfig(
                 name="coder",
                 role="coder",
-                model="gpt-4.1",
+                model="test-model",
                 skills=["dev_build"],
                 max_concurrent_tasks=1,
             ),
         },
-        default_model="gpt-4.1",
+        default_model="test-model",
         max_agents=5,
     )
 
@@ -87,7 +87,7 @@ def mock_llm_session_create():
         mock_create.return_value = success(
             data={
                 "session_id": "session-agent-001",
-                "model": "gpt-4.1",
+                "model": "test-model",
                 "tools": [],
             },
             reasoning="Mock session created",
@@ -160,7 +160,7 @@ def sample_config_with_connectors() -> AgentsPluginConfig:
             "researcher": AgentConfig(
                 name="researcher",
                 role="researcher",
-                model="gpt-4.1",
+                model="test-model",
                 skills=["dev_test", "dev_lint"],
                 connectors=["github"],
                 max_concurrent_tasks=2,
@@ -169,7 +169,7 @@ def sample_config_with_connectors() -> AgentsPluginConfig:
             "admin": AgentConfig(
                 name="admin",
                 role="admin",
-                model="gpt-4.1",
+                model="test-model",
                 skills=["dev_build"],
                 connectors=["*"],
                 max_concurrent_tasks=1,
@@ -177,7 +177,7 @@ def sample_config_with_connectors() -> AgentsPluginConfig:
             "scoped": AgentConfig(
                 name="scoped",
                 role="scoped",
-                model="gpt-4.1",
+                model="test-model",
                 skills=["dev_test"],
                 connector_commands=["github_issue_list"],
                 max_concurrent_tasks=1,
@@ -185,12 +185,12 @@ def sample_config_with_connectors() -> AgentsPluginConfig:
             "locked": AgentConfig(
                 name="locked",
                 role="locked",
-                model="gpt-4.1",
+                model="test-model",
                 skills=["dev_test"],
                 max_concurrent_tasks=1,
             ),
         },
-        default_model="gpt-4.1",
+        default_model="test-model",
         max_agents=10,
     )
 

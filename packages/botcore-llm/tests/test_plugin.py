@@ -48,3 +48,8 @@ class TestLlmPlugin:
         schema = plugin.config_schema()
 
         assert schema is LlmConfig
+
+    def test_config_has_no_hard_coded_default_model(self):
+        assert LlmConfig().default_model == ""
+        # An empty plugin section must still load; the error surfaces at session create.
+        assert LlmConfig.model_validate({}).default_model == ""
