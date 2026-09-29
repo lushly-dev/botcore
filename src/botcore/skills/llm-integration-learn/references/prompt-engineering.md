@@ -96,7 +96,7 @@ Output:
 
 ## Reasoning: Thinking and Effort
 
-Current frontier models (Claude Opus 5.5+, Claude Fable 5.1+, GPT-6) reason internally before they answer. Control reasoning depth with API configuration, not prompt text:
+Current frontier models (including Claude Sonnet 5.5, Opus 5.5, Fable 5.1, and GPT-6.1 Sol) reason internally before they answer. Control reasoning depth with API configuration, not prompt text:
 
 - Do not add "Let's think step by step", `<scratchpad>` / `<thinking>` tag instructions, or required "show your reasoning" sections. The model already thinks; asking it to reproduce that reasoning in the response wastes output tokens and, on Claude Opus 5.5 and Fable 5.1, can be declined with `stop_reason: "refusal"` (category `reasoning_extraction`).
 - Describe the task, the quality bar, and what a good answer contains, then let the model plan its own steps.
@@ -121,20 +121,20 @@ for block in response.content:
 ```
 
 - Thinking is always on for Claude Opus 5.5 and Fable 5.1. `thinking={"type": "enabled", "budget_tokens": N}` and `{"type": "disabled"}` both return a 400 -- `effort` is the only depth control.
-- Claude Opus 5.5 defaults to `effort: "medium"`; set it explicitly for each route.
+- Defaults vary by model and surface. For example, Sonnet 5.5 defaults to Medium in Claude Code and apps, and High on the Claude Platform. Set effort explicitly for each route.
 - `display: "summarized"` returns a readable summary; the default returns thinking blocks with empty text.
 
 ### Choosing Effort
 
 | Effort | Use For |
 |---|---|
-| `low` | Classification, extraction, routing, sub-agents, latency-sensitive routes |
-| `medium` | Routine Q&A and drafting where evals show quality holds |
-| `high` | Intelligence-sensitive analysis, review, most production reasoning |
-| `xhigh` | Coding and long-horizon agentic work |
-| `max` | Correctness matters more than cost, and evals show headroom above `xhigh` |
+| `low` | Classification, extraction, routing, and latency-sensitive routes with verification |
+| `medium` | Well-specified agentic coding, routine Q&A, and drafting where evals show quality holds |
+| `high` | Harder or longer coding, analysis, and review with clear acceptance checks |
+| `xhigh` | Exceptional difficult work only where evals show a gain over `high` |
+| `max` | Exceptional work only where evals show a gain over `xhigh` and cost is justified |
 
-Tune effort per route before switching models: lower effort on a frontier model often matches a smaller model running at higher effort, and keeps one prompt cache.
+Tune effort per route and compare completed-task outcomes before switching models. Higher effort is not guaranteed to improve quality; it can expand scope or add unrequested review steps. Keep authorized scope and required checks explicit. See [Anthropic's Sonnet 5.5 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5-5).
 
 ### OpenAI
 

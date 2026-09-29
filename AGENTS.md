@@ -49,6 +49,11 @@ Project-local skills in `.claude/skills/` (no `source:`, so `skill-seed --update
 
 Run Python tools via `uv run --frozen` so they resolve from the worktree's `.venv`. No CI runs tests on PRs and `main` is not green on the full tree, so `pr-prep`'s gate is the PR's test evidence.
 
+For development agents and delegated tasks, choose a model and effort using
+[model routing](docs/operations/model-routing.md). Pin delegated routes when the
+harness supports it. Product LLM selection is a separate decision covered by
+the `llm-integration-learn` skill and application evals.
+
 ## Architecture
 
 ```

@@ -84,27 +84,27 @@ Rate the response on these criteria (1-5 each):
 Respond with JSON:
 {{"correctness": N, "completeness": N, "relevance": N, "clarity": N, "reasoning": "..."}}"""
 
+JUDGE_MODEL = "<model-id>"  # load from config; see Model Selection in SKILL.md
+
 async def llm_judge(
     task: str,
     expected: str,
     actual: str,
-    judge_model: str = "claude-sonnet-4-5-20250514"
+    judge_model: str = JUDGE_MODEL
 ) -> dict:
     """Use an LLM to evaluate another LLM's response."""
     response = await client.messages.create(
         model=judge_model,
-        max_tokens=512,
+        max_tokens=16000,
         messages=[{
             "role": "user",
             "content": JUDGE_PROMPT.format(
                 task=task, expected=expected, actual=actual
             )
         }],
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "eval_result",
-                "strict": True,
+        output_config={
+            "format": {
+                "type": "json_schema",
                 "schema": {
                     "type": "object",
                     "properties": {
@@ -118,9 +118,10 @@ async def llm_judge(
                     "additionalProperties": False
                 }
             }
-        }
+        },
     )
-    return json.loads(response.content[0].text)
+    # Skip thinking blocks; the text block holds the JSON
+    return json.loads(next(b.text for b in response.content if b.type == "text"))
 ```
 
 ### RAG-Specific Metrics
@@ -176,7 +177,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           python -m pytest tests/evals/ \
-            --eval-model claude-sonnet-4-5-20250514 \
+            --eval-model "${{ vars.EVAL_MODEL }}" \
             --min-score 0.85 \
             --report-file eval-results.json
       - name: Comment PR with results
@@ -197,7 +198,7 @@ from pathlib import Path
 async def run_eval_suite(
     eval_file: str,
     prompt_fn,
-    model: str = "claude-sonnet-4-5-20250514",
+    model: str,  # "<model-id>" from config; see Model Selection in SKILL.md
     concurrency: int = 5
 ) -> dict:
     """Run an eval suite and return aggregate metrics."""
@@ -246,8 +247,8 @@ prompts:
   - prompts/classify-ticket-v2.txt
 
 providers:
-  - id: anthropic:messages:claude-sonnet-4-5-20250514
-  - id: openai:gpt-4o
+  - id: anthropic:messages:<model-id>  # e.g. a Claude Opus model
+  - id: openai:<model-id>              # e.g. a GPT-6 model
 
 tests:
   - vars:

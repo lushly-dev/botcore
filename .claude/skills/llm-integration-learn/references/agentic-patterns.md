@@ -8,34 +8,67 @@ Design patterns for building autonomous AI agents with tool use, planning, refle
 
 The agent alternates between reasoning about the task and acting (calling tools) in a loop.
 
+`stop_reason == "end_turn"` does not mean the task is finished. Current models (Claude Opus 5.5 especially) can end a turn with a progress report while work remains. Track what the task requires -- a checklist the agent updates through a tool, or a check your code runs -- and when items remain with no stated blocker, send a short "continue" message. Cap these nudges at 2-3 so a genuinely stuck agent still stops. Handle the other stop reasons explicitly:
+
+| `stop_reason` | Meaning | Action |
+|---|---|---|
+| `tool_use` | Model wants tool results | Run every call; return all results in one user message |
+| `end_turn` | Model yielded | Finished only if nothing remains; otherwise nudge (capped) |
+| `pause_turn` | A long server-tool turn paused | Resend the conversation unchanged to resume |
+| `refusal` | Safety classifier declined | Stop; log `stop_details.category`; don't retry the same request |
+| `max_tokens` | Output was cut off | Raise `max_tokens` (thinking counts toward it) |
+
 ```python
 from anthropic import Anthropic
 
 client = Anthropic()
+MODEL = "<model-id>"  # see Model Selection in SKILL.md
+MAX_CONTINUES = 2     # nudges after an early end_turn
+
+def extract_text(response) -> str:
+    """Join text blocks; skip thinking blocks (thinking is always on)."""
+    return "".join(b.text for b in response.content if b.type == "text")
 
 def react_loop(
     query: str,
     tools: list[dict],
-    max_iterations: int = 10
+    remaining_items,  # (messages) -> list[str]: items neither done nor reported blocked
+    max_iterations: int = 10,
 ) -> str:
     """ReAct loop: reason, act, observe, repeat."""
     messages = [{"role": "user", "content": query}]
+    continues = 0
 
     for _ in range(max_iterations):
         response = client.messages.create(
-            model="claude-sonnet-4-5-20250514",
-            max_tokens=4096,
-            system="You are a helpful assistant. Use tools when needed. Think step by step.",
+            model=MODEL,
+            max_tokens=16000,
+            output_config={"effort": "high"},
+            system="You are a helpful assistant. Use tools when needed.",
             tools=tools,
             messages=messages,
         )
-
-        # Check if we got a final text response (no tool calls)
-        if response.stop_reason == "end_turn":
-            return extract_text(response)
-
-        # Process tool calls
         messages.append({"role": "assistant", "content": response.content})
+
+        if response.stop_reason == "refusal":
+            return "Request declined."  # log response.stop_details.category
+        if response.stop_reason == "max_tokens":
+            raise RuntimeError("Response truncated; raise max_tokens")
+        if response.stop_reason == "pause_turn":
+            continue  # resend as-is to resume the paused turn
+        if response.stop_reason == "end_turn":
+            remaining = remaining_items(messages)
+            if not remaining or continues >= MAX_CONTINUES:
+                return extract_text(response)
+            continues += 1
+            messages.append({
+                "role": "user",
+                "content": "Continue with: " + "; ".join(remaining)
+                + ". If something blocks you, say what it is.",
+            })
+            continue
+
+        # stop_reason == "tool_use": return every result in a single user message
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
@@ -53,28 +86,47 @@ def react_loop(
 ### TypeScript ReAct Loop
 
 ```typescript
+const MODEL = "<model-id>"; // see Model Selection in SKILL.md
+const MAX_CONTINUES = 2;
+
 async function reactLoop(
   query: string,
   tools: Anthropic.Tool[],
+  remainingItems: (messages: Anthropic.MessageParam[]) => string[],
   maxIterations = 10
 ): Promise<string> {
   const messages: Anthropic.MessageParam[] = [
     { role: "user", content: query },
   ];
+  let continues = 0;
 
   for (let i = 0; i < maxIterations; i++) {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250514",
-      max_tokens: 4096,
+      model: MODEL,
+      max_tokens: 16000,
+      output_config: { effort: "high" },
       tools,
       messages,
     });
-
-    if (response.stop_reason === "end_turn") {
-      return extractText(response);
-    }
-
     messages.push({ role: "assistant", content: response.content });
+
+    if (response.stop_reason === "refusal") return "Request declined.";
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("Response truncated; raise max_tokens");
+    }
+    if (response.stop_reason === "pause_turn") continue; // resend to resume
+    if (response.stop_reason === "end_turn") {
+      const remaining = remainingItems(messages);
+      if (remaining.length === 0 || continues >= MAX_CONTINUES) {
+        return extractText(response);
+      }
+      continues++;
+      messages.push({
+        role: "user",
+        content: `Continue with: ${remaining.join("; ")}. If something blocks you, say what it is.`,
+      });
+      continue;
+    }
 
     const toolResults = await Promise.all(
       response.content
@@ -118,12 +170,12 @@ async def plan_and_execute(task: str, tools: list[dict]) -> str:
     """Plan-then-execute pattern."""
     # Step 1: Generate plan
     plan_response = await client.messages.create(
-        model="claude-sonnet-4-5-20250514",
-        max_tokens=2048,
+        model=MODEL,
+        max_tokens=16000,
         messages=[{"role": "user", "content": PLANNING_PROMPT.format(task=task)}],
-        response_format={"type": "json_schema", "json_schema": plan_schema}
+        output_config={"format": {"type": "json_schema", "schema": plan_schema}},
     )
-    plan = json.loads(plan_response.content[0].text)
+    plan = json.loads(extract_text(plan_response))
 
     # Step 2: Execute steps in dependency order
     results = {}
@@ -137,22 +189,20 @@ async def plan_and_execute(task: str, tools: list[dict]) -> str:
 
 ### 3. Reflection
 
-The agent reviews its own output and iterates to improve quality.
+A second model pass reviews the output and requests improvements. Current models already check their own work, so default to **no** reflection round. Add one round only when evals show it improves quality for this task, and add a second only with evidence that the first leaves fixable issues.
 
 ```python
 async def reflect_and_improve(
     task: str,
-    max_reflections: int = 3
+    max_reflections: int = 0  # raise only when evals show a gain
 ) -> str:
-    """Generate, reflect, improve loop."""
-    # Initial generation
+    """Generate, then optionally review and improve."""
     draft = await generate(task)
 
-    for i in range(max_reflections):
-        # Reflect on the draft
+    for _ in range(max_reflections):
         reflection = await client.messages.create(
-            model="claude-sonnet-4-5-20250514",
-            max_tokens=2048,
+            model=MODEL,
+            max_tokens=16000,
             messages=[{
                 "role": "user",
                 "content": f"""Review this draft for the task: "{task}"
@@ -160,25 +210,19 @@ async def reflect_and_improve(
 Draft:
 {draft}
 
-Identify:
-1. Factual errors or unsupported claims
-2. Missing information
-3. Logical inconsistencies
-4. Areas for improvement
-
+Check for factual errors or unsupported claims, missing information, and logical inconsistencies.
 If the draft is good enough, respond with "APPROVED".
-Otherwise, list specific improvements needed."""
+Otherwise, list the specific improvements needed."""
             }]
         )
 
-        reflection_text = reflection.content[0].text
+        reflection_text = extract_text(reflection)
         if "APPROVED" in reflection_text:
             break
 
-        # Improve based on reflection
         improved = await client.messages.create(
-            model="claude-sonnet-4-5-20250514",
-            max_tokens=4096,
+            model=MODEL,
+            max_tokens=16000,
             messages=[{
                 "role": "user",
                 "content": f"""Improve this draft based on the feedback.
@@ -190,7 +234,7 @@ Feedback: {reflection_text}
 Write an improved version."""
             }]
         )
-        draft = improved.content[0].text
+        draft = extract_text(improved)
 
     return draft
 ```
@@ -208,7 +252,7 @@ class Agent:
     name: str
     system_prompt: str
     tools: list[dict]
-    model: str = "claude-sonnet-4-5-20250514"
+    model: str = MODEL
 
 class Orchestrator:
     """Route tasks to specialized agents."""
@@ -219,8 +263,9 @@ class Orchestrator:
     async def route(self, task: str) -> str:
         """Determine which agent should handle the task."""
         routing_response = await client.messages.create(
-            model="claude-haiku-4-5-20250514",  # Cheap model for routing
-            max_tokens=256,
+            model=MODEL,
+            max_tokens=4096,  # thinking counts toward max_tokens
+            output_config={"effort": "low"},  # routing needs little reasoning
             messages=[{
                 "role": "user",
                 "content": f"""Given these available agents:
@@ -230,7 +275,7 @@ Which agent should handle this task? Respond with just the agent name.
 Task: {task}"""
             }]
         )
-        return routing_response.content[0].text.strip()
+        return extract_text(routing_response).strip()
 
     async def execute(self, task: str) -> str:
         """Route and execute a task."""
@@ -239,7 +284,7 @@ Task: {task}"""
 
         response = await client.messages.create(
             model=agent.model,
-            max_tokens=4096,
+            max_tokens=16000,
             system=agent.system_prompt,
             tools=agent.tools,
             messages=[{"role": "user", "content": task}]
@@ -292,8 +337,9 @@ class Orchestrator {
     );
 
     const response = await client.messages.create({
-      model: "claude-haiku-4-5-20250514",
-      max_tokens: 256,
+      model: MODEL,
+      max_tokens: 4096, // thinking counts toward max_tokens
+      output_config: { effort: "low" }, // routing needs little reasoning
       messages: [
         {
           role: "user",
@@ -321,7 +367,8 @@ Always cap the number of iterations to prevent runaway loops.
 
 ```python
 MAX_ITERATIONS = 10        # ReAct loops
-MAX_REFLECTIONS = 3        # Reflection cycles
+MAX_REFLECTIONS = 1        # Reflection rounds (0 unless evals show a gain)
+MAX_CONTINUES = 2          # "Continue" nudges after an early end_turn
 MAX_PLANNING_DEPTH = 5     # Nested sub-task decomposition
 TOOL_CALL_TIMEOUT = 30     # Seconds per tool call
 TOTAL_TIMEOUT = 300        # Seconds for entire agent run
@@ -377,7 +424,7 @@ async def safe_tool_call(tool_name: str, tool_input: dict, retries: int = 2) -> 
 | **Single LLM call** | Simple tasks, classification, extraction | Low | Low |
 | **ReAct loop** | Tasks needing external data or actions | Medium | Medium |
 | **Planning** | Complex multi-step tasks with dependencies | High | High |
-| **Reflection** | Quality-critical outputs, writing, analysis | Medium | Medium-High |
+| **Reflection** | Quality-critical outputs where evals show a second pass helps | Medium | Medium-High |
 | **Multi-agent** | Diverse capabilities, team-like workflows | High | High |
 | **Orchestrator + workers** | Production systems with clear task routing | High | Variable |
 
@@ -386,6 +433,8 @@ async def safe_tool_call(tool_name: str, tool_input: dict, retries: int = 2) -> 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
 | Unlimited loops | Runaway cost and latency | Set MAX_ITERATIONS |
+| Treating `end_turn` as done | Agent stops after a progress report with work left | Check remaining items; nudge up to MAX_CONTINUES |
+| Reflection by default | Extra cost; current models already self-check | Add a round only when evals show a gain |
 | No error handling | Single tool failure kills the agent | Wrap tool calls in try/catch |
 | Monolithic agent | One agent does everything poorly | Specialize and orchestrate |
 | No observability | Cannot debug agent decisions | Log every reasoning step and tool call |

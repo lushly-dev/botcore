@@ -2,9 +2,15 @@
 name: llm-integration-learn
 source: botcore
 description: >
-  Guides integration of LLMs into applications with production-grade patterns. Covers prompt engineering, structured outputs, tool use, RAG pipelines, embeddings, agentic patterns, evaluation, cost optimization, and guardrails for both TypeScript and Python. Use when building AI-powered features, integrating Claude or OpenAI APIs, designing RAG systems, implementing agents, optimizing LLM costs, or adding safety guardrails. Triggers: LLM, AI integration, prompt engineering, RAG, embeddings, tool use, structured output, agent, eval, guardrails, Claude API, OpenAI.
-
-version: 1.0.0
+  Guides integration of LLMs into applications with production-grade patterns.
+  Covers prompt engineering, structured outputs, tool use, RAG pipelines,
+  embeddings, agentic patterns, evaluation, cost optimization, and guardrails
+  for both TypeScript and Python. Use when building AI-powered features,
+  integrating Claude or OpenAI APIs, designing RAG systems, implementing
+  agents, optimizing LLM costs, or adding safety guardrails.
+  Triggers: LLM, AI integration, prompt engineering, RAG, embeddings,
+  tool use, structured output, agent, eval, guardrails, Claude API, OpenAI.
+version: "1.0.0"
 triggers:
   - LLM
   - LLM integration
@@ -47,7 +53,7 @@ Production patterns for building AI-powered applications with Claude, OpenAI, an
 
 ## Capabilities
 
-1. **Prompt Engineering** -- System prompts, few-shot examples, chain-of-thought, extended thinking, prompt versioning and caching
+1. **Prompt Engineering** -- System prompts, few-shot examples, adaptive thinking and effort, prompt versioning and caching
 2. **Structured Outputs** -- Schema-guaranteed JSON responses using Claude and OpenAI structured output APIs
 3. **Tool Use / Function Calling** -- Define, invoke, and orchestrate LLM-driven tool calls across providers
 4. **RAG Pipelines** -- Chunking strategies, hybrid search, re-ranking, context assembly, and citation support
@@ -61,7 +67,7 @@ Production patterns for building AI-powered applications with Claude, OpenAI, an
 
 | Request Type | Reference |
 |---|---|
-| System prompts, few-shot, CoT, prompt templates, caching | [prompt-engineering.md](references/prompt-engineering.md) |
+| System prompts, few-shot, thinking and effort, prompt templates, caching | [prompt-engineering.md](references/prompt-engineering.md) |
 | Structured outputs, tool use, function calling, citations | [structured-outputs.md](references/structured-outputs.md) |
 | RAG architecture, chunking, hybrid search, re-ranking | [rag-pipelines.md](references/rag-pipelines.md) |
 | Embedding models, dimensionality, indexing, similarity | [embeddings.md](references/embeddings.md) |
@@ -181,7 +187,8 @@ An agent (or human) should be able to understand, modify, and extend any LLM int
 #### Step 4: Add Tool Use If Needed
 
 - If the model needs to take actions or fetch live data, add tools
-- Keep tool count under 10, descriptions under 50 tokens each
+- Write detailed tool descriptions: what the tool does, when to use it and when not to, and what each parameter means
+- Keep the tool set small and non-overlapping; past a few dozen tools, use tool search or deferred loading
 - Handle parallel tool calls and error recovery
 - See [structured-outputs.md](references/structured-outputs.md) for implementation
 
@@ -189,7 +196,7 @@ An agent (or human) should be able to understand, modify, and extend any LLM int
 
 - If the task requires multi-step reasoning with tools, use a ReAct loop
 - If the task requires planning, add plan-then-execute
-- If quality is critical, add a reflection step
+- Add a reflection round only when evals show it improves quality (default to none)
 - Always set iteration limits and token budgets
 
 #### Step 6: Add Guardrails
@@ -213,20 +220,23 @@ An agent (or human) should be able to understand, modify, and extend any LLM int
 from anthropic import Anthropic
 
 client = Anthropic()
+MODEL = "<model-id>"  # load from config; see Model Selection below
 
 # Basic call
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,  # thinking tokens count toward max_tokens
+    output_config={"effort": "medium"},
     system="You are a helpful assistant.",
     messages=[{"role": "user", "content": "Hello"}]
 )
-print(response.content[0].text)
+# Thinking is always on for current Claude models, so skip thinking blocks
+print(next(b.text for b in response.content if b.type == "text"))
 
 # With prompt caching
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250514",
-    max_tokens=1024,
+    model=MODEL,
+    max_tokens=16000,
     system=[{
         "type": "text",
         "text": "Long system prompt...",
@@ -245,7 +255,7 @@ client = OpenAI()
 
 # Basic call
 response = client.responses.create(
-    model="gpt-4o",
+    model="<model-id>",  # e.g. a GPT-6 model; see Model Selection below
     instructions="You are a helpful assistant.",
     input="Hello"
 )
@@ -260,11 +270,14 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic();
 
 const response = await client.messages.create({
-  model: "claude-sonnet-4-5-20250514",
-  max_tokens: 1024,
+  model: "<model-id>", // load from config; see Model Selection below
+  max_tokens: 16000,
+  output_config: { effort: "medium" },
   system: "You are a helpful assistant.",
   messages: [{ role: "user", content: "Hello" }],
 });
+// Thinking is always on for current Claude models, so skip thinking blocks
+const text = response.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text;
 ```
 
 ### OpenAI API (TypeScript)
@@ -275,7 +288,7 @@ import OpenAI from "openai";
 const client = new OpenAI();
 
 const response = await client.responses.create({
-  model: "gpt-4o",
+  model: "<model-id>", // e.g. a GPT-6 model; see Model Selection below
   instructions: "You are a helpful assistant.",
   input: "Hello",
 });
@@ -283,28 +296,45 @@ const response = await client.responses.create({
 
 ## Quick Reference: Model Selection
 
-| Model | Input $/M | Output $/M | Best For |
-|---|---|---|---|
-| Claude Haiku 4.5 | $0.80 | $4.00 | Classification, routing, guardrail checks |
-| Claude Sonnet 4.5 | $3.00 | $15.00 | General tasks, code, analysis |
-| Claude Opus 4.5 | $15.00 | $75.00 | Complex reasoning, deep analysis |
-| GPT-4o | $2.50 | $10.00 | General tasks, vision, multilingual |
-| GPT-4o mini | $0.15 | $0.60 | Simple tasks, high volume, cost-sensitive |
+Models change too often to hard-code. Keep model IDs in configuration (environment variable or settings file), use `<model-id>` placeholders in examples, and check current IDs and pricing on the provider pages: [Anthropic models](https://platform.claude.com/docs/en/about-claude/models/overview), [OpenAI models](https://developers.openai.com/api/docs/models).
+
+Example families (checked 2026-09-29). These are application API candidates, not
+development-agent assignments. Choose a deployed model and effort against the
+application's own evals, latency target, and cost per completed task:
+
+| Family | Example ID | Best For |
+|---|---|---|
+| Claude Sonnet 5.5 | `claude-sonnet-5-5` | Well-scoped application tasks; test effort and total task cost |
+| Claude Opus 5.5 | `claude-opus-5-5` | Open-ended work requiring careful judgment |
+| Claude Fable 5.1+ | `claude-fable-5-1` | Hardest long-horizon reasoning and agentic work |
+| GPT-6 Astra | `gpt-6-astra` | Hardest reasoning and coding on OpenAI |
+| GPT-6.1 Sol | `gpt-6.1-sol` | Strong candidate for coding and agentic workflows; evaluate against existing routes |
+| GPT-6 Luna | `gpt-6-luna` | Focused, high-volume, cost-sensitive tasks |
+
+Tune `effort` and compare model routes by successful task, including retries and
+tool use; neither lower effort nor a smaller model is automatically cheaper for
+the same quality. See Choosing Effort in [prompt-engineering.md](references/prompt-engineering.md)
+and [cost optimization](references/cost-optimization.md).
+
+Provider context: [OpenAI's GPT-6.1 Sol launch](https://openai.com/index/introducing-gpt-6-1-sol/)
+and [Anthropic's Sonnet 5.5 launch](https://www.anthropic.com/claude-sonnet-5-5/).
 
 ## Quick Reference: Embedding Models
 
-| Model | Provider | Dims | Cost/M tokens | Best For |
-|---|---|---|---|---|
-| text-embedding-3-large | OpenAI | 3072 | $0.13 | General purpose |
-| text-embedding-3-small | OpenAI | 1536 | $0.02 | Cost-sensitive |
-| voyage-3-large | Voyage AI | 2048 | $0.18 | SOTA retrieval |
-| bge-m3 | Open source | 1024 | Self-hosted | Multilingual, on-prem |
+| Model | Provider | Dims | Best For |
+|---|---|---|---|
+| text-embedding-3-large | OpenAI | 3072 | General purpose |
+| text-embedding-3-small | OpenAI | 1536 | Cost-sensitive |
+| voyage-3-large | Voyage AI | 2048 | High-quality retrieval |
+| bge-m3 | Open source | 1024 | Multilingual, self-hosted |
+
+Check provider pages for current embedding models and pricing.
 
 ## Checklist
 
 ### Before First LLM API Call
 - [ ] Eval set defined with 20+ examples and quality bar
-- [ ] Model selected based on task complexity and cost
+- [ ] Model and effort level selected from evals; model ID loaded from config
 - [ ] System prompt written and versioned in source control
 - [ ] `max_tokens` set appropriate to the task
 - [ ] Error handling for API failures (retry with backoff)

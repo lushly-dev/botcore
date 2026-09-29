@@ -298,17 +298,26 @@ const response = await client.responses.create({
 
 Models change too often to hard-code. Keep model IDs in configuration (environment variable or settings file), use `<model-id>` placeholders in examples, and check current IDs and pricing on the provider pages: [Anthropic models](https://platform.claude.com/docs/en/about-claude/models/overview), [OpenAI models](https://developers.openai.com/api/docs/models).
 
-Recommended families (September 2026):
+Example families (checked 2026-09-29). These are application API candidates, not
+development-agent assignments. Choose a deployed model and effort against the
+application's own evals, latency target, and cost per completed task:
 
 | Family | Example ID | Best For |
 |---|---|---|
-| Claude Opus 5.5+ | `claude-opus-5-5` | Default Claude model: coding, agentic work, analysis |
+| Claude Sonnet 5.5 | `claude-sonnet-5-5` | Well-scoped application tasks; test effort and total task cost |
+| Claude Opus 5.5 | `claude-opus-5-5` | Open-ended work requiring careful judgment |
 | Claude Fable 5.1+ | `claude-fable-5-1` | Hardest long-horizon reasoning and agentic work |
 | GPT-6 Astra | `gpt-6-astra` | Hardest reasoning and coding on OpenAI |
-| GPT-6 Sol | `gpt-6-sol` | Strong price/intelligence for coding and agentic workflows |
+| GPT-6.1 Sol | `gpt-6.1-sol` | Strong candidate for coding and agentic workflows; evaluate against existing routes |
 | GPT-6 Luna | `gpt-6-luna` | Focused, high-volume, cost-sensitive tasks |
 
-Lower `effort` before reaching for a smaller model -- see Choosing Effort in [prompt-engineering.md](references/prompt-engineering.md).
+Tune `effort` and compare model routes by successful task, including retries and
+tool use; neither lower effort nor a smaller model is automatically cheaper for
+the same quality. See Choosing Effort in [prompt-engineering.md](references/prompt-engineering.md)
+and [cost optimization](references/cost-optimization.md).
+
+Provider context: [OpenAI's GPT-6.1 Sol launch](https://openai.com/index/introducing-gpt-6-1-sol/)
+and [Anthropic's Sonnet 5.5 launch](https://www.anthropic.com/claude-sonnet-5-5/).
 
 ## Quick Reference: Embedding Models
 
