@@ -62,6 +62,10 @@ print(f"Cache write tokens: {response.usage.cache_creation_input_tokens}")
 
 ### Pricing Impact
 
+Illustrative 5-minute cache multipliers for models with a 10% read rate;
+[current Claude pricing](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+is model-specific, and some models have lower read rates:
+
 | Component | Cost Relative to Base |
 |---|---|
 | Cache write | 1.25x base input rate |
@@ -81,8 +85,12 @@ OpenAI automatically caches matching prompt prefixes. No explicit cache control 
 # - Same prompt prefix (system + early messages)
 # - Same model
 # - Prefix is >1024 tokens
-# Cached content costs 50% of base input rate
+# Cached-input prices depend on the model; check its current pricing page
 ```
+
+For example, [GPT-6.1 Sol's published prices](https://openai.com/index/introducing-gpt-6-1-sol/)
+are $0.10 per million cached-input tokens versus $2 for standard input (5% of
+the standard rate). Do not assume a single discount across OpenAI models.
 
 ### Best Practices for Caching
 
@@ -90,11 +98,11 @@ OpenAI automatically caches matching prompt prefixes. No explicit cache control 
 2. **Put variable content last** -- User query, dynamic context
 3. **Minimize changes to cached portions** -- Any change invalidates the cache
 4. **Monitor cache hit rates** -- Track `cache_read_input_tokens` vs `cache_creation_input_tokens`
-5. **Use 1-hour TTL** -- Claude's ephemeral cache lasts up to 1 hour (GA, no beta header)
+5. **Choose the TTL by reuse window** -- Claude's ephemeral cache defaults to 5 minutes; [opt into 1 hour](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) when later reuse justifies its higher write cost
 
 ## Model Routing
 
-Tune `effort` before routing across models. Lower effort on a frontier model often matches a smaller model at higher effort, and a single model keeps one prompt cache (caches are per-model). Route across models only when evals and cost data show the savings are real. Judge cost per completed task, not per request -- a cheaper call that needs retries is not cheaper.
+Tune `effort` and compare models on representative evals. A single model can preserve its prompt cache (caches are per-model), but a different model or effort may still win on cost per completed task. Count retries, tool calls, and failed tasks; token price alone does not establish savings.
 
 ### Cascade Pattern
 

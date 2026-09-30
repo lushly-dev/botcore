@@ -194,7 +194,7 @@ A second model pass reviews the output and requests improvements. Current models
 ```python
 async def reflect_and_improve(
     task: str,
-    max_reflections: int = 1  # 0 unless evals show a gain
+    max_reflections: int = 0  # raise only when evals show a gain
 ) -> str:
     """Generate, then optionally review and improve."""
     draft = await generate(task)
