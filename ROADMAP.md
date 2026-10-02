@@ -13,15 +13,27 @@ Core infrastructure, plugin system, and initial plugin packages are functional:
 - **Connectors** — GitHub connector with dual rate-limit tracking, ConnectorBase middleware stack (248 tests)
 - **Teams** — Bot interface with tenant auth, intent dispatch, Adaptive Card rendering
 
-## Foundation (Next — Pre-Phase-2)
+## Foundation (Complete)
 
-Architectural interfaces that must exist before expanding agent or connector features. These are cheap to implement now and expensive to retrofit later.
+Architectural interfaces that needed to exist before expanding agent or connector features. These were cheap to implement early and expensive to retrofit later.
 
 | Spec | Why Foundation | Status |
 |------|----------------|--------|
 | [Agent Capability Declarations](docs/features/complete/agent-skill-scoping/agent-skill-scoping.plan.md) | Shipped. Agents now resolve tools from `skills` plus scoped connector access via `connectors` / `connector_commands`. | Complete |
-| [Per-Agent Permission Profiles](docs/features/complete/per-agent-permissions/per-agent-permissions.plan.md) | Without this, every agent gets same shell/filesystem permissions. Move permission gates from session to AgentConfig. | Complete |
+| [Per-Agent Permission Profiles](docs/features/complete/per-agent-permissions/per-agent-permissions.plan.md) | Shipped. Agents now declare per-agent permission profiles, and LLM sessions enforce them with allowlists and audit logging. | Complete |
 | [Orchestrator State Serialization](docs/features/complete/orchestrator-state-serialization/orchestrator-state-serialization.plan.md) | Shipped. Orchestrator state now supports versioned snapshots, restore-safe recovery, resumable pending tasks, and opt-in autosave. | Complete |
+
+## Active Planning
+
+The next wave is not a single feature. It is a coordinated planning set for turning botcore's secure agent foundations into a real local/cloud agent runtime.
+
+| Spec | Focus | Status |
+|------|-------|--------|
+| [Agent Runtime Model](docs/features/active/agent-runtime-model/agent-runtime-model.plan.md) | Local vs cloud runtime shape, persistent gateway, headless-first execution model | Active |
+| [Agent Scheduling](docs/features/active/agent-scheduling/agent-scheduling.plan.md) | Scheduled execution model, cron vs embedded scheduler, local/cloud triggering | Active |
+| [Multi-Agent Collaboration](docs/features/active/multi-agent-collaboration/multi-agent-collaboration.plan.md) | Delegation, task graph semantics, shared memory and specialist cooperation | Active |
+| [Agent Trust And Approvals](docs/features/active/agent-trust-and-approvals/agent-trust-and-approvals.plan.md) | Destructive actions, approval flows, constrained commands vs sandboxing | Active |
+| [Agent Surfaces And Deployment](docs/features/active/agent-surfaces-and-deployment/agent-surfaces-and-deployment.plan.md) | CLI/headless operation, future AFD surfaces, local and cloud deployment modes | Active |
 
 ## AFD 0.6.0 Adoption
 
