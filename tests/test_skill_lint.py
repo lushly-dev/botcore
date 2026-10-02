@@ -225,3 +225,35 @@ async def test_lint_single_skill_path(tmp_path: Path) -> None:
     data = assert_success(result)
     assert data["total"] == 1
     assert data["skills"][0]["skill"] == "good"
+
+
+async def test_lint_absolute_path_outside_skills_dir(tmp_path: Path) -> None:
+    """An absolute path lints only that skill and reports it as the linted path."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+    _make_valid_skill(skills_dir, "local-only")
+    bundled = ws / "src" / "skills"
+    target = _make_valid_skill(bundled, "bundled")
+
+    with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
+        result = await skill_lint(path=str(target))
+
+    data = assert_success(result)
+    assert data["total"] == 1
+    assert data["skills"][0]["skill"] == "bundled"
+    assert data["path"] == str(target)
+
+
+async def test_lint_missing_path_reports_resolved_target(tmp_path: Path) -> None:
+    """A relative path resolves under the skills dir; the error names that directory."""
+    ws = _setup_workspace(tmp_path)
+    skills_dir = ws / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+
+    with patch("botcore.commands.skill.lint.find_workspace", return_value=ws):
+        result = await skill_lint(path="src/skills/bundled")
+
+    assert_error(result, "SKILL_NOT_FOUND")
+    assert str(skills_dir / "src" / "skills" / "bundled") in result.error.message
+    assert result.error.suggestion
