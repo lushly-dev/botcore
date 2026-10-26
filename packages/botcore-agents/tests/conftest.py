@@ -113,21 +113,45 @@ def mock_llm_session_destroy():
 
 @pytest.fixture()
 def mock_llm_chat():
-    """Patch llm_chat to return a fake response."""
-    with patch(
-        "botcore_agents.orchestrator.llm_chat",
-        new_callable=AsyncMock,
-    ) as mock_chat:
-        from afd import success
+    """Patch the agent's chat stream with one built from a mock llm_chat.
 
-        mock_chat.return_value = success(
-            data={
-                "session_id": "session-agent-001",
-                "message_id": "msg-001",
-                "content": "Task completed successfully",
-            },
-            reasoning="Mock chat response",
-        )
+    Tests set ``return_value`` (a CommandResult) on the returned AsyncMock; the
+    fake stream turns it into progress, one data chunk, and a terminal chunk.
+    """
+    from afd import success
+    from afd.core.errors import CommandError
+    from afd.core.streaming import (
+        create_complete_chunk,
+        create_data_chunk,
+        create_error_chunk,
+        create_progress_chunk,
+    )
+
+    mock_chat = AsyncMock()
+    mock_chat.return_value = success(
+        data={
+            "session_id": "session-agent-001",
+            "message_id": "msg-001",
+            "content": "Task completed successfully",
+        },
+        reasoning="Mock chat response",
+    )
+
+    async def fake_stream(session_id, message, attachments=None, timeout=None):
+        yield create_progress_chunk(0.0, message="Message sent", phase="send")
+        result = await mock_chat(session_id=session_id, message=message)
+        if not result.success:
+            err = result.error
+            yield create_error_chunk(
+                CommandError(code=err.code, message=err.message, suggestion=err.suggestion),
+                chunks_before_error=0,
+            )
+            return
+        data = {"text": result.data["content"], "message_id": result.data["message_id"]}
+        yield create_data_chunk(data, index=0, is_last=True)
+        yield create_complete_chunk(total_chunks=1, total_duration_ms=0, data=result.data)
+
+    with patch("botcore_agents.task_stream.llm_chat_stream", fake_stream):
         yield mock_chat
 
 
