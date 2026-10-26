@@ -42,7 +42,7 @@ def botcore_command_to_copilot_tool(command: Callable[..., Any]) -> Tool:
     pydantic_type = _detect_pydantic_param(command)
 
     async def handler(invocation: ToolInvocation) -> ToolResult:
-        args = invocation.get("arguments") or {}
+        args = invocation.arguments or {}
 
         if pydantic_type is not None:
             model_instance = pydantic_type.model_validate(args)
@@ -194,8 +194,8 @@ def _command_result_to_tool_result(result: Any) -> ToolResult:
     """Convert a ``CommandResult`` to a Copilot ``ToolResult``."""
     if result.success:
         return ToolResult(
-            textResultForLlm=json.dumps(result.data, default=str),
-            resultType="success",
+            text_result_for_llm=json.dumps(result.data, default=str),
+            result_type="success",
         )
 
     err = result.error
@@ -207,6 +207,6 @@ def _command_result_to_tool_result(result: Any) -> ToolResult:
         error_payload["suggestion"] = err.suggestion
 
     return ToolResult(
-        textResultForLlm=json.dumps(error_payload),
-        resultType="failure",
+        text_result_for_llm=json.dumps(error_payload),
+        result_type="failure",
     )

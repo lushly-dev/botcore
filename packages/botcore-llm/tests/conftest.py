@@ -59,7 +59,7 @@ def mock_copilot_session():
     """AsyncMock of CopilotSession with sensible defaults."""
     session = AsyncMock()
     session.session_id = "session-test-001"
-    session.destroy = AsyncMock()
+    session.disconnect = AsyncMock()
     session.on = MagicMock(return_value=lambda: None)
 
     event = _MockSessionEvent(data=_MockEventData())

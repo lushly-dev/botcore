@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, ClassVar
+
+from copilot.generated.session_events import (
+    PermissionRequestCustomTool,
+    PermissionRequestMcp,
+    PermissionRequestRead,
+    PermissionRequestShell,
+    PermissionRequestUrl,
+    PermissionRequestWrite,
+)
 
 from botcore_llm.config import LlmPermissionsConfig
 from botcore_llm.permissions import (
@@ -12,10 +23,38 @@ from botcore_llm.permissions import (
 )
 
 
-def _make_request(kind: str, **extra: str) -> dict:
-    req: dict = {"kind": kind, "toolCallId": "tc-1"}
-    req.update(extra)
-    return req
+@dataclass
+class _UnknownRequest:
+    kind: ClassVar[str] = "something-new"
+
+
+def _make_request(kind: str, *, command: str = "", path: str = "") -> Any:
+    """Build the SDK permission request dataclass for *kind*."""
+    if kind == "shell":
+        return PermissionRequestShell(
+            can_offer_session_approval=False,
+            commands=[],
+            full_command_text=command,
+            has_write_file_redirection=False,
+            intention="test",
+            possible_paths=[],
+            possible_urls=[],
+        )
+    if kind == "read":
+        return PermissionRequestRead(intention="test", path=path)
+    if kind == "write":
+        return PermissionRequestWrite(
+            can_offer_session_approval=False, diff="", file_name=path, intention="test"
+        )
+    if kind == "mcp":
+        return PermissionRequestMcp(
+            read_only=True, server_name="srv", tool_name="t", tool_title="T"
+        )
+    if kind == "custom-tool":
+        return PermissionRequestCustomTool(tool_description="d", tool_name="t")
+    if kind == "url":
+        return PermissionRequestUrl(intention="test", url="https://example.com")
+    return _UnknownRequest()
 
 
 INV_CTX = {"session_id": "s1"}
@@ -30,31 +69,31 @@ class TestPermissionDefaults:
 
     def test_shell_denied(self):
         result = self.handler(_make_request("shell"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_write_denied(self):
         result = self.handler(_make_request("write"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_read_denied(self):
         result = self.handler(_make_request("read"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_mcp_allowed(self):
         result = self.handler(_make_request("mcp"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
     def test_custom_tool_allowed(self):
         result = self.handler(_make_request("custom-tool"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
     def test_url_denied(self):
         result = self.handler(_make_request("url"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_unknown_kind_denied(self):
         result = self.handler(_make_request("something-new"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
 
 class TestPermissionOverrides:
@@ -62,26 +101,26 @@ class TestPermissionOverrides:
         config = LlmPermissionsConfig(allow_shell=True)
         handler = create_permission_handler(config)
         result = handler(_make_request("shell"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
     def test_allow_filesystem(self):
         config = LlmPermissionsConfig(allow_filesystem=True)
         handler = create_permission_handler(config)
 
-        assert handler(_make_request("read"), INV_CTX)["kind"] == "approved"
-        assert handler(_make_request("write"), INV_CTX)["kind"] == "approved"
+        assert handler(_make_request("read"), INV_CTX).kind == "approve-once"
+        assert handler(_make_request("write"), INV_CTX).kind == "approve-once"
 
     def test_deny_mcp(self):
         config = LlmPermissionsConfig(allow_mcp=False)
         handler = create_permission_handler(config)
         result = handler(_make_request("mcp"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_deny_custom_tools(self):
         config = LlmPermissionsConfig(allow_custom_tools=False)
         handler = create_permission_handler(config)
         result = handler(_make_request("custom-tool"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
 
 # ---------------------------------------------------------------------------
@@ -220,13 +259,13 @@ class TestAgentNameLogging:
         config = LlmPermissionsConfig()
         handler = create_permission_handler(config, agent_name="researcher")
         result = handler(_make_request("shell"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_handler_with_agent_name_approves(self):
         config = LlmPermissionsConfig(allow_shell=True)
         handler = create_permission_handler(config, agent_name="coder")
         result = handler(_make_request("shell"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
 
 # ---------------------------------------------------------------------------
@@ -251,8 +290,8 @@ class TestTwoAgentProfiles:
 
         shell_req = _make_request("shell", command="git status")
 
-        assert coder_handler(shell_req, INV_CTX)["kind"] == "approved"
-        assert researcher_handler(shell_req, INV_CTX)["kind"] == "denied-by-rules"
+        assert coder_handler(shell_req, INV_CTX).kind == "approve-once"
+        assert researcher_handler(shell_req, INV_CTX).kind == "reject"
 
     def test_allowlist_isolation(self):
         from botcore_agents.config import AgentPermissionsConfig
@@ -272,10 +311,10 @@ class TestTwoAgentProfiles:
         git_req = _make_request("shell", command="git status")
         docker_req = _make_request("shell", command="docker ps")
 
-        assert coder(git_req, INV_CTX)["kind"] == "approved"
-        assert coder(docker_req, INV_CTX)["kind"] == "denied-by-rules"
-        assert ops(git_req, INV_CTX)["kind"] == "denied-by-rules"
-        assert ops(docker_req, INV_CTX)["kind"] == "approved"
+        assert coder(git_req, INV_CTX).kind == "approve-once"
+        assert coder(docker_req, INV_CTX).kind == "reject"
+        assert ops(git_req, INV_CTX).kind == "reject"
+        assert ops(docker_req, INV_CTX).kind == "approve-once"
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +334,7 @@ class TestShellAllowlistInHandler:
         )
         handler = create_permission_handler(config)
         result = handler(_make_request("shell", command="git status"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
     def test_disallowed_command_denied(self):
         from botcore_agents.config import AgentPermissionsConfig
@@ -306,7 +345,7 @@ class TestShellAllowlistInHandler:
         )
         handler = create_permission_handler(config)
         result = handler(_make_request("shell", command="rm -rf /"), INV_CTX)
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_no_allowlist_allows_all(self):
         from botcore_agents.config import AgentPermissionsConfig
@@ -314,7 +353,7 @@ class TestShellAllowlistInHandler:
         config = AgentPermissionsConfig(allow_shell=True, shell_allowlist=None)
         handler = create_permission_handler(config)
         result = handler(_make_request("shell", command="anything"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +377,7 @@ class TestFilesystemPathsInHandler:
             _make_request("read", path=str(tmp_path / "src" / "file.py")),
             INV_CTX,
         )
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
 
     def test_disallowed_path_denied(self, tmp_path: Path):
         from botcore_agents.config import AgentPermissionsConfig
@@ -353,7 +392,7 @@ class TestFilesystemPathsInHandler:
             _make_request("write", path=str(tmp_path / "secrets" / "key.pem")),
             INV_CTX,
         )
-        assert result["kind"] == "denied-by-rules"
+        assert result.kind == "reject"
 
     def test_no_paths_allows_all(self):
         from botcore_agents.config import AgentPermissionsConfig
@@ -361,4 +400,20 @@ class TestFilesystemPathsInHandler:
         config = AgentPermissionsConfig(allow_filesystem=True, filesystem_paths=None)
         handler = create_permission_handler(config)
         result = handler(_make_request("write", path="/any/path"), INV_CTX)
-        assert result["kind"] == "approved"
+        assert result.kind == "approve-once"
+
+
+class TestFailClosed:
+    def test_managed_approval_required_denied(self):
+        handler = create_permission_handler(LlmPermissionsConfig())
+        request = _make_request("custom-tool")
+        request.managed_approval_required = True
+        assert handler(request, INV_CTX).kind == "reject"
+
+    def test_empty_path_denied(self, tmp_path: Path, monkeypatch):
+        from botcore_agents.config import AgentPermissionsConfig
+
+        monkeypatch.chdir(tmp_path)
+        config = AgentPermissionsConfig(allow_filesystem=True, filesystem_paths=[str(tmp_path)])
+        handler = create_permission_handler(config)
+        assert handler(_make_request("read", path=""), INV_CTX).kind == "reject"

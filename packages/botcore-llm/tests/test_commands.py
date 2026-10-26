@@ -103,6 +103,20 @@ class TestLlmSessionCreate:
         data = assert_success(result)
         assert data["model"] == "test-model-alt"
 
+    @pytest.mark.asyncio
+    async def test_passes_session_config_as_keywords(
+        self, patch_client_manager, mock_copilot_client
+    ):
+        """SDK 1.0.26 ``create_session`` is keyword-only."""
+        await llm_session_create(system_prompt="Be terse", streaming=False)
+
+        call = mock_copilot_client.create_session.call_args
+        assert call.args == ()
+        assert call.kwargs["model"] == "test-model"
+        assert call.kwargs["streaming"] is False
+        assert call.kwargs["system_message"] == {"mode": "append", "content": "Be terse"}
+        assert callable(call.kwargs["on_permission_request"])
+
 
 class TestLlmSessionDestroy:
     @pytest.mark.asyncio
@@ -113,7 +127,7 @@ class TestLlmSessionDestroy:
 
         data = assert_success(result)
         assert data["status"] == "destroyed"
-        mock_copilot_session.destroy.assert_awaited_once()
+        mock_copilot_session.disconnect.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_removes_from_registry(self, patch_client_manager, mock_copilot_session):
@@ -190,5 +204,26 @@ class TestLlmChat:
             attachments=attachments,
         )
 
-        call_args = mock_copilot_session.send_and_wait.call_args[0][0]
-        assert call_args["attachments"] == attachments
+        call_kwargs = mock_copilot_session.send_and_wait.call_args.kwargs
+        assert call_kwargs["attachments"] == attachments
+
+    @pytest.mark.asyncio
+    async def test_sends_prompt_without_timeout_by_default(
+        self, patch_client_manager, mock_copilot_session
+    ):
+        """The SDK takes the prompt positionally and rejects ``timeout=None``."""
+        await llm_session_create()
+
+        await llm_chat(session_id=mock_copilot_session.session_id, message="hi")
+
+        call = mock_copilot_session.send_and_wait.call_args
+        assert call.args == ("hi",)
+        assert "timeout" not in call.kwargs
+
+    @pytest.mark.asyncio
+    async def test_passes_timeout(self, patch_client_manager, mock_copilot_session):
+        await llm_session_create()
+
+        await llm_chat(session_id=mock_copilot_session.session_id, message="hi", timeout=5.0)
+
+        assert mock_copilot_session.send_and_wait.call_args.kwargs["timeout"] == 5.0
