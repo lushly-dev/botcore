@@ -23,7 +23,7 @@ from botcore.commands.dev import (
 )
 from botcore.commands.docs import docs_check_agents, docs_check_changelog, docs_lint, docs_preflight
 from botcore.commands.info import info_env, info_scripts, info_workspace
-from botcore.commands.research import research_query
+from botcore.commands.research import research_query, research_stream
 from botcore.commands.skill import (
     skill_adopt,
     skill_index,
@@ -76,6 +76,7 @@ __all__ = [
     "docs_preflight",
     # Research
     "research_query",
+    "research_stream",
     # Spec
     "spec_create",
     "spec_delete",

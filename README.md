@@ -164,7 +164,7 @@ Language detection is automatic. botcore inspects workspace markers (`Cargo.toml
 | **Docs** | `docs_lint`, `docs_check_changelog`, `docs_check_agents` | Documentation quality checks |
 | **Info** | `info_workspace`, `info_env`, `info_scripts` | Workspace discovery and environment inspection |
 | **Spec** | `spec_create`, `spec_status`, `spec_validate` | Spec lifecycle management |
-| **Research** | `research_query` | Gemini + Google search integration |
+| **Research** | `research_query`, `research_stream` | GPT web research with streamed output |
 | **Undo** | `undo_status`, `undo_clear` | Command history and rollback |
 
 ### Bundled Skills (54)

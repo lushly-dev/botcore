@@ -246,50 +246,42 @@ async def test_dep_graph_python_with_imports(tmp_path) -> None:
 # ── research.py — _extract_sources ───────────────────────────────────────
 
 
-def test_extract_sources_with_grounding() -> None:
-    """Extracts URIs from grounding metadata."""
-    web1 = SimpleNamespace(uri="https://example.com/1")
-    web2 = SimpleNamespace(uri="https://example.com/2")
-    chunk1 = SimpleNamespace(web=web1)
-    chunk2 = SimpleNamespace(web=web2)
-    metadata = SimpleNamespace(grounding_chunks=[chunk1, chunk2])
-    candidate = SimpleNamespace(grounding_metadata=metadata)
-    response = SimpleNamespace(candidates=[candidate])
+def _message(*urls: str) -> SimpleNamespace:
+    annotations = [SimpleNamespace(type="url_citation", url=url) for url in urls]
+    return SimpleNamespace(type="message", content=[SimpleNamespace(annotations=annotations)])
+
+
+def test_extract_sources_with_citations() -> None:
+    """Extracts URLs from url_citation annotations."""
+    response = SimpleNamespace(output=[_message("https://example.com/1", "https://example.com/2")])
 
     sources = _extract_sources(response)
     assert sources == ["https://example.com/1", "https://example.com/2"]
 
 
-def test_extract_sources_no_candidates() -> None:
-    """Returns empty list when no candidates."""
-    response = SimpleNamespace(candidates=[])
+def test_extract_sources_no_output() -> None:
+    """Returns empty list when the response has no output items."""
+    assert _extract_sources(SimpleNamespace(output=[])) == []
+
+
+def test_extract_sources_ignores_other_annotations() -> None:
+    """Non-citation annotations and parts without annotations are skipped."""
+    part = SimpleNamespace(annotations=[SimpleNamespace(type="file_citation", file_id="f1")])
+    response = SimpleNamespace(
+        output=[SimpleNamespace(type="message", content=[part, SimpleNamespace()])],
+    )
     assert _extract_sources(response) == []
 
 
-def test_extract_sources_no_metadata() -> None:
-    """Returns empty list when no grounding metadata."""
-    candidate = SimpleNamespace(grounding_metadata=None)
-    response = SimpleNamespace(candidates=[candidate])
-    assert _extract_sources(response) == []
-
-
-def test_extract_sources_no_chunks() -> None:
-    """Returns empty list when grounding_chunks is empty."""
-    metadata = SimpleNamespace(grounding_chunks=[])
-    candidate = SimpleNamespace(grounding_metadata=metadata)
-    response = SimpleNamespace(candidates=[candidate])
-    assert _extract_sources(response) == []
+def test_extract_sources_search_call_without_sources() -> None:
+    """A web_search_call whose action carries no sources adds nothing."""
+    call = SimpleNamespace(type="web_search_call", action=SimpleNamespace(query="q"))
+    assert _extract_sources(SimpleNamespace(output=[call])) == []
 
 
 def test_extract_sources_truncates_to_10() -> None:
     """Limits sources to 10."""
-    chunks = [
-        SimpleNamespace(web=SimpleNamespace(uri=f"https://example.com/{i}"))
-        for i in range(15)
-    ]
-    metadata = SimpleNamespace(grounding_chunks=chunks)
-    candidate = SimpleNamespace(grounding_metadata=metadata)
-    response = SimpleNamespace(candidates=[candidate])
+    response = SimpleNamespace(output=[_message(*(f"https://example.com/{i}" for i in range(15)))])
 
     sources = _extract_sources(response)
     assert len(sources) == 10
@@ -297,5 +289,5 @@ def test_extract_sources_truncates_to_10() -> None:
 
 def test_extract_sources_missing_attributes() -> None:
     """Handles response objects without expected attributes."""
-    response = SimpleNamespace()  # No candidates attr
+    response = SimpleNamespace()  # No output attr
     assert _extract_sources(response) == []

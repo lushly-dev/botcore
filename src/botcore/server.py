@@ -197,14 +197,38 @@ def create_mcp_server(
 
     # ── {name}-research (optional) ────────────────────────────────────
     if include_research:
-        @server.tool(
-            name=f"{name}-research",
-            description="Search with Gemini + Google. Modes: fast, deep.",
-        )
-        async def _research(query: str, mode: str = "fast") -> str:
-            from botcore.commands import research_query
+        from mcp.server.fastmcp import Context
 
-            result = await research_query(query=query, mode=mode)
-            return json.dumps(result, indent=2, default=str)
+        async def _research(query: str, ctx: Context, mode: str = "fast") -> str:
+            from afd import error
+
+            from botcore.commands.research import research_result, research_stream
+
+            # Forward the stream as MCP progress notifications. Progress must increase
+            # with every notification, so it counts notifications; the message carries
+            # the status text or the next piece of the answer.
+            step = 0
+            async for chunk in research_stream(query, mode):
+                result = research_result(chunk)
+                if result is not None:
+                    return json.dumps(result.model_dump(mode="json", exclude_none=True), indent=2)
+                step += 1
+                message = chunk.message if chunk.type == "progress" else chunk.data["text"]
+                await ctx.report_progress(step, message=message)
+            result = error(
+                "RESEARCH_FAILED",
+                "Research stream ended without a result",
+                suggestion="Retry the query",
+            )
+            return json.dumps(result.model_dump(mode="json", exclude_none=True), indent=2)
+
+        # FastMCP finds the Context parameter through type hints, which cannot resolve
+        # this module's string annotations for a function-local import.
+        _research.__annotations__["ctx"] = Context
+        server.add_tool(
+            _research,
+            name=f"{name}-research",
+            description="Web research with GPT models. Modes: fast, deep, thinking.",
+        )
 
     return server

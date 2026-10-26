@@ -71,7 +71,7 @@ src/botcore/                    # Core package
 │   ├── skill/                  # Skill registry commands (seed, list, status, lint, adopt, index)
 │   ├── docs.py                 # Documentation commands
 │   ├── info.py                 # Workspace/environment info
-│   ├── research.py             # Gemini + Google search
+│   ├── research.py             # GPT web research (streaming)
 │   ├── spec.py                 # Spec lifecycle
 │   └── undo.py                 # Undo history
 ├── skills/                     # 54 bundled universal skills

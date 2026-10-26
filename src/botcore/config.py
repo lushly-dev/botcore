@@ -124,7 +124,7 @@ class EnvConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    gemini_api_key: str | None = None
+    openai_api_key: str | None = None
     github_token: str | None = None
     convex_url: str | None = None
 
