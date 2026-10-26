@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from afd import CommandResult
 import yaml
+from afd import CommandResult
 
 from botcore.commands.cdp.core import _with_session_page
 

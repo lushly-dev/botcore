@@ -1,5 +1,7 @@
 """CDP diagnostics — screenshot, console, trace, network, eval, and emulation commands."""
 
+# botcore-override: max-lines=800 — already 727 lines on main; splitting is a separate refactor
+
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +67,7 @@ async def cdp_screenshot(
     return await _with_session_page(_action)
 
 
-async def cdp_trace_capture(
+async def cdp_trace_capture(  # noqa: PLR0913
     url: str | None = None,
     path: str | None = None,
     name: str | None = None,
@@ -112,7 +114,9 @@ async def cdp_trace_capture(
                 stream = params.get("stream")
                 if not stream:
                     if not trace_future.done():
-                        trace_future.set_exception(RuntimeError("Tracing completed without a stream handle."))
+                        trace_future.set_exception(
+                            RuntimeError("Tracing completed without a stream handle.")
+                        )
                     return
 
                 chunks: list[str] = []
@@ -282,7 +286,9 @@ async def cdp_trace_query(
         return error(
             "CDP_TRACE_QUERY_FAILED",
             f"{type(exc).__name__}: {exc}",
-            suggestion="Check the SQL syntax and ensure the trace is a valid Chrome or Perfetto trace.",
+            suggestion=(
+                "Check the SQL syntax and ensure the trace is a valid Chrome or Perfetto trace."
+            ),
             retryable=False,
             details={"path": str(trace_path), "limit": limit},
         )
@@ -461,7 +467,9 @@ async def cdp_trace_summary(
         return error(
             "CDP_TRACE_SUMMARY_FAILED",
             f"{type(exc).__name__}: {exc}",
-            suggestion="Ensure the trace is a valid Chrome or Perfetto trace and rerun the summary.",
+            suggestion=(
+                "Ensure the trace is a valid Chrome or Perfetto trace and rerun the summary."
+            ),
             retryable=False,
             details={"path": str(trace_path)},
         )
@@ -480,7 +488,9 @@ async def cdp_trace_summary(
     ]
     metric_spans = [row for row in top_slice_rows if _is_metric_span(row)]
     browser_pipeline_long_tasks = [
-        row for row in long_task_rows if _is_browser_pipeline_slice(row) and not _is_metric_span(row)
+        row
+        for row in long_task_rows
+        if _is_browser_pipeline_slice(row) and not _is_metric_span(row)
     ]
     other_long_tasks = [
         row
@@ -563,7 +573,9 @@ async def cdp_trace_summary(
             "longTaskCount": (long_task_count_rows[0].get("count") if long_task_count_rows else 0),
             "mainThreadTopByDuration": [_decorate_slice(row) for row in primary_thread_top_rows],
             "primaryThreadLongTasks": [_decorate_slice(row) for row in primary_thread_long_tasks],
-            "browserPipelineLongTasks": [_decorate_slice(row) for row in browser_pipeline_long_tasks],
+            "browserPipelineLongTasks": [
+                _decorate_slice(row) for row in browser_pipeline_long_tasks
+            ],
             "metricSpans": [_decorate_slice(row) for row in metric_spans],
             "otherLongTasks": [_decorate_slice(row) for row in other_long_tasks],
         },
@@ -576,15 +588,27 @@ async def cdp_trace_summary(
             "hasBrowserPipelinePressure": len(browser_pipeline_long_tasks) > 0,
         },
         "notes": [
-            "Treat main-thread long tasks as the strongest UI red flag; browser-pipeline slices and metric spans provide context but are not always app regressions.",
-            "Use cdp_trace_query for deeper PerfettoSQL inspection when the canned summary is not enough.",
-            "Chrome trace timestamps and durations are reported in nanoseconds and summarized here in milliseconds for readability.",
+            (
+                "Treat main-thread long tasks as the strongest UI red flag; browser-pipeline "
+                "slices and metric spans provide context but are not always app regressions."
+            ),
+            (
+                "Use cdp_trace_query for deeper PerfettoSQL inspection when the canned summary "
+                "is not enough."
+            ),
+            (
+                "Chrome trace timestamps and durations are reported in nanoseconds and "
+                "summarized here in milliseconds for readability."
+            ),
         ],
     }
 
     return success(
         summary,
-        reasoning="Summarized the trace into stable actor, slice, and timing signals for automated analysis.",
+        reasoning=(
+            "Summarized the trace into stable actor, slice, and timing signals "
+            "for automated analysis."
+        ),
     )
 
 

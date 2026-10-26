@@ -62,7 +62,7 @@ _REFERENCE_PATH_RE = re.compile(r"(?<![\w./-])(?:\./)?references/([^\s()\[\]{}<>
 
 # ── Types ────────────────────────────────────────────────────────────────────
 
-type Issue = dict[str, str]
+Issue = dict[str, str]
 
 
 # ── Frontmatter parsing ─────────────────────────────────────────────────────
