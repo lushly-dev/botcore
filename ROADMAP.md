@@ -47,7 +47,7 @@ Cross-cutting adoption of AFD 0.6.0 capabilities. Seven work items, independentl
 | [Richer CommandResult Fields](docs/features/complete/afd-060-adoption/spec.md#p4-richer-commandresult-fields) | P4 | — | Complete |
 | [Pipelines](docs/features/complete/afd-060-adoption/spec.md#p5-directclient-pipelines) | P5 | P2 (soft) | Complete |
 | [Batch Execution](docs/features/complete/afd-060-adoption/spec.md#p6-batch-execution) | P6 | P2 (soft) | Complete |
-| [Streaming](docs/features/complete/afd-060-adoption/spec.md#p7-streaming-deferred) | P7 | — | Deferred |
+| [Streaming](https://github.com/lushly-dev/botcore/issues/12) | P7 | — | In progress (`research_stream` shipped; `llm_chat` and agent progress next) |
 
 See [full spec](docs/features/complete/afd-060-adoption/spec.md) for architecture, contracts, and implementation details.
 

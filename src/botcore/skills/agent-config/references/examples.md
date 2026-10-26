@@ -68,7 +68,7 @@ filesystem_paths = ["src/", "components/", "docs/"]
 - Filesystem scoped to relevant directories only
 - System prompt has all five sections: identity, voice, severity, capabilities, boundaries
 
-### Researcher — GitHub + Gemini + Nexus
+### Researcher — GitHub + Web Research + Nexus
 
 The researcher has the broadest tool access but no filesystem write.
 Uses Nexus KB as primary source, then GitHub, then web.
@@ -89,13 +89,13 @@ Voice: Thorough, evidence-based, and concise.
 
 Tools at your disposal:
 - Nexus KB (nexus_execute) — search here FIRST for existing documentation
-- Gemini + Google Search (research_query) — web research for external patterns
+- Web research (research_query) — GPT with web search for external patterns
 - GitHub connector — issues, PRs, and community patterns
 
 Research workflow:
 1. Search Nexus first
 2. Search GitHub for related issues and patterns
-3. Use Gemini/Google for external sources
+3. Use web research for external sources
 4. Synthesize findings with clear source attribution
 
 Routing boundaries:
@@ -109,7 +109,7 @@ filesystem_paths = ["docs/", "research/"]
 ```
 
 **Why this works:**
-- `connector_commands = ["research_query"]` adds Gemini access as an explicit command.
+- `connector_commands = ["research_query"]` adds web research as an explicit command.
   Note: this overrides the `connectors` field for command resolution. The researcher
   gets `research_query` but NOT all `github_*` commands through this field — GitHub
   access comes through the `connectors` field at connector startup level.

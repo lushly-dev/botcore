@@ -8,7 +8,7 @@ description: >
   resolution, and multi-agent team composition patterns. Use when creating agent teams,
   writing agent configs, authoring system prompts, setting permissions, or debugging
   agent configuration issues.
-version: "1.4.0"
+version: "1.4.1"
 source: botcore
 category: agents
 triggers:
@@ -226,8 +226,8 @@ connectors = ["*"]
 ```
 
 **Lesson learned:** `connector_commands` works for ANY command in the namespace,
-not just connector-prefixed ones. For example, `research_query` (Gemini + Google
-Search) is a standalone command that can be added via `connector_commands`.
+not just connector-prefixed ones. For example, `research_query` (GPT web
+research) is a standalone command that can be added via `connector_commands`.
 
 ### MCP Tool Access
 
@@ -347,7 +347,7 @@ been updated. If Nexus is unavailable, note it and proceed with skill knowledge.
 Research workflow:
 1. Search Nexus first — check for existing KB content
 2. Search GitHub for related issues and patterns
-3. Use Gemini/Google for external sources and competitive analysis
+3. Use web research (research_query) for external sources and competitive analysis
 4. Synthesize findings with clear source attribution
 ```
 

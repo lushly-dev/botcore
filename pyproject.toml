@@ -37,7 +37,7 @@ cdp = [
     "perfetto>=0.16.0",
 ]
 research = [
-    "google-genai>=0.3.0",
+    "openai>=3.37.0",
 ]
 quality = [
     "httpx>=0.24.0",

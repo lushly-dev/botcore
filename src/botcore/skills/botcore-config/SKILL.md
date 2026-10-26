@@ -11,7 +11,7 @@ description: >
   understanding the config loading flow.
   Triggers: config, configuration, botcore.toml, pyproject.toml, BotCoreConfig,
   thresholds, language detection, tool defaults, per-package, SkillsConfig.
-version: "1.0.0"
+version: "1.0.1"
 triggers:
   - config
   - configuration

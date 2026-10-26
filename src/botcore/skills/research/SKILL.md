@@ -8,7 +8,7 @@ description: >
   Use when implementing unfamiliar APIs, troubleshooting unknown errors, evaluating
   libraries, or verifying best practices. Triggers: research, how to, learn, API,
   documentation, best practice, investigate, evaluate.
-version: "1.0.0"
+version: "1.0.1"
 triggers:
   - research
   - how to
@@ -33,7 +33,7 @@ Systematic approach to investigating unfamiliar topics, APIs, and best practices
 3. Evaluate technologies and compare alternatives with evidence-based analysis
 4. Verify best practices against official documentation and reputable sources
 5. Synthesize findings into actionable guidance that matches project conventions
-6. Use CLI research tools (e.g., `lushbot research`) when available for fast, sourced answers
+6. Use CLI research tools (e.g., `lushbot research`) or botcore's `research_query` / `research_stream` when available for fast, sourced answers (see [research-tools.md](references/research-tools.md))
 
 ## Routing Logic
 
