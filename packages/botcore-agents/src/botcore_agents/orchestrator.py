@@ -10,12 +10,16 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from afd import CommandResult, error, success
-from botcore_llm.commands import llm_chat, llm_session_create, llm_session_destroy
+from botcore_llm.commands import llm_session_create, llm_session_destroy
 
 from .config import AgentConfig, AgentsPluginConfig
 from .models import AgentHealth, AgentState, Task
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from afd.core.streaming import StreamChunk
+
     from .state import OrchestratorSnapshot, OrchestratorStateBackend
 
 logger = logging.getLogger(__name__)
@@ -378,15 +382,19 @@ class AgentOrchestrator:
 
         Supply *agent* to target a specific instance, or *role* to let the
         orchestrator pick an idle instance (or spawn a new one from the role's
-        config template).
+        config template). Collects ``assign_task_stream``.
         """
-        resolved_agent = await self._resolve_execution_target(agent=agent, role=role)
-        if not resolved_agent.success:
-            return resolved_agent
+        from .task_stream import collect_task
 
-        task = Task(description=description, priority=priority)
-        self._tasks[task.id] = task
-        return await self._execute_task(task, resolved_agent.data["name"])
+        return await collect_task(self.assign_task_stream(description, agent, role, priority))
+
+    def assign_task_stream(
+        self, description: str, agent: str = "", role: str = "", priority: int = 5
+    ) -> AsyncIterator[StreamChunk]:
+        """Assign a task and stream its progress; see ``task_stream``."""
+        from .task_stream import stream_assign
+
+        return stream_assign(self, description, agent=agent, role=role, priority=priority)
 
     async def resume_task(
         self,
@@ -395,24 +403,17 @@ class AgentOrchestrator:
         role: str = "",
     ) -> CommandResult[dict]:
         """Resume a pending task by executing it with a running agent."""
-        task = self._tasks.get(task_id)
-        if task is None:
-            return error("TASK_NOT_FOUND", f"No task with id {task_id!r}")
+        from .task_stream import collect_task
 
-        if task.status not in {"pending", "assigned"}:
-            return error(
-                "TASK_NOT_RESUMABLE",
-                f"Task {task_id!r} is {task.status} and cannot be resumed",
-                suggestion="Resume only pending or assigned tasks",
-            )
+        return await collect_task(self.resume_task_stream(task_id, agent, role))
 
-        resolved_agent = await self._resolve_execution_target(agent=agent, role=role)
-        if not resolved_agent.success:
-            return resolved_agent
+    def resume_task_stream(
+        self, task_id: str, agent: str = "", role: str = ""
+    ) -> AsyncIterator[StreamChunk]:
+        """Resume a pending task and stream its progress; see ``task_stream``."""
+        from .task_stream import stream_resume
 
-        task.result = ""
-        task.completed_at = None
-        return await self._execute_task(task, resolved_agent.data["name"])
+        return stream_resume(self, task_id, agent=agent, role=role)
 
     def get_agent_status(self, name: str) -> CommandResult[dict]:
         """Return health snapshot for an agent."""
@@ -510,57 +511,55 @@ class AgentOrchestrator:
             reasoning=f"Agent {agent!r} selected for task execution",
         )
 
-    async def _execute_task(self, task: Task, agent: str) -> CommandResult[dict]:
+    async def _begin_task(self, task: Task, agent: str) -> AgentState:
+        """Mark *task* running on *agent* and the agent busy; return the agent's state."""
         state = self._agents[agent]
-        now = datetime.now(UTC)
-
         task.assigned_agent = agent
         task.status = "running"
-        task.started_at = now
+        task.started_at = datetime.now(UTC)
         task.completed_at = None
-
-        if task.id not in self._tasks:
-            self._tasks[task.id] = task
+        self._tasks.setdefault(task.id, task)
         if task.id not in state.active_tasks:
             state.active_tasks.append(task.id)
         state.health.status = "busy"
         state.health.current_task = task.id
         await self._autosave_if_configured(f"task_started:{task.id}")
+        return state
 
-        try:
-            chat_result = await llm_chat(
-                session_id=state.session_id,
-                message=task.description,
-            )
-
-            if chat_result.success:
-                task.status = "completed"
-                task.result = chat_result.data.get("content", "")
-                state.health.tasks_completed += 1
-            else:
-                task.status = "failed"
-                task.result = chat_result.error.message
-                state.health.tasks_failed += 1
-        except Exception as exc:
-            task.status = "failed"
-            task.result = str(exc)
+    async def _finish_task(
+        self, task: Task, state: AgentState, status: str, result: str
+    ) -> CommandResult[dict]:
+        """Record a task outcome and free the agent (*state* from ``_begin_task``)."""
+        agent = state.health.name
+        # stop_agent may already have cancelled the task and stopped the agent.
+        if task.status != "cancelled":
+            task.status = status
+            task.result = result
+        task.completed_at = task.completed_at or datetime.now(UTC)
+        if task.status == "completed":
+            state.health.tasks_completed += 1
+        elif task.status == "failed":
             state.health.tasks_failed += 1
-            logger.warning("Task %s execution error: %s", task.id, exc)
-
-        task.completed_at = datetime.now(UTC)
 
         if task.id in state.active_tasks:
             state.active_tasks.remove(task.id)
-        state.health.current_task = ""
-        state.health.status = "idle" if not state.active_tasks else "busy"
+        if state.health.status != "stopped":
+            state.health.current_task = ""
+            state.health.status = "idle" if not state.active_tasks else "busy"
         await self._autosave_if_configured(f"task_finished:{task.id}")
 
         if task.status == "failed":
             return error(
                 "TASK_EXECUTION_ERROR",
                 f"Task failed: {task.result}",
+                suggestion="Check the agent with agent_status, then assign the task again",
             )
-
+        if task.status == "cancelled":
+            return error(
+                "TASK_CANCELLED",
+                f"Task {task.id} was cancelled before it completed",
+                suggestion="Assign the task again with task_assign",
+            )
         return success(
             data={
                 "task_id": task.id,

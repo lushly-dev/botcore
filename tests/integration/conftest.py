@@ -154,9 +154,35 @@ def setup_llm(llm_config: LlmConfig):
 # ---------------------------------------------------------------------------
 
 
+def _fake_chat_stream(mock_chat: AsyncMock):
+    """An llm_chat_stream stand-in that streams the CommandResult *mock_chat* returns."""
+    from afd.core.errors import CommandError
+    from afd.core.streaming import (
+        create_complete_chunk,
+        create_data_chunk,
+        create_error_chunk,
+    )
+
+    async def fake(session_id, message, attachments=None, timeout=None):
+        result = await mock_chat(session_id=session_id, message=message)
+        if not result.success:
+            err = result.error
+            yield create_error_chunk(
+                CommandError(code=err.code, message=err.message, suggestion=err.suggestion),
+                chunks_before_error=0,
+            )
+            return
+        data = {"text": result.data["content"], "message_id": result.data["message_id"]}
+        yield create_data_chunk(data, index=0, is_last=True)
+        yield create_complete_chunk(total_chunks=1, total_duration_ms=0, data=result.data)
+
+    return fake
+
+
 @pytest.fixture()
 def mock_llm():
     """Patch all LLM commands with fast mocks — no Copilot CLI needed."""
+    mock_chat = AsyncMock()
     with (
         patch(
             "botcore_agents.orchestrator.llm_session_create",
@@ -166,10 +192,7 @@ def mock_llm():
             "botcore_agents.orchestrator.llm_session_destroy",
             new_callable=AsyncMock,
         ) as mock_destroy,
-        patch(
-            "botcore_agents.orchestrator.llm_chat",
-            new_callable=AsyncMock,
-        ) as mock_chat,
+        patch("botcore_agents.task_stream.llm_chat_stream", _fake_chat_stream(mock_chat)),
     ):
         mock_create.return_value = success(
             data={

@@ -7,9 +7,10 @@ Each command follows the botcore convention: ``async def`` returning
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+from collections.abc import AsyncIterator
 
 from afd import CommandResult
+from afd.core.streaming import StreamChunk
 
 from .config import AgentsPluginConfig, get_agents_config
 from .orchestrator import get_orchestrator, reset_orchestrator
@@ -115,6 +116,28 @@ async def task_resume(
 ) -> CommandResult[dict]:
     """Resume a pending or assigned task."""
     return await _get_orch().resume_task(task_id=task_id, agent=agent, role=role)
+
+
+def task_assign_stream(
+    description: str,
+    agent: str = "",
+    role: str = "",
+    priority: int = 5,
+) -> AsyncIterator[StreamChunk]:
+    """Assign a task and stream its progress as afd chunks; see ``task_stream``.
+
+    Not a registered command: ``task_assign`` collects this stream.
+    """
+    return _get_orch().assign_task_stream(description, agent=agent, role=role, priority=priority)
+
+
+def task_resume_stream(
+    task_id: str,
+    agent: str = "",
+    role: str = "",
+) -> AsyncIterator[StreamChunk]:
+    """Resume a task and stream its progress as afd chunks; see ``task_stream``."""
+    return _get_orch().resume_task_stream(task_id, agent=agent, role=role)
 
 
 async def task_status(task_id: str) -> CommandResult[dict]:

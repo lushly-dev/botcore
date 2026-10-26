@@ -39,6 +39,24 @@ await agent_stop(name="researcher")
 await agent_delete(name="researcher")
 ```
 
+## Streaming Task Progress
+
+`task_assign_stream(description, agent="", role="", priority=5)` and
+`task_resume_stream(task_id, agent="", role="")` (in `botcore_agents.commands`)
+run the same task as afd stream chunks: a progress chunk naming the task id and
+agent, the agent's chat progress (tools started), `{"text", "message_id",
+"task_id"}` data chunks as the reply arrives, then a complete chunk with what
+`task_assign` returns, or an error chunk. `task_assign` and `task_resume`
+collect these streams. Closing a stream early aborts the agent's chat turn and
+marks the task `cancelled`. They are not registered commands, because
+registered commands can be bridged into Copilot tools.
+
+```python
+async for chunk in task_assign_stream("Summarize the open PRs", agent="researcher"):
+    if chunk.type == "data":
+        print(chunk.data["text"], end="")
+```
+
 ## Configuration
 
 ```toml

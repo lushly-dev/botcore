@@ -96,6 +96,7 @@ packages/botcore-agents/        # Agent orchestration plugin (Phase 1)
 │   ├── __init__.py              # AgentsPlugin
 │   ├── commands.py              # agent_create, task_assign, state_save, etc.
 │   ├── orchestrator.py          # AgentOrchestrator (pool + tasks + capability resolution + state)
+│   ├── task_stream.py           # Task progress streams (task_assign_stream / task_resume_stream)
 │   ├── state.py                 # OrchestratorSnapshot, StateBackend, JsonStateBackend
 │   ├── models.py                # Task, AgentHealth, AgentState
 │   └── config.py                # AgentConfig, AgentPermissionsConfig, AgentsPluginConfig (skills, connectors, connector_commands)
