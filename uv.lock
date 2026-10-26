@@ -4,14 +4,14 @@ requires-python = ">=3.11"
 
 [[package]]
 name = "afd"
-version = "0.6.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/03/0d81d6cee31c5175e04c623b8d2826d8bdc9be62d9eee36cf0e3c9100d4e/afd-0.6.0.tar.gz", hash = "sha256:03e8cebaa36cf1a5f6f5c885501f85b623ca5766f6590ca11f3ad3673b06da4d", size = 354374, upload-time = "2026-03-14T05:38:04.353Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/1d/e155d078c19e019552a8f99fb57db8c1fadc8423fda4c4b4d24ee1d850e6/afd-0.9.0.tar.gz", hash = "sha256:fe1ae6367ca38337787aaec05eb080c0a07a5b0eac478e78eec3163737134bc8", size = 492703, upload-time = "2026-10-11T21:21:53.996Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/f5/55dc439216aca132379ba3000ee9d6979f70504b04026191b9d4802756f7/afd-0.6.0-py3-none-any.whl", hash = "sha256:70e39a02edc96d395c287863c68e47f452c119e822ca7cc09abc053fec46c4cf", size = 187884, upload-time = "2026-03-14T05:38:02.464Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/a1/d4fc999aa5461517a07f114cfedc75f21c229b52eaeaac3b38b36f9af07e/afd-0.9.0-py3-none-any.whl", hash = "sha256:fe7ba61cc856488cafa9750f389118383010893e7910e3b0d81c25e6cd965ed6", size = 260570, upload-time = "2026-10-11T21:21:52.198Z" },
 ]
 
 [[package]]
@@ -846,7 +846,7 @@ research = [
 
 [package.metadata]
 requires-dist = [
-    { name = "afd", specifier = ">=0.6.0" },
+    { name = "afd", specifier = ">=0.9.0" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "google-genai", marker = "extra == 'research'", specifier = ">=0.3.0" },
     { name = "httpx", marker = "extra == 'cdp'", specifier = ">=0.24.0" },

@@ -18,10 +18,17 @@ Each step can reference outputs from previous steps using variable syntax.
 
 ## Variable Resolution
 
-- `$prev` — Previous step's `result.data`
-- `$prev.field` — Access a specific field from previous step's data
-- `$alias` — Named step's `result.data` (via `as` key in step dict)
-- `$alias.field` — Field from a named step's data
+A string is a reference only when the whole value matches one of these forms;
+anything else starting with `$` (e.g. `$9.99`) passes through as a literal, and
+`$$` escapes a leading `$`.
+
+- `$prev` / `$prev.field` — Data of the most recent successful step
+- `$first` / `$first.field` — Data of the first step
+- `$steps[N]` / `$steps[N].field` — Data of step `N` (0-based)
+- `$steps.alias` / `$steps.alias.field` — Data of the step named with `as`
+- `$input` / `$input.field` — The pipeline request's own `input`
+
+Unresolved references are omitted from the step input.
 
 ## Example
 
@@ -33,8 +40,8 @@ result = await client.pipe([
     {"command": "info-workspace", "as": "ws"},
     {"command": "info-env", "input": {}},
 ])
-# result.steps contains individual step results
-# result.data contains the final step's data
+# result.steps holds each step's result, result.outputs maps aliases to data,
+# and result.final is the last step's CommandResult
 ```
 
 ## Conditional Steps
@@ -46,7 +53,7 @@ result = await client.pipe([
     {"command": "docs-check-changelog", "as": "check"},
     {"command": "changeset-create",
      "input": {"type": "added", "description": "..."},
-     "when": "$check.needs_update"},
+     "when": "$steps.check.needs_update"},
 ])
 ```
 
