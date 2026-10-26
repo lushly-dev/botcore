@@ -18,7 +18,7 @@ classifiers = [
 
 dependencies = [
     "lushly-botcore>=0.2.0",
-    "afd>=0.1.0",
+    "afd>=0.9.0",
     "botbuilder-core>=4.16.0",
     "botbuilder-integration-aiohttp>=4.16.0",
     "aiohttp>=3.9.0",
