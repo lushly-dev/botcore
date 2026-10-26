@@ -6,12 +6,14 @@ Each command follows the botcore convention: ``async def`` returning
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import Any
 
 from afd import CommandResult, error, success
 
 from .bridge import bridge_commands
+from .chat_stream import chat_result, llm_chat_stream
 from .client import CopilotClientManager
 from .config import LlmConfig, LlmPermissionsConfig, get_llm_config
 from .permissions import create_permission_handler
@@ -236,48 +238,20 @@ async def llm_chat(
 ) -> CommandResult[dict]:
     """Send a message to an active LLM session.
 
-    Without ``timeout``, the Copilot SDK's default of 60 seconds applies.
+    Collects ``llm_chat_stream`` into a single result; cancelling the call aborts
+    the turn. Without ``timeout``, the Copilot SDK's default of 60 seconds applies.
     """
-    registry = get_session_registry()
-    entry = registry.get(session_id)
-
-    if entry is None:
-        return error(
-            "SESSION_NOT_FOUND",
-            f"No session with id {session_id!r}",
-            suggestion="Use llm_session_list to see active sessions",
-        )
-
-    send_options: dict[str, Any] = {}
-    if attachments:
-        send_options["attachments"] = attachments
-    # The SDK default (60s) applies when no timeout is given; it rejects None.
-    if timeout is not None:
-        send_options["timeout"] = timeout
-
-    try:
-        event = await entry.session.send_and_wait(message, **send_options)
-    except Exception as exc:
-        return error(
-            "CHAT_ERROR",
-            f"Failed to send message: {exc}",
-            suggestion="The session may have been destroyed or timed out",
-        )
-
-    # Extract response from the SessionEvent
-    content = ""
-    message_id = ""
-    if event and hasattr(event, "data"):
-        content = getattr(event.data, "content", "") or ""
-        message_id = getattr(event.data, "message_id", "") or ""
-
-    return success(
-        data={
-            "session_id": session_id,
-            "message_id": message_id,
-            "content": content,
-        },
-        reasoning="Chat response received",
+    async with contextlib.aclosing(
+        llm_chat_stream(session_id, message, attachments, timeout)
+    ) as stream:
+        async for chunk in stream:
+            result = chat_result(chunk)
+            if result is not None:
+                return result
+    return error(
+        "CHAT_ERROR",
+        "Chat stream ended without a result",
+        suggestion="Retry the message",
     )
 
 

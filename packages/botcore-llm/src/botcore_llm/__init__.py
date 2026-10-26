@@ -22,6 +22,18 @@ LLM_DOCS = """\
 | `llm_model_list` | List available models from Copilot CLI |
 | `llm_chat` | Send a message to an active LLM session |
 
+## Streaming
+
+`llm_chat_stream(session_id, message, attachments=None, timeout=None)` in
+`botcore_llm.chat_stream` yields the same turn as afd stream chunks: progress
+(message sent, each tool started), then `{"text", "message_id"}` data chunks as
+the reply arrives, then a complete chunk with `session_id`, `message_id` and
+`content`, or an error chunk. A turn that uses tools can stream several
+assistant messages; `content` is the final one. `llm_chat` collects the stream
+into a single result. Closing the stream early, or cancelling `llm_chat`, aborts
+the turn. It is not a registered command, because registered
+commands are bridged into Copilot tools, which return one result.
+
 ## Configuration
 
 ```toml
