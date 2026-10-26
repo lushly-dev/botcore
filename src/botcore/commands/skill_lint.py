@@ -55,6 +55,11 @@ _PLACEHOLDER_PATTERNS = [
     re.compile(r"\bLorem ipsum\b", re.IGNORECASE),
 ]
 
+# SK008: a skill-local references/ path. The lookbehind skips repo paths such as
+# docs/references/x.md and ../references/x.md; the class stops at markdown delimiters,
+# query strings and #anchors.
+_REFERENCE_PATH_RE = re.compile(r"(?<![\w./-])(?:\./)?references/([^\s()\[\]{}<>`'\"*|?#]+)")
+
 # ── Types ────────────────────────────────────────────────────────────────────
 
 type Issue = dict[str, str]
@@ -155,8 +160,12 @@ def _check_description_length(fm: dict) -> list[Issue]:
 def _check_reference_links(skill_dir: Path, body: str) -> list[Issue]:
     """SK008: All markdown links to references/ must point to existing files."""
     issues: list[Issue] = []
-    for match in re.finditer(r"references/([^\s)\]]+)", body):
-        ref_name = match.group(1)
+    seen: set[str] = set()
+    for match in _REFERENCE_PATH_RE.finditer(body):
+        ref_name = match.group(1).rstrip(".,;:!")
+        if ref_name in seen:
+            continue
+        seen.add(ref_name)
         ref_path = skill_dir / "references" / ref_name
         if not ref_path.exists():
             issues.append({
