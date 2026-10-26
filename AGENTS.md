@@ -84,6 +84,7 @@ packages/botcore-llm/           # LLM runtime plugin
 ├── src/botcore_llm/
 │   ├── __init__.py              # LlmPlugin
 │   ├── commands.py              # llm_session_create, llm_chat, etc.
+│   ├── chat_stream.py           # llm_chat_stream (afd stream chunks)
 │   ├── session.py               # SessionRegistry
 │   ├── bridge.py                # Command-to-tool bridge
 │   ├── client.py                # CopilotClientManager
