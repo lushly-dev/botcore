@@ -24,6 +24,11 @@ _PLACEHOLDER_PATTERNS = [
     re.compile(r"\bplaceholder\b", re.IGNORECASE),
 ]
 
+# SK008: a skill-local references/ path. The lookbehind skips repo paths such as
+# docs/references/x.md and ../references/x.md; the class stops at markdown delimiters,
+# query strings and #anchors.
+_REFERENCE_PATH_RE = re.compile(r"(?<![\w./-])(?:\./)?references/([^\s()\[\]{}<>`'\"*|?#]+)")
+
 
 def _check_metadata(manifest: SkillManifest, strict: bool) -> list[dict]:
     """Check frontmatter metadata rules SK002-SK006, SK013."""
@@ -94,8 +99,12 @@ def _check_body_and_refs(
 
     # SK008: Referenced files exist
     if refs_dir.is_dir():
-        for match in re.finditer(r"references/([^\s)]+)", body):
-            ref_name = match.group(1)
+        seen: set[str] = set()
+        for match in _REFERENCE_PATH_RE.finditer(body):
+            ref_name = match.group(1).rstrip(".,;:!")
+            if ref_name in seen:
+                continue
+            seen.add(ref_name)
             if not (skill_dir / "references" / ref_name).exists():
                 violations.append(
                     {
