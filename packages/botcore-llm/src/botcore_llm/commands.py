@@ -128,7 +128,7 @@ async def llm_session_create(
         session_config["infinite_sessions"] = {"enabled": True}
 
     try:
-        session = await client.create_session(session_config)
+        session = await client.create_session(**session_config)
     except Exception as exc:
         return error(
             "SESSION_CREATE_ERROR",
@@ -170,7 +170,7 @@ async def llm_session_destroy(session_id: str) -> CommandResult[dict]:
         )
 
     try:
-        await entry.session.destroy()
+        await entry.session.disconnect()
     except Exception as exc:
         logger.warning("Error destroying session %s: %s", session_id, exc)
 
@@ -234,7 +234,10 @@ async def llm_chat(
     attachments: list[dict] | None = None,
     timeout: float | None = None,
 ) -> CommandResult[dict]:
-    """Send a message to an active LLM session."""
+    """Send a message to an active LLM session.
+
+    Without ``timeout``, the Copilot SDK's default of 60 seconds applies.
+    """
     registry = get_session_registry()
     entry = registry.get(session_id)
 
@@ -245,12 +248,15 @@ async def llm_chat(
             suggestion="Use llm_session_list to see active sessions",
         )
 
-    send_options: dict[str, Any] = {"prompt": message}
+    send_options: dict[str, Any] = {}
     if attachments:
         send_options["attachments"] = attachments
+    # The SDK default (60s) applies when no timeout is given; it rejects None.
+    if timeout is not None:
+        send_options["timeout"] = timeout
 
     try:
-        event = await entry.session.send_and_wait(send_options, timeout=timeout)
+        event = await entry.session.send_and_wait(message, **send_options)
     except Exception as exc:
         return error(
             "CHAT_ERROR",

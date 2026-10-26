@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from copilot import PermissionRequest, PermissionRequestResult
+from copilot.generated.rpc import PermissionDecisionApproveOnce, PermissionDecisionReject
 
 from .config import LlmPermissionsConfig
 
@@ -21,12 +22,15 @@ logger = logging.getLogger(__name__)
 
 # Type alias matching Copilot SDK's _PermissionHandlerFn
 PermissionHandlerFn = Callable[
-    [PermissionRequest, dict[str, str]],
-    PermissionRequestResult | Any,
+    [PermissionRequest, Any],
+    PermissionRequestResult,
 ]
 
-_APPROVED: PermissionRequestResult = {"kind": "approved"}
-_DENIED: PermissionRequestResult = {"kind": "denied-by-rules"}
+_APPROVED = PermissionDecisionApproveOnce()
+
+
+def _denied(kind: str) -> PermissionDecisionReject:
+    return PermissionDecisionReject(feedback=f"{kind} is not allowed by botcore permission policy")
 
 
 def create_permission_handler(
@@ -36,9 +40,9 @@ def create_permission_handler(
 ) -> PermissionHandlerFn:
     """Build a permission handler from the given config.
 
-    The returned function receives a ``PermissionRequest`` and invocation
-    context dict, and returns ``{"kind": "approved"}`` or
-    ``{"kind": "denied-by-rules"}`` based on the request kind.
+    The returned function receives a ``PermissionRequest`` dataclass and the
+    invocation context, and returns ``PermissionDecisionApproveOnce`` or
+    ``PermissionDecisionReject`` based on the request kind.
 
     Args:
         config: Permission configuration governing what actions are allowed.
@@ -53,61 +57,70 @@ def create_permission_handler(
 
     def handler(
         request: PermissionRequest,
-        _invocation: dict[str, str],
+        _invocation: Any,
     ) -> PermissionRequestResult:
-        kind = request.get("kind", "")
+        kind = getattr(request, "kind", "")
+
+        # Org-managed policy must approve this request; never override it.
+        if getattr(request, "managed_approval_required", None) is True:
+            logger.debug(
+                "Permission denied: %s needs managed approval (agent=%s)", kind, agent_name
+            )
+            return _denied(kind)
 
         if kind == "shell":
             if not config.allow_shell:
                 logger.debug("Permission denied: shell (agent=%s)", agent_name)
-                return _DENIED
+                return _denied(kind)
             if shell_allowlist is not None:
-                cmd = request.get("command", "")
+                cmd = getattr(request, "full_command_text", "")
                 if not _matches_shell_allowlist(cmd, shell_allowlist):
                     logger.debug(
                         "Permission denied: shell command %r not in allowlist (agent=%s)",
                         cmd,
                         agent_name,
                     )
-                    return _DENIED
+                    return _denied(kind)
             return _APPROVED
 
         if kind in ("write", "read"):
             if not config.allow_filesystem:
                 logger.debug("Permission denied: %s (agent=%s)", kind, agent_name)
-                return _DENIED
+                return _denied(kind)
             if filesystem_paths is not None:
-                path = request.get("path", "")
-                if not _path_allowed(path, filesystem_paths):
+                # Read requests carry ``path``; write requests carry ``file_name``.
+                path = getattr(request, "path", None) or getattr(request, "file_name", "")
+                # An empty path would resolve to the working directory, so deny it.
+                if not path or not _path_allowed(path, filesystem_paths):
                     logger.debug(
                         "Permission denied: %s path %r not in allowed paths (agent=%s)",
                         kind,
                         path,
                         agent_name,
                     )
-                    return _DENIED
+                    return _denied(kind)
             return _APPROVED
 
         if kind == "mcp":
             if config.allow_mcp:
                 return _APPROVED
             logger.debug("Permission denied: mcp (agent=%s)", agent_name)
-            return _DENIED
+            return _denied(kind)
 
         if kind == "custom-tool":
             if config.allow_custom_tools:
                 return _APPROVED
             logger.debug("Permission denied: custom-tool (agent=%s)", agent_name)
-            return _DENIED
+            return _denied(kind)
 
         if kind == "url":
             # URL fetch requests — deny by default (no config toggle yet)
             logger.debug("Permission denied: url (agent=%s)", agent_name)
-            return _DENIED
+            return _denied(kind)
 
         # Unknown kind — deny by default
         logger.warning("Permission denied for unknown kind: %s (agent=%s)", kind, agent_name)
-        return _DENIED
+        return _denied(kind)
 
     return handler
 

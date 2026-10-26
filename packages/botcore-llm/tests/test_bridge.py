@@ -6,6 +6,7 @@ import json
 
 import pytest
 from afd import CommandResult, error, success
+from copilot import ToolInvocation
 from pydantic import BaseModel
 
 from botcore_llm.bridge import (
@@ -89,32 +90,32 @@ class TestBotcoreCommandToCopilotTool:
     async def test_handler_calls_command_and_returns_success(self):
         tool = botcore_command_to_copilot_tool(greet)
 
-        invocation = {
-            "session_id": "s1",
-            "tool_call_id": "tc1",
-            "tool_name": "greet",
-            "arguments": {"name": "World"},
-        }
+        invocation = ToolInvocation(
+            session_id="s1",
+            tool_call_id="tc1",
+            tool_name="greet",
+            arguments={"name": "World"},
+        )
         result = await tool.handler(invocation)
 
-        assert result["resultType"] == "success"
-        data = json.loads(result["textResultForLlm"])
+        assert result.result_type == "success"
+        data = json.loads(result.text_result_for_llm)
         assert data["message"] == "Hello, World!"
 
     @pytest.mark.asyncio
     async def test_handler_converts_error_with_suggestion(self):
         tool = botcore_command_to_copilot_tool(fail_command)
 
-        invocation = {
-            "session_id": "s1",
-            "tool_call_id": "tc1",
-            "tool_name": "fail_command",
-            "arguments": {"reason": "bad input"},
-        }
+        invocation = ToolInvocation(
+            session_id="s1",
+            tool_call_id="tc1",
+            tool_name="fail_command",
+            arguments={"reason": "bad input"},
+        )
         result = await tool.handler(invocation)
 
-        assert result["resultType"] == "failure"
-        data = json.loads(result["textResultForLlm"])
+        assert result.result_type == "failure"
+        data = json.loads(result.text_result_for_llm)
         assert data["error"] == "TEST_ERROR"
         assert data["suggestion"] == "Try something else"
 
@@ -122,16 +123,16 @@ class TestBotcoreCommandToCopilotTool:
     async def test_handler_pydantic_model_params(self):
         tool = botcore_command_to_copilot_tool(add_numbers)
 
-        invocation = {
-            "session_id": "s1",
-            "tool_call_id": "tc1",
-            "tool_name": "add_numbers",
-            "arguments": {"a": 3, "b": 4},
-        }
+        invocation = ToolInvocation(
+            session_id="s1",
+            tool_call_id="tc1",
+            tool_name="add_numbers",
+            arguments={"a": 3, "b": 4},
+        )
         result = await tool.handler(invocation)
 
-        assert result["resultType"] == "success"
-        data = json.loads(result["textResultForLlm"])
+        assert result.result_type == "success"
+        data = json.loads(result.text_result_for_llm)
         assert data["result"] == 7
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from copilot import CopilotClient
+from copilot import CopilotClient, RuntimeConnection
 
 if TYPE_CHECKING:
     from .config import LlmConfig
@@ -36,14 +36,13 @@ class CopilotClientManager:
         if cls._instance is not None:
             return cls._instance
 
-        options: dict = {}
-        if config.cli_url:
-            options = {"cli_url": config.cli_url}
+        # No cli_url: the SDK spawns its bundled runtime over stdio.
+        connection = RuntimeConnection.for_uri(config.cli_url) if config.cli_url else None
 
-        client = CopilotClient(options)
+        client = CopilotClient(connection=connection)
         await client.start()
         cls._instance = client
-        logger.info("CopilotClient started (cli_url=%s)", config.cli_url or "tcp")
+        logger.info("CopilotClient started (cli_url=%s)", config.cli_url or "stdio")
         return client
 
     @classmethod
