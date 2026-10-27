@@ -292,3 +292,164 @@ class TestCollectors:
 
         assert chunks[-1].type == "complete"
         assert_error(result, "TASK_NOT_FOUND")
+
+
+class TestPartialOutput:
+    """task_status shows a running task's streamed text and latest progress (#37)."""
+
+    async def test_task_status_while_running(self, orchestrator, mock_llm):
+        await _started(orchestrator)
+        seen = []
+
+        async def consume():
+            async for chunk in orchestrator.assign_task_stream("Long task", agent="researcher"):
+                task_id = chunk.data["task_id"] if chunk.type == "data" else None
+                if chunk.type == "progress" and chunk.phase == "started":
+                    (task_id,) = orchestrator.tasks
+                if task_id:
+                    seen.append((chunk.type, orchestrator.get_task(task_id).data))
+            return chunk
+
+        with _chat_stream("Found ", "three ", "files"):
+            last = await consume()
+
+        started = seen[0][1]
+        assert started["status"] == "running"
+        assert started["partial_result"] == ""
+        assert started["progress_message"] == "Started on researcher"
+        data = [d for kind, d in seen if kind == "data"]
+        assert [d["partial_result"] for d in data] == [
+            "Found ",
+            "Found three ",
+            "Found three files",
+        ]
+        assert {d["progress_message"] for d in data} == {"Running grep"}
+
+        finished = orchestrator.get_task(last.data["task_id"]).data
+        assert finished["result"] == "Found three files"
+        assert "partial_result" not in finished
+        assert "progress_message" not in finished
+        assert orchestrator._progress == {}
+
+    async def test_task_status_while_task_assign_runs(self, orchestrator, mock_llm):
+        """Poll task_status from another coroutine while the non-streaming task_assign runs."""
+        await _started(orchestrator)
+        with (
+            _chat_stream("partial ", "text", hang=True),
+            patch.object(commands_mod, "_get_orch", return_value=orchestrator),
+        ):
+            assign = asyncio.create_task(commands_mod.task_assign("Long task", agent="researcher"))
+            status = {}
+            for _ in range(100):
+                await asyncio.sleep(0)
+                if orchestrator.tasks:
+                    (task_id,) = orchestrator.tasks
+                    status = assert_success(await commands_mod.task_status(task_id))
+                    if status.get("partial_result") == "partial text":
+                        break
+            assign.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await assign
+
+        assert status["status"] == "running"
+        assert status["partial_result"] == "partial text"
+        assert status["progress_message"] == "Running grep"
+        assert orchestrator._progress == {}
+        assert orchestrator.get_task(task_id).data["status"] == "cancelled"
+        assert "partial_result" not in orchestrator.get_task(task_id).data
+
+    async def test_messages_of_a_turn_are_separated(self, orchestrator, mock_llm):
+        await _started(orchestrator)
+        statuses = []
+
+        async def chat(session_id, message, attachments=None, timeout=None):
+            yield create_data_chunk(
+                {"text": "Let me check.", "message_id": "m1"}, index=0, is_last=False
+            )
+            yield create_data_chunk({"text": "Found ", "message_id": "m2"}, index=1, is_last=False)
+            yield create_data_chunk({"text": "it", "message_id": "m2"}, index=2, is_last=True)
+            data = {"session_id": session_id, "message_id": "m2", "content": "Found it"}
+            yield create_complete_chunk(total_chunks=3, total_duration_ms=0, data=data)
+
+        with patch("botcore_agents.task_stream.llm_chat_stream", chat):
+            async for chunk in orchestrator.assign_task_stream("Task", agent="researcher"):
+                if chunk.type == "data":
+                    statuses.append(orchestrator.get_task(chunk.data["task_id"]).data)
+
+        assert statuses[-1]["partial_result"] == "Let me check.\n\nFound it"
+
+    async def test_cleared_when_the_task_fails(self, orchestrator, mock_llm):
+        await _started(orchestrator)
+
+        async def chat(session_id, message, attachments=None, timeout=None):
+            yield create_data_chunk({"text": "cut off", "message_id": "m1"}, index=0, is_last=True)
+
+        with patch("botcore_agents.task_stream.llm_chat_stream", chat):
+            chunks = await _collect(orchestrator.assign_task_stream("Task", agent="researcher"))
+
+        assert chunks[-1].type == "error"
+        (task,) = orchestrator.tasks.values()
+        assert "partial_result" not in orchestrator.get_task(task.id).data
+        assert orchestrator._progress == {}
+
+    async def test_hidden_once_the_agent_is_stopped(self, orchestrator, mock_llm):
+        """stop_agent cancels the task; task_status shows it cancelled, without partial output."""
+        await _started(orchestrator)
+        statuses = []
+        progress_after_stop = []
+
+        async def consume():
+            async for chunk in orchestrator.assign_task_stream("Long task", agent="researcher"):
+                if chunk.type == "data":
+                    await orchestrator.stop_agent("researcher")
+                    statuses.append(orchestrator.get_task(chunk.data["task_id"]).data)
+                    progress_after_stop.append(dict(orchestrator._progress))
+
+        with _chat_stream("partial", "rest"):
+            await consume()
+
+        assert statuses[0]["status"] == "cancelled"
+        assert "partial_result" not in statuses[0]
+        assert progress_after_stop[0] == {}
+        assert orchestrator._progress == {}
+
+    async def test_cleared_on_state_restore(self, orchestrator, mock_llm):
+        await _started(orchestrator)
+        with _chat_stream("partial", hang=True):
+            stream = orchestrator.assign_task_stream("Long task", agent="researcher")
+            async for chunk in stream:
+                if chunk.type == "data":
+                    break
+            orchestrator._restore_from_snapshot(orchestrator._build_snapshot())
+            progress_after_restore = dict(orchestrator._progress)
+            (task_id,) = orchestrator.tasks
+            restored = orchestrator.get_task(task_id).data
+            await stream.aclose()
+
+        assert progress_after_restore == {}
+        assert restored["status"] == "pending"
+        assert "partial_result" not in restored
+
+    async def test_old_run_does_not_clear_a_resumed_run(self, orchestrator, mock_llm):
+        """After a restore and resume, the old stream ending leaves the new run's progress."""
+        await _started(orchestrator)
+        with _chat_stream("old", hang=True):
+            old = orchestrator.assign_task_stream("Long task", agent="researcher")
+            async for chunk in old:
+                if chunk.type == "data":
+                    break
+            orchestrator._restore_from_snapshot(orchestrator._build_snapshot())
+            (task_id,) = orchestrator.tasks
+            # Restored agents come back stopped; start it again for the new run.
+            await orchestrator.start_agent("researcher")
+            new = orchestrator.resume_task_stream(task_id, agent="researcher")
+            async for chunk in new:
+                if chunk.type == "data":
+                    break
+            await old.aclose()
+            status = orchestrator.get_task(task_id).data
+            await new.aclose()
+
+        assert status["status"] == "running"
+        assert status["partial_result"] == "old"
+        assert orchestrator._progress == {}

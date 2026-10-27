@@ -58,6 +58,9 @@ def _terminal_chunk(
 async def _run(orch: AgentOrchestrator, task: Task, agent: str) -> AsyncIterator[StreamChunk]:
     """Execute *task* on *agent*, forwarding the agent's chat stream."""
     state = await orch._begin_task(task, agent)
+    # Hold this run's entry: after a state restore, the id may be reused by a new run.
+    progress = orch._progress[task.id]
+    message_id = None
     started = time.monotonic()
     data_chunks = 0
     finished = False
@@ -71,9 +74,15 @@ async def _run(orch: AgentOrchestrator, task: Task, agent: str) -> AsyncIterator
             async with contextlib.aclosing(llm_chat_stream(session_id, task.description)) as chat:
                 async for chunk in chat:
                     if chunk.type == "progress":
+                        progress["progress_message"] = chunk.message or ""
                         yield create_progress_chunk(0.0, message=chunk.message, phase=chunk.phase)
                     elif chunk.type == "data":
                         data_chunks += 1
+                        # Separate the messages of a tool-using turn.
+                        if message_id is not None and chunk.data.get("message_id") != message_id:
+                            progress["partial_result"] += "\n\n"
+                        message_id = chunk.data.get("message_id")
+                        progress["partial_result"] += chunk.data.get("text", "")
                         yield create_data_chunk(
                             {**chunk.data, "task_id": task.id},
                             index=chunk.index,

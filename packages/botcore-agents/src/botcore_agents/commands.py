@@ -141,7 +141,12 @@ def task_resume_stream(
 
 
 async def task_status(task_id: str) -> CommandResult[dict]:
-    """Get task details by task ID."""
+    """Get task details by task ID.
+
+    While the task runs, the result also has ``partial_result`` (the reply text
+    streamed so far) and ``progress_message`` (the latest progress, such as
+    "Message sent" or "Running grep").
+    """
     return _get_orch().get_task(task_id)
 
 
