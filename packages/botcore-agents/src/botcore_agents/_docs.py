@@ -15,7 +15,7 @@ Single-agent lifecycle management with LLM-backed task execution.
 | `agent_heartbeat` | Update heartbeat timestamp, return health |
 | `task_assign` | Assign a task to a running agent (sync execution) |
 | `task_resume` | Resume a pending restored task with a running agent |
-| `task_status` | Get task details by ID |
+| `task_status` | Get task details by ID, with partial output while running |
 | `state_save` | Persist orchestrator state to configured backend |
 | `state_load` | Restore orchestrator state from configured backend |
 
@@ -56,6 +56,14 @@ async for chunk in task_assign_stream("Summarize the open PRs", agent="researche
     if chunk.type == "data":
         print(chunk.data["text"], end="")
 ```
+
+While a task runs, `task_status` also returns `partial_result` (the reply text
+streamed so far; the messages of a tool-using turn are separated by a blank
+line, and the newest piece shows once the next one arrives) and
+`progress_message` (the latest progress, such as `Message sent` or
+`Running grep`). They are kept in memory only and dropped when the task
+finishes or its agent is stopped; a task restored from saved state restarts
+from `pending`.
 
 ## Configuration
 

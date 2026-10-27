@@ -10,6 +10,7 @@ The agent orchestrator currently processes tasks synchronously — task assignme
 
 - Current model: `task_assign()` blocks until assignment completes, agent processes task within the same call
 - Target model: `task_assign()` queues the task and returns immediately, orchestrator dispatches to agent in background, caller polls `task_status()` or receives callback
+- Already in place: while a task runs, `task_status()` returns `partial_result` and `progress_message` from the task stream (in memory only, [#37](https://github.com/lushly-dev/botcore/issues/37)); background dispatch should keep feeding them
 - Enables: parallel agent work, long-running tasks, dashboard-driven task tracking
 
 ## Prerequisite Specs

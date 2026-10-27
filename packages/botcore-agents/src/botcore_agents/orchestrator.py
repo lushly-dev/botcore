@@ -81,6 +81,8 @@ class AgentOrchestrator:
         self._config = config
         self._agents: dict[str, AgentState] = {}
         self._tasks: dict[str, Task] = {}
+        # Live output of running tasks, in memory only: a restored task restarts.
+        self._progress: dict[str, dict[str, str]] = {}
         self._backend = backend
 
     @property
@@ -270,6 +272,7 @@ class AgentOrchestrator:
                 task = self._tasks[task_id]
                 task.status = "cancelled"
                 task.completed_at = datetime.now(UTC)
+                self._progress.pop(task_id, None)
                 cancelled_tasks.append(task_id)
         state.active_tasks.clear()
 
@@ -438,8 +441,11 @@ class AgentOrchestrator:
             return error("TASK_NOT_FOUND", f"No task with id {task_id!r}")
 
         task = self._tasks[task_id]
+        data = task.model_dump(mode="json")
+        if task.status == "running" and task.id in self._progress:
+            data.update(self._progress[task.id])
         return success(
-            data=task.model_dump(mode="json"),
+            data=data,
             reasoning=f"Task {task_id} status: {task.status}",
         )
 
@@ -521,6 +527,7 @@ class AgentOrchestrator:
         self._tasks.setdefault(task.id, task)
         if task.id not in state.active_tasks:
             state.active_tasks.append(task.id)
+        self._progress[task.id] = {"partial_result": "", "progress_message": f"Started on {agent}"}
         state.health.status = "busy"
         state.health.current_task = task.id
         await self._autosave_if_configured(f"task_started:{task.id}")
@@ -531,6 +538,9 @@ class AgentOrchestrator:
     ) -> CommandResult[dict]:
         """Record a task outcome and free the agent (*state* from ``_begin_task``)."""
         agent = state.health.name
+        # After a state restore the id may belong to a new run of the task; leave its progress.
+        if self._tasks.get(task.id) is task:
+            self._progress.pop(task.id, None)
         # stop_agent may already have cancelled the task and stopped the agent.
         if task.status != "cancelled":
             task.status = status
@@ -599,6 +609,7 @@ class AgentOrchestrator:
         self._tasks = {
             tid: task_snapshot.to_task() for tid, task_snapshot in snapshot.tasks.items()
         }
+        self._progress.clear()
         self._agents = {
             name: agent_snapshot.to_state() for name, agent_snapshot in snapshot.agents.items()
         }
