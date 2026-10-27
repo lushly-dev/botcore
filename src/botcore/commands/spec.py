@@ -168,7 +168,10 @@ async def spec_delete(path: str) -> CommandResult[dict]:
         data={"path": str(spec_path), "deleted": True},
         reasoning=f"Deleted spec at {spec_path}",
         undo_command="spec_create",
-        undo_args={"path": str(spec_path), "template": "spec" if "proposal:" in content else "proposal"},
+        undo_args={
+            "path": str(spec_path),
+            "template": "spec" if "proposal:" in content else "proposal",
+        },
     )
 
 
