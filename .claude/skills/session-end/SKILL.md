@@ -10,7 +10,7 @@ description: >
   or wrapping up a session, or asking whether a session is safe to archive. Triggers:
   end session, do-end-session, close out, wrap up, session done, ready to archive,
   park session, did it land.
-version: 1.0.0
+version: 1.0.1
 triggers:
   - end session
   - do-end-session
@@ -58,8 +58,9 @@ you. Read the diff to tell which. Never answer the question with:
 
 - `git rev-list origin/main..HEAD` or `git cherry`. After a squash, "N commits ahead"
   looks the same whether the work never started or already landed.
-- The remote branch's presence or absence. This repo does not auto-delete head
-  branches, so a surviving branch says nothing about merge state. Read the PR.
+- The remote branch's presence or absence. GitHub deletes head branches on merge
+  here (`delete_branch_on_merge`), but a branch also vanishes when someone deletes
+  it by hand, and survives a closed PR. Read the PR.
 
 ## 1. Audit
 
@@ -126,9 +127,11 @@ way known-unpushed work does. "Could not check" is not "nothing to lose."
 
 ## 5. Clean up: last, and confirmed
 
-Only after every PR is merged (verified by content) or explicitly abandoned. Head
-branches survive merge here, so a merged session branch normally still exists on
-`origin`. Confirm with the user, then:
+Only after every PR is merged (verified by content) or explicitly abandoned.
+GitHub deletes head branches on merge here, so a merged session branch is normally
+already gone; check with `git ls-remote --heads origin <branch>`. Branches that
+remain (closed or abandoned PRs, branches pushed without a PR) need the user's
+confirmation, then:
 
 ```bash
 git push origin --delete <branch>

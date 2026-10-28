@@ -9,7 +9,7 @@ description: >
   pr-prep → session-end). Use when inspecting readiness or ready to ship. Triggers:
   prepare pr, prep pr, do-prepare-pr, ready to ship, ship it, open pr, create pr, push
   and open pr, finalize pr, quick pr.
-version: 1.0.0
+version: 1.0.1
 triggers:
   - prepare pr
   - prep pr
@@ -275,8 +275,8 @@ A head mismatch returns you to the gate. Do not pass `--delete-branch`. It makes
 `gh` switch to `main` locally, which fails in a worktree because `main` is checked
 out in the primary checkout, and the error hides that the merge already landed. If
 `gh pr merge` reports any error, confirm with `gh pr view <n> --json state,mergedAt`
-before retrying. `session-end` deletes the remote branch, because this repo does not
-auto-delete head branches.
+before retrying. GitHub deletes the head branch on merge (`delete_branch_on_merge`);
+`session-end` cleans up any that remain.
 
 When merge was not authorized, stop with the exact state and the next action for
 whoever owns it.
