@@ -12,6 +12,36 @@
 
 > **Reference pair:** botcore delivers shared command/skill infrastructure; AFD provides the command-first architecture contract those commands are designed to follow. See https://github.com/lushly-dev/afd.
 
+## Moving to the AFD monorepo
+
+> 🟡 **Moving** · All of botcore's code now lives in [lushly-dev/afd](https://github.com/lushly-dev/afd) (`endpoints/botcore`), imported from `7d5c54ca`, and is frozen here. AFD's Alfred bot is built on it. PyPI publishing has **not** moved yet: `lushly-botcore` still releases from this repo until cutover. Tracking: [lushly-dev/afd#463](https://github.com/lushly-dev/afd/issues/463).
+
+**Moved.** Make changes in AFD at these paths:
+
+| Here (frozen) | In AFD | Package |
+| --- | --- | --- |
+| `src/botcore` (incl. bundled skills), `tests`, `docs` | `endpoints/botcore` | `lushly-botcore` |
+| `botcore-connectors/` | `endpoints/botcore/botcore-connectors` | `botcore-connectors` |
+| `packages/botcore-llm` | `endpoints/botcore/packages/botcore-llm` | `botcore-llm` |
+| `packages/botcore-agents` | `endpoints/botcore/packages/botcore-agents` | `botcore-agents` |
+| `packages/botcore-memory` | `endpoints/botcore/packages/botcore-memory` | `botcore-memory` |
+| `plugins/botcore-teams` | `endpoints/botcore/plugins/botcore-teams` | `botcore-teams` |
+
+**Remains here:**
+
+- PyPI publishing for `lushly-botcore`: `publish.yml` runs on `v*` tags, and the latest release is 0.5.0.
+- 17 unreleased changesets (22 commits since `v0.5.0`).
+- Open issues #42 and #43.
+- Community files (ROADMAP, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT) and local agent skills.
+
+**Until cutover** (owner decision, recorded in AFD's [platform STATUS](https://github.com/lushly-dev/afd/blob/main/docs/features/active/platform-monorepo/STATUS.md#authorization-and-decisions), 2026-10-30):
+
+- **Don't change the moved paths here.** Make the change in AFD at the path in the table. If an urgent fix has to land here, port it to AFD the same day and link each PR from the other. AFD's copy is already ahead (0.6.0, managed-host API).
+- **No `v*` tags and no PyPI publishes without owner approval.** A tag publishes from this repo immediately, and a `v0.6.0` here would collide with AFD's 0.6.0.
+- `pip install lushly-botcore` still installs this repo's 0.5.0 release.
+
+Once publishing moves to AFD and the issues are migrated, this repo will be marked as moved and deprecated. It stays available for a while afterwards.
+
 **What happens when every repo needs great agent tooling?**
 
 You build it in one project, copy it to the next. Maybe you symlink. Maybe you create junctions. The skills diverge. The commands drift. A fix in one repo never reaches the others. Before long, you're maintaining five slightly different agents across five repositories — same tools, different versions, different bugs.
