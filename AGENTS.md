@@ -5,6 +5,38 @@ Shared bot infrastructure — config, plugin contract, skill registry, and extra
 > **!Important:** The year is 2026, not 2025.
 > **First time?** See [SETUP.md](SETUP.md) for installation, tooling, and environment setup.
 
+## AFD Monorepo Migration
+
+All of botcore's code was imported into `lushly-dev/afd` at `endpoints/botcore` from `7d5c54ca`, and AFD's Alfred builds its catalog on it. The source is **frozen here**; changes are made in AFD. Tracking: lushly-dev/afd#463. Authority: the owner decision recorded in AFD's `docs/features/active/platform-monorepo/STATUS.md` ("Authorization and decisions", 2026-10-30). See also `endpoints/botcore/docs/host-composition.md` in AFD ("Source relocation does not transfer publication authority").
+
+| Frozen here | Change it in AFD | Distribution |
+| --- | --- | --- |
+| `src/botcore`, `tests`, `docs` | `endpoints/botcore` | `lushly-botcore` |
+| `src/botcore/skills` (bundled skills) | `endpoints/botcore/src/botcore/skills` (projected by AFD `skills/exports.json`) | `lushly-botcore` |
+| `botcore-connectors/` | `endpoints/botcore/botcore-connectors` | `botcore-connectors` |
+| `packages/botcore-{llm,agents,memory}` | `endpoints/botcore/packages/botcore-{llm,agents,memory}` | `botcore-llm`, `-agents`, `-memory` |
+| `plugins/botcore-teams` | `endpoints/botcore/plugins/botcore-teams` | `botcore-teams` |
+
+The AFD copy is already ahead: root version 0.6.0, the managed-host API, an MCP SDK 2 adapter, afd#492 and the open afd#495.
+
+**Still done here, until the recorded PyPI cutover:**
+
+- Releases of `lushly-botcore` through `publish.yml` (`v*` tag), and only with explicit owner approval.
+- Triage of #42 and #43 until they are recreated in AFD.
+
+**Don't do here:**
+
+- Don't edit the frozen paths. If a fix can't wait, it may land here only if it is ported to the AFD path above the same day, with each PR linking the other.
+- Don't push `v*` tags or run `twine upload` without owner approval. A tag publishes immediately, and `v0.6.0` would collide with AFD's version.
+- Don't add changesets. The 17 pending ones are the release backlog that AFD must carry over.
+
+**Before any staged move, verify:**
+
+- `git log 7d5c54ca..origin/main` is empty, or each listed commit has a linked AFD port.
+- `.changeset/` still holds the 17 fragments, and they are reflected in AFD's `endpoints/botcore/CHANGELOG.md`.
+- No open PRs (`gh pr list`), and #42/#43 are migrated.
+- At the cutover: `publish.yml` is disabled or deleted, `PYPI_API_TOKEN` is revoked, AFD's route is enabled, and `pip index versions lushly-botcore` reads back the AFD release.
+
 ## CLI vs MCP
 
 For local development, **prefer CLI over MCP**. Run commands via `uv run python -c "..."` using `build_namespace()`. This gives instant startup, full output (no truncation), natural async chaining, and zero config. Document the command inventory in your project's `AGENTS.md` to replace the discovery role MCP normally fills.
