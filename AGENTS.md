@@ -19,16 +19,13 @@ All of botcore's code was imported into `lushly-dev/afd` at `endpoints/botcore` 
 
 The AFD copy is already ahead: root version 0.6.0, the managed-host API, an MCP SDK 2 adapter, afd#492 and the open afd#495.
 
-**Still done here, until the recorded PyPI cutover:**
-
-- Releases of `lushly-botcore` through `publish.yml` (`v*` tag), and only with explicit owner approval.
-- Triage of #42 and #43 until they are recreated in AFD.
+**Publishing has moved to AFD.** `publish.yml` is removed. `lushly-botcore` releases from AFD's `publish-botcore.yml` on `botcore-vX.Y.Z` tags; see AFD's `docs/features/active/platform-monorepo/botcore-handoff.md`. Nothing is released from here, and #42 and #43 were transferred to AFD.
 
 **Don't do here:**
 
 - Don't edit the frozen paths. If a fix can't wait, it may land here only if it is ported to the AFD path above the same day, with each PR linking the other.
-- Don't push `v*` tags or run `twine upload` without owner approval. A tag publishes immediately, and `v0.6.0` would collide with AFD's version.
-- Don't add changesets. The 17 pending ones are the release backlog that AFD must carry over.
+- Don't push tags or run `twine upload`; the release route is AFD's.
+- Don't add changesets. The 17 fragments here are carried into AFD's `endpoints/botcore/CHANGELOG.md`.
 
 **Before any staged move, verify:**
 
