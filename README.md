@@ -1,45 +1,33 @@
 # botcore — Shared Bot Infrastructure
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)](LICENSE)
-[![Status: Beta](https://img.shields.io/badge/Status-Beta-16a34a?style=flat-square)](#)
-[![Release](https://img.shields.io/github/v/release/lushly-dev/botcore?display_name=tag&sort=semver&style=flat-square)](https://github.com/lushly-dev/botcore/releases)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](#)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-8b5cf6?style=flat-square)](#)
-[![Companion: AFD](https://img.shields.io/badge/Companion-AFD-6d28d9?style=flat-square&logo=github)](https://github.com/lushly-dev/afd)
+[![Status: Deprecated](https://img.shields.io/badge/Status-Deprecated-dc2626?style=flat-square)](#deprecated-botcore-now-lives-in-afd)
+[![Moved to: AFD](https://img.shields.io/badge/Moved_to-lushly--dev%2Fafd-6d28d9?style=flat-square&logo=github)](https://github.com/lushly-dev/afd/tree/main/endpoints/botcore)
 [![Sponsor](https://img.shields.io/badge/Sponsor-db2777?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Falkicon)
 
-> 🟢 **Beta** · Stable and in active use across multiple repositories. APIs are mostly stable; expect targeted iterative improvements. Feedback welcome!
+## Deprecated: botcore now lives in AFD
 
-> **Reference pair:** botcore delivers shared command/skill infrastructure; AFD provides the command-first architecture contract those commands are designed to follow. See https://github.com/lushly-dev/afd.
+> 🔴 **Deprecated.** This repository is no longer maintained and will be archived. botcore is developed and released from [lushly-dev/afd](https://github.com/lushly-dev/afd) at [`endpoints/botcore`](https://github.com/lushly-dev/afd/tree/main/endpoints/botcore). Open issues and pull requests there.
 
-## Moving to the AFD monorepo
+- **Code:** everything here was imported into AFD from `7d5c54ca` and has changed there since. Nothing here is updated.
+- **Releases:** 0.5.0 was the last `lushly-botcore` release from this repository. Later releases publish from AFD's `publish-botcore.yml` on `botcore-vX.Y.Z` tags. `pip install lushly-botcore` is unchanged: same package name, same index.
+- **Release notes:** the 17 changesets made here after 0.5.0 are carried into AFD's [`endpoints/botcore/CHANGELOG.md`](https://github.com/lushly-dev/afd/blob/main/endpoints/botcore/CHANGELOG.md).
+- **Bundled skills:** AFD rewrote them and retired the generic ones. The skills under `.claude/skills` here are the old set; don't copy them.
 
-> 🟡 **Moving** · All of botcore's code now lives in [lushly-dev/afd](https://github.com/lushly-dev/afd) (`endpoints/botcore`), imported from `7d5c54ca`, and is frozen here. AFD's Alfred bot is built on it. PyPI publishing **is moving to AFD**: this repo's publish workflow is removed, and the next `lushly-botcore` release (0.6.0) publishes from AFD's `publish-botcore.yml`. Tracking: [lushly-dev/afd#463](https://github.com/lushly-dev/afd/issues/463) and AFD's [handoff record](https://github.com/lushly-dev/afd/blob/main/docs/features/active/platform-monorepo/botcore-handoff.md).
-
-**Moved.** Make changes in AFD at these paths:
-
-| Here (frozen) | In AFD | Package |
+| Was here | Now in AFD | Distribution |
 | --- | --- | --- |
-| `src/botcore` (incl. bundled skills), `tests`, `docs` | `endpoints/botcore` | `lushly-botcore` |
+| `src/botcore` (with the bundled skills), `tests`, `docs` | `endpoints/botcore` | `lushly-botcore` |
 | `botcore-connectors/` | `endpoints/botcore/botcore-connectors` | `botcore-connectors` |
 | `packages/botcore-llm` | `endpoints/botcore/packages/botcore-llm` | `botcore-llm` |
 | `packages/botcore-agents` | `endpoints/botcore/packages/botcore-agents` | `botcore-agents` |
 | `packages/botcore-memory` | `endpoints/botcore/packages/botcore-memory` | `botcore-memory` |
 | `plugins/botcore-teams` | `endpoints/botcore/plugins/botcore-teams` | `botcore-teams` |
 
-**Remains here:**
+The handoff, including how publishing moved and how to recover it, is recorded in AFD's [botcore handoff record](https://github.com/lushly-dev/afd/blob/main/docs/features/active/platform-monorepo/botcore-handoff.md).
 
-- The release history up to 0.5.0, the last version published from here. Publishing moved to AFD: `publish.yml` is removed.
-- The 17 changesets made after 0.5.0, kept for reference. Their entries are carried into AFD's `endpoints/botcore/CHANGELOG.md`.
-- Community files (ROADMAP, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT) and local agent skills.
+---
 
-**Rules** (owner decisions, recorded in AFD's [platform STATUS](https://github.com/lushly-dev/afd/blob/main/docs/features/active/platform-monorepo/STATUS.md#authorization-and-decisions)):
-
-- **Don't change the moved paths here.** Make the change in AFD at the path in the table. If an urgent fix has to land here, port it to AFD the same day and link each PR from the other. AFD's copy is already ahead (0.6.0, managed-host API).
-- **No releases from here.** Releases are tagged `botcore-vX.Y.Z` in AFD.
-- `pip install lushly-botcore` installs 0.5.0 until AFD publishes 0.6.0.
-
-Once AFD has published and verified its first release, this repo will be archived. It stays available for a while afterwards.
+*The rest of this README describes botcore as of 0.5.0 and is kept for reference. For current documentation, see [`endpoints/botcore`](https://github.com/lushly-dev/afd/tree/main/endpoints/botcore) in AFD.*
 
 **What happens when every repo needs great agent tooling?**
 
